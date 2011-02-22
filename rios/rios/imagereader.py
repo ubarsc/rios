@@ -101,11 +101,19 @@ class ImageReader(object):
         if isinstance(imageContainer,dict):
             # Convert the given imageContainer into a list suitable for
             # the standard InputCollection. 
+            self.imageContainer = imageContainer
             imageList = []
             self.imageNames = imageContainer.keys()
             for name in self.imageNames:
                 filename = imageContainer[name]
-                imageList.append(filename)
+                if isinstance(filename, list):
+                    # We have actually been given a list of filenames, so tack then all on to the imageList
+                    imageList.extend(filename)
+                elif isinstance(filename, basestring):
+                    # We just have a single filename
+                    imageList.append(filename)
+                else:
+                    raise rioserrors.ParameterError("Neither list nor dictionary passed to ImageReader, got '%s' instead"%type(imageContainer))
             
         else:
             imageList = imageContainer
@@ -349,11 +357,19 @@ class ImageReader(object):
             # we need to use the original keys passed in
             # to the constructor and return a dictionary
             blockDict = {}
-            for i in range(len(self.imageNames)):
-                name = self.imageNames[i]
-                block = blockList[i]
-                blockDict[name] = block
-                
+            i = 0
+            for name in self.imageNames:
+                filename = self.imageContainer[name]
+                if isinstance(filename, list):
+                    listLen = len(filename)
+                    blockDict[name] = []
+                    for j in range(listLen):
+                        blockDict[name].append(blockList[i])
+                        i += 1
+                elif isinstance(filename, basestring):
+                    blockDict[name] = blockList[i]
+                    i += 1
+                                    
             blockContainer = blockDict
          
         else:   
