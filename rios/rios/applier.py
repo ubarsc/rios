@@ -20,15 +20,53 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
                 creationoptions=imagewriter.DEFAULTCREATIONOPTIONS,
                 calcStats=True,statsIgnore=0):
         """
-        Apply the 'userFunction' method of this class to the given
+        Apply the given 'userFunction' to the given
         input and output files. 
         
         infiles and outfiles are FilenameAssociations objects to 
         define associations between internal variable names and
-        external filenames, for the raster file inputs. 
+        external filenames, for the raster file inputs and outputs. 
         
-        args is an object of extra arguments to be passed to thefunc,
-        each with a sensible name on the object. 
+        otherArgs is an object of extra arguments to be passed to the 
+        userFunction, each with a sensible name on the object. 
+        
+        The userFunction has the following call sequence
+            userFunction(info, inputs, outputs)
+        or
+            userFunction(info, inputs, outputs, otherArgs)
+        if otherArgs is not None. 
+        inputs and outputs are objects in which there are named attributes 
+        with the same names as those given in thee infiles and outfiles 
+        objects. In the inputs and outputs objects, available inside 
+        userFunction, these attributes contain numpy arrays of data read 
+        from/written to the corresponding image file. 
+        
+        The numpy arrays are always 3-d arrays, with shape
+            (numBands, numRows, numCols)
+        
+        The info object contains many useful details about the processing, 
+        and will always be passed to the userFunction. It can, of course, 
+        be ignored. It is an instance of the readerinfo.ReaderInfo class. 
+        
+        referenceImage defines which of the input images will be used to 
+        supply the pixel grid on which numpy arrays will be supplied. 
+        If None, then no reprojecting will be allowed. 
+        
+        footprint is one of imagereader.INTERSECTION or imagereader.UNION. 
+        
+        windowxsize and windowysize define the size of the blocks in which 
+        data is processed. When a value is given for overlap, the blocks 
+        will actually be larger by this much, to allow them to overlap, 
+        for use with focal operations such as local mean. 
+        
+        drivername and creationoptions are given to GDAL to control how 
+        output files are created. 
+        
+        calcStats controls whether statistics are calculated on the output 
+        file(s). When True, stats (and pyramid layers) will be saved on the
+        output files. The given statsIgnore value will be used for calculation
+        of statistics, and a statscache object can be given if these values
+        are already known from some other source. 
         
         """
         
