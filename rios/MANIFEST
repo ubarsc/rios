@@ -1,4 +1,3 @@
-LICENSE.txt
 setup.py
 bin/pymdltestapplier.py
 bin/pymdltestreader.py
@@ -8,10 +7,10 @@ rios/__init__.py
 rios/applier.py
 rios/calcstats.py
 rios/cuiprogress.py
-rios/exceptions.py
 rios/imageio.py
 rios/imagereader.py
 rios/imagewriter.py
 rios/inputcollection.py
 rios/pixelgrid.py
 rios/readerinfo.py
+rios/rioserrors.py
