@@ -28,7 +28,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
         external filenames, for the raster file inputs and outputs. 
         
         otherArgs is an object of extra arguments to be passed to the 
-        userFunction, each with a sensible name on the object. 
+        userFunction, each with a sensible name on the object. These 
+        can be either input or output arguments, entirely at the discretion
+        of userFunction(). 
         
         The userFunction has the following call sequence
             userFunction(info, inputs, outputs)
