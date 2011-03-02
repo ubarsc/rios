@@ -452,7 +452,7 @@ class InputCollection(object):
         """
         dodgyTOWGSstring = "TOWGS84[-16.237,3.51,9.939,1.4157e-06,2.1477e-06,1.3429e-06,1.91e-07]"
         properTOWGSstring = "TOWGS84[0,0,0,0,0,0,0]"
-        if projwkt.find('"GDA94"') > 0:
+        if projwkt.find('"GDA94"') > 0 or projwkt.find('"Geocentric_Datum_of_Australia_1994"') > 0:
             newWkt = projwkt.replace(dodgyTOWGSstring, properTOWGSstring)
         else:
             newWkt = projwkt
