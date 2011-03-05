@@ -86,7 +86,7 @@ class ImageWriter(object):
             self.overlap = info.getOverlapSize()
             (self.xtotalblocks,self.ytotalblocks) = info.getTotalBlocks()
 
-        if firstblock is None and allnotNone([nbands,gdaldatatype]):
+        if firstblock is None and not allnotNone([nbands,gdaldatatype]):
             msg = 'if not passing firstblock, must pass nbands and gdaltype'
             raise rioserrors.ParameterError(msg)
                         
