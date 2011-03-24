@@ -45,6 +45,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
         
         The numpy arrays are always 3-d arrays, with shape
             (numBands, numRows, numCols)
+        The datatype of the output image(s) is determined directly
+        from the datatype of the numpy arrays in the outputs object. 
         
         The info object contains many useful details about the processing, 
         and will always be passed to the userFunction. It can, of course, 
