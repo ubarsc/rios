@@ -377,8 +377,8 @@ class InputCollection(object):
                 self.datasetList[count] = newds
                 
                 # just assume it has been successfully 
-                # resampled to exactly the reference
-                self.pixgridList[count] = self.referencePixGrid
+                # resampled to exactly the workingRegion
+                self.pixgridList[count] = workingRegion
                 
                 # close the original dataset - just using temp 
                 # resampled one from now.
