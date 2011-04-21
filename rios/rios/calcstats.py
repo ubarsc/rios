@@ -65,17 +65,20 @@ def addPyramid(ds,progress):
 
     # Need to find out if we are thematic or continuous 
     tmpmeta = ds.GetRasterBand(1).GetMetadata()
-    if tmpmeta['LAYER_TYPE'] == 'athematic':
-        type = "AVERAGE"
+    if tmpmeta.has_key('LAYER_TYPE'):
+        if tmpmeta['LAYER_TYPE'] == 'athematic':
+            aggregationType = "AVERAGE"
+        else:
+            aggregationType = "NEAREST"
     else:
-        type = "NEAREST"
+        aggregationType = "AVERAGE"
     
     userdata = ProgressUserData()
     userdata.progress = progress
     userdata.nbands = ds.RasterCount
     userdata.curroffset = 0
    
-    ds.BuildOverviews(type, levels[:nOverviews], progressFunc, userdata )
+    ds.BuildOverviews(aggregationType, levels[:nOverviews], progressFunc, userdata )
   
     if progress.wasCancelled():
         raise ProcessCancelledError()
