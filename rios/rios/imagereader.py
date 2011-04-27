@@ -112,7 +112,7 @@ class ImageReader(object):
             # the standard InputCollection. 
             self.imageContainer = imageContainer
             imageList = []
-            self.imageNames = list(imageContainer.keys())
+            self.imageNames = imageContainer.keys()
             for name in self.imageNames:
                 filename = imageContainer[name]
                 if isinstance(filename, list):

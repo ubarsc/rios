@@ -101,7 +101,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
             # Now call the function with those args
             userFunction(*functionArgs)
             
-            for name in list(outfiles.__dict__.keys()):
+            for name in outfiles.__dict__.keys():
 
                 if name not in outputBlocks.__dict__:
                     msg = 'Output key %s not found in output blocks' % name
@@ -124,7 +124,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
         if progress is not None:
             progress.setProgress(100)    
                 
-        for name in list(outfiles.__dict__.keys()):
+        for name in outfiles.__dict__.keys():
             writerdict[name].close(calcStats,statsIgnore,progress)
         
 
