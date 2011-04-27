@@ -22,8 +22,8 @@
 import numpy
 from osgeo import gdal
 from osgeo import gdalconst
-import cuiprogress
-from rioserrors import ProcessCancelledError
+from . import cuiprogress
+from .rioserrors import ProcessCancelledError
 
 # we don't want to build unnecessarily small overview layers  
 # we stop when the smallest dimension in the overview is less 
@@ -65,7 +65,7 @@ def addPyramid(ds,progress):
 
     # Need to find out if we are thematic or continuous 
     tmpmeta = ds.GetRasterBand(1).GetMetadata()
-    if tmpmeta.has_key('LAYER_TYPE'):
+    if 'LAYER_TYPE' in tmpmeta:
         if tmpmeta['LAYER_TYPE'] == 'athematic':
             aggregationType = "AVERAGE"
         else:

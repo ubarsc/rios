@@ -6,8 +6,8 @@ Contains the ImageWriter class
 
 import math
 from osgeo import gdal
-import imageio
-import rioserrors
+from . import imageio
+from . import rioserrors
 
 DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE','IGNOREUTM=TRUE']
 DEFAULTDRIVERNAME = 'HFA'
@@ -229,7 +229,7 @@ class ImageWriter(object):
         Closes the open dataset
         """
         if calcStats:
-            import calcstats
+            from . import calcstats
             calcstats.calcStats(self.ds,progress,statsIgnore)
         
         self.ds.FlushCache()

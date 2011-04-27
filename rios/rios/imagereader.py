@@ -8,10 +8,15 @@ import sys
 import copy
 import numpy
 from osgeo import gdal
-import imageio
-import inputcollection
-import readerinfo
-import rioserrors
+from . import imageio
+from . import inputcollection
+from . import readerinfo
+from . import rioserrors
+
+if sys.version_info[0] > 2:
+    # hack for Python 3 which uses str instead of basestring
+    # we just use basestring
+    basestring = str
 
 DEFAULTFOOTPRINT = imageio.INTERSECTION
 DEFAULTWINDOWXSIZE = 200
@@ -43,8 +48,12 @@ class ImageIterator(object):
     def __iter__(self):
         # For iteration support - just return self.
         return self
-        
+
     def next(self):
+        # for Python 2.x
+        return self.__next__()
+        
+    def __next__(self):
         # for iteration support. Raises a StopIteration
         # if we have read beyond the end of the image
         try:
@@ -103,7 +112,7 @@ class ImageReader(object):
             # the standard InputCollection. 
             self.imageContainer = imageContainer
             imageList = []
-            self.imageNames = imageContainer.keys()
+            self.imageNames = list(imageContainer.keys())
             for name in self.imageNames:
                 filename = imageContainer[name]
                 if isinstance(filename, list):

@@ -50,7 +50,7 @@ for (info,blocklist) in reader:
 
     (nxblocks,nyblocks) = info.getTotalBlocks()
     (xblock,yblock) = info.getBlockCount()
-    print 'Block', nxblocks * yblock + xblock + 1, 'of', nxblocks * nyblocks
+    print('Block', nxblocks * yblock + xblock + 1, 'of', nxblocks * nyblocks)
 
     for block in blocklist:
     
