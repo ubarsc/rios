@@ -9,9 +9,9 @@ of the inputs it has and deal with resampling.
 import os
 import sys
 import subprocess
-import imageio
-import rioserrors
-import pixelgrid
+from . import imageio
+from . import rioserrors
+from . import pixelgrid
 from osgeo import gdal
 
 class InputIterator(object):
@@ -38,8 +38,12 @@ class InputIterator(object):
     def __iter__(self):
         # For iteration support - just return self.
         return self
-        
+
     def next(self):
+        # For Python 2.x
+        return self.__next__()
+        
+    def __next__(self):
         # for iteration support. Raises a StopIteration
         # if we have read beyond the end of the collection
         if self.index >= len(self.collection.datasetList):
@@ -255,7 +259,7 @@ class InputCollection(object):
         
         # temp image file name - based on driver extension
         ext = ''
-        if drivermeta.has_key("DMD_EXTENSION"):
+        if "DMD_EXTENSION" in drivermeta:
           ext = '.' + drivermeta["DMD_EXTENSION"]
         (fileh,temp_image) = tempfile.mkstemp(ext,dir='.')
         os.close(fileh)

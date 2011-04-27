@@ -7,7 +7,7 @@ read and info on the current block
 """
 
 import math
-import imageio
+from . import imageio
 
 class StatisticsCache:
     """
@@ -25,7 +25,7 @@ class StatisticsCache:
             key = '%s %d' % (fname,band)
         else:
             key = '%s %d %f' % (fname,band,ignore)
-        if self.stats.has_key(key):
+        if key in self.stats:
             return self.stats[key]
         else:
             return None

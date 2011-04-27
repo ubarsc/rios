@@ -25,11 +25,11 @@ def print_report(count,info,block,globalstats):
         
     for layer in range(block.shape[0]):
         median = numpy.mean(block[layer])
-        print " image %d %s, layer %d, mean = %f" % (count,fname,layer,median)
+        print(" image %d %s, layer %d, mean = %f" % (count,fname,layer,median))
             
         if globalstats:
             globalmean = info.global_mean(block,layer+1)
-            print "  global mean = %f" % globalmean
+            print("  global mean = %f" % globalmean)
 
 
 # get command line args
@@ -52,7 +52,7 @@ for (info,blocklist) in reader:
     # print info about the block
     (blocktl,blockbr) = info.getBlockBounds()
     (xblock,yblock) = info.getBlockCount()
-    print "block %d %d starting at %fE %fN" % (xblock,yblock,blocktl.x,blocktl.y)
+    print("block %d %d starting at %fE %fN" % (xblock,yblock,blocktl.x,blocktl.y))
     
     # now go thru each block and print something
     count = 1

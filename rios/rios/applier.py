@@ -5,9 +5,9 @@ a raster processing chain.
 
 """
 
-import imagereader
-import imagewriter
-import rioserrors
+from . import imagereader
+from . import imagewriter
+from . import rioserrors
 
 class FilenameAssociations(object): pass
 class BlockAssociations(object): pass
@@ -101,9 +101,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
             # Now call the function with those args
             userFunction(*functionArgs)
             
-            for name in outfiles.__dict__.keys():
+            for name in list(outfiles.__dict__.keys()):
 
-                if not outputBlocks.__dict__.has_key(name):
+                if name not in outputBlocks.__dict__:
                     msg = 'Output key %s not found in output blocks' % name
                     raise rioserrors.KeysMismatch(msg)
 
@@ -124,7 +124,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
         if progress is not None:
             progress.setProgress(100)    
                 
-        for name in outfiles.__dict__.keys():
+        for name in list(outfiles.__dict__.keys()):
             writerdict[name].close(calcStats,statsIgnore,progress)
         
 

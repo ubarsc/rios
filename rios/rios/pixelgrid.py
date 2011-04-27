@@ -9,7 +9,7 @@ reference grid.
 
 """
 
-import imageio
+from . import imageio
 from osgeo import osr
 from osgeo import gdal
 
