@@ -31,3 +31,5 @@ class ProcessCancelledError(RiosError):
 class KeysMismatch(RiosError):
     "Keys do not match expected"
 
+class MismatchedListLengthsError(RiosError):
+    "Two lists had different lengths, when they were supposed to be the same length"

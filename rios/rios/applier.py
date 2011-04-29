@@ -12,7 +12,26 @@ from . import imagereader
 from . import imagewriter
 from . import rioserrors
 
-class FilenameAssociations(object): pass
+class FilenameAssociations(object): 
+    """
+    Class for associating external image filenames with internal
+    names, which are then the same names used inside a function given
+    to the applier.apply() function. 
+    
+    Each attribute created on this object should be a filename, or a 
+    list of filenames. The corresponding attribute names will appear 
+    on the 'inputs' or 'outputs' objects inside the applied function. 
+    Each such attribute will be an image data block or a list of image 
+    data blocks, accordingly. 
+    
+    In the future, we intend to also allow filenameControl objects, 
+    instead of just strings for the filename, which will allow fine
+    control of individual files, where currently settings such as the 
+    driver used are global to all output files. However, I haven't yet 
+    implemented this.
+    
+    """
+    pass
 class BlockAssociations(object): pass
 class OtherInputs(object): pass
 
@@ -45,6 +64,11 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
         objects. In the inputs and outputs objects, available inside 
         userFunction, these attributes contain numpy arrays of data read 
         from/written to the corresponding image file. 
+        
+        If the attributes given in the infiles or outfiles objects are 
+        lists of filenames, the the corresponding attributes of the 
+        inputs and outputs objects inside the applied function will be 
+        lists of image data blocks instead of single blocks. 
         
         The numpy arrays are always 3-d arrays, with shape
             (numBands, numRows, numCols)
@@ -120,6 +144,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
                         # a list of blocks
                         writerdict[name] = []
                         numFiles = len(outfileName)
+                        if len(outblock) != numFiles:
+                            raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
+                                "but only %d blocks given")%(name, numFiles, len(outblock)))
                         for i in range(numFiles):
                             filename = outfileName[i]
                             writer = imagewriter.ImageWriter(filename, info=info, 
@@ -136,6 +163,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
                     if isinstance(outfileName, list):
                         # We have a list of files for this name, and a list of blocks to write
                         numFiles = len(outfileName)
+                        if len(outblock) != numFiles:
+                            raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
+                                "but only %d blocks given")%(name, numFiles, len(outblock)))
                         for i in range(numFiles):
                             writerdict[name][i].write(outblock[i])
                     else:
