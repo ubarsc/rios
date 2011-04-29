@@ -13,7 +13,8 @@ setup(name='rios',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
       scripts=['bin/pymdltestreader.py','bin/pymdltestwriter.py',
-		'bin/pymdltestreaderdict.py','bin/pymdltestapplier.py'],
+		'bin/pymdltestreaderdict.py','bin/pymdltestapplier.py',
+        'bin/testapplier.py'],
       packages=['rios'],
       license='LICENSE.txt'
      )
