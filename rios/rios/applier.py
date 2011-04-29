@@ -38,7 +38,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
             userFunction(info, inputs, outputs, otherArgs)
         if otherArgs is not None. 
         inputs and outputs are objects in which there are named attributes 
-        with the same names as those given in thee infiles and outfiles 
+        with the same names as those given in the infiles and outfiles 
         objects. In the inputs and outputs objects, available inside 
         userFunction, these attributes contain numpy arrays of data read 
         from/written to the corresponding image file. 
@@ -108,12 +108,36 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
                     raise rioserrors.KeysMismatch(msg)
 
                 outblock = outputBlocks.__dict__[name]
-                if len(writerdict) == 0:
-                    writer = imagewriter.ImageWriter(outfiles.__dict__[name],info=info,firstblock=outblock,
-                                            drivername=drivername,creationoptions=creationoptions)
-                    writerdict[name] = writer
+                outfileName = getattr(outfiles, name)
+                if name not in writerdict:
+                    # We have not yet created the output writers
+                    if isinstance(outfileName, list):
+                        # We have a list of filenames under this name in the dictionary,
+                        # and so we must create a list of writers. The outblock will also be 
+                        # a list of blocks
+                        writerdict[name] = []
+                        numFiles = len(outfileName)
+                        for i in range(numFiles):
+                            filename = outfileName[i]
+                            writer = imagewriter.ImageWriter(filename, info=info, 
+                                firstblock=outblock[i], drivername=drivername,
+                                creationoptions=creationoptions)
+                            writerdict[name].append(writer)
+                    else:
+                        # This name in the dictionary is just a single filename
+                        writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
+                            drivername=drivername, creationoptions=creationoptions)
+                        writerdict[name] = writer
                 else:
-                    writerdict[name].write(outblock)
+                    # The output writers exist, so select the correct one and write the block
+                    if isinstance(outfileName, list):
+                        # We have a list of files for this name, and a list of blocks to write
+                        numFiles = len(outfileName)
+                        for i in range(numFiles):
+                            writerdict[name][i].write(outblock[i])
+                    else:
+                        # This name is just a single file, and we write a single block
+                        writerdict[name].write(outblock)
                     
             if progress is not None:
                 percent = info.getPercent()
@@ -125,7 +149,12 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
             progress.setProgress(100)    
                 
         for name in outfiles.__dict__.keys():
-            writerdict[name].close(calcStats,statsIgnore,progress)
+            writer = writerdict[name]
+            if isinstance(writer, list):
+                for singleWriter in writer:
+                    singleWriter.close(calcStats, statsIgnore, progress)
+            else:
+                writer.close(calcStats,statsIgnore,progress)
         
 
 
