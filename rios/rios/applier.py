@@ -4,6 +4,9 @@ Basic tools for setting up a function to be applied over
 a raster processing chain. 
 
 """
+# Subversion id keywords
+# $HeadURL$
+# $Id$
 
 from . import imagereader
 from . import imagewriter
