@@ -106,14 +106,16 @@ class ImageReader(object):
         logging about resampling to be sent somewhere else
         rather than stdout.
         """
-        
+
+        # grab the imageContainer so we can always know what 
+        # type of container they passed in
+        self.imageContainer = imageContainer
+      
         if isinstance(imageContainer,dict):
             # Convert the given imageContainer into a list suitable for
             # the standard InputCollection. 
-            self.imageContainer = imageContainer
             imageList = []
-            self.imageNames = imageContainer.keys()
-            for name in self.imageNames:
+            for name in imageContainer.keys():
                 filename = imageContainer[name]
                 if isinstance(filename, list):
                     # We have actually been given a list of filenames, so tack then all on to the imageList
@@ -122,11 +124,17 @@ class ImageReader(object):
                     # We just have a single filename
                     imageList.append(filename)
                 else:
-                    raise rioserrors.ParameterError("Neither list nor dictionary passed to ImageReader, got '%s' instead"%type(imageContainer))
-            
+                    msg = "Dictionary must contain either lists or strings. Got '%s' instead" % type(filename)
+                    raise rioserrors.ParameterError(msg)
+
+        
+        elif isinstance(imageContainer,basestring):
+            # they passed a string, just make a list out of it
+            imageList = [imageContainer]
+
         else:
+            # we hope they passed a tuple or list. Don't need to do much
             imageList = imageContainer
-            self.imageNames = None
         
         # create an InputCollection with our inputs
         self.inputs = inputcollection.InputCollection(imageList,loggingstream=loggingstream)
@@ -362,12 +370,12 @@ class ImageReader(object):
             self.inputs.cleanup()
         
         
-        if self.imageNames is not None:
+        if isinstance(self.imageContainer,dict):
             # we need to use the original keys passed in
             # to the constructor and return a dictionary
             blockDict = {}
             i = 0
-            for name in self.imageNames:
+            for name in self.imageContainer.keys():
                 filename = self.imageContainer[name]
                 if isinstance(filename, list):
                     listLen = len(filename)
@@ -379,13 +387,18 @@ class ImageReader(object):
                     blockDict[name] = blockList[i]
                     i += 1
                                     
+            # blockContainer is a dictionary
             blockContainer = blockDict
          
+        elif isinstance(self.imageContainer,basestring):
+            # blockContainer is just a single block
+            blockContainer = blockList[0]
+
         else:   
             # blockContainer is a tuple
             blockContainer = tuple(blockList)
             
-        # return a tuple with the info oubject and
+        # return a tuple with the info object and
         # our blockContainer
         return (info, blockContainer)
         
