@@ -8,6 +8,8 @@ a raster processing chain.
 # $HeadURL$
 # $Id$
 
+import sys
+
 from . import imagereader
 from . import imagewriter
 from . import rioserrors
@@ -35,12 +37,122 @@ class FilenameAssociations(object):
 class BlockAssociations(object): pass
 class OtherInputs(object): pass
 
-def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None, 
-                referenceImage=None,footprint=imagereader.DEFAULTFOOTPRINT,
-                windowxsize=imagereader.DEFAULTWINDOWXSIZE, windowysize=imagereader.DEFAULTWINDOWYSIZE,
-                overlap=imagereader.DEFAULTOVERLAP, statscache=None, drivername=imagewriter.DEFAULTDRIVERNAME,
-                creationoptions=imagewriter.DEFAULTCREATIONOPTIONS,
-                calcStats=True,statsIgnore=0):
+class ApplierControls(object):
+    """
+    Controls for the operation of rios, for use with 
+    the applier.apply() function. 
+    
+    This object starts with default values for all controls, and 
+    has methods for setting each of them to something else. 
+    
+    Attributes are:
+        windowxsize     X size of rios block (pixels)
+        windowysize     Y size of rios block (pixels)
+        overlap         Number of pixels in margin for block overlaps
+        footprint       iagereader.INTERSECTION or imagereader.UNION
+        drivername      global GDAL driver short name for output
+        creationoptions global GDAL creation options for output
+        thematic        global True/False for thematic outputs
+        referenceImage  Image for reference projection and grid
+        loggingstream   file-like for logging of messages
+        progress        progress object
+        statsIgnore     global stats ignore value for output
+        statscache      stats cache if pre-calculated
+        calcStats       True/False to signal calculate statistics/pyramids
+    
+    Default values are provided for all attributes, and can then be over-ridden
+    with the 'set' methods given. 
+    
+    """
+    def __init__(self):
+        self.loggingstream = sys.stdout
+        self.drivername = imagewriter.DEFAULTDRIVERNAME
+        self.overlap = imagereader.DEFAULTOVERLAP
+        self.windowxsize = imagereader.DEFAULTWINDOWXSIZE
+        self.windowysize = imagereader.DEFAULTWINDOWYSIZE
+        self.footprint = imagereader.DEFAULTFOOTPRINT
+        self.referenceimage = None
+        self.progress = None
+        self.creationoptions = imagewriter.DEFAULTCREATIONOPTIONS
+        self.statscache = None
+        self.statsIgnore = 0
+        self.calcStats = True
+        self.thematic = False
+    
+    def setLoggingStream(self, loggingstream):
+        """
+        Set the rios logging stream to the given file-like object. 
+        """
+        self.loggingstream = loggingstream
+    def setOverlap(self, overlap):
+        """
+        Set the overlap to the given value.
+        Overlap is a number of pixels, and is somewhat mis-named. It refers 
+        to the amount of margin added each block of input, so that the blocks 
+        will overlap, hence the actual amount of overlap is really more like
+        double this value (allowing for odd and even numbers, etc). 
+        
+        """
+        self.overlap = overlap
+    def setOutputDriverName(self, drivername):
+        """
+        Set the output driver name to the given GDAL shortname
+        """
+        self.drivername = drivername
+    def setWindowXsize(self, windowxsize):
+        """
+        Set the X size of the blocks used. Images are processed in 
+        blocks (windows) of 'windowxsize' columns, and 'windowysize' rows. 
+        """
+        self.windowxsize = windowxsize
+    def setWindowYsize(self, windowysize):
+        """
+        Set the Y size of the blocks used. Images are processed in 
+        blocks (windows) of 'windowxsize' columns, and 'windowysize' rows. 
+        """
+        self.windowysize = windowysize
+    def setFootprintType(self, footprint):
+        "Set type of footprint, one of INTERSECTION or UNION from imagereader"
+        self.footprint = footprint
+    def setReferenceImage(self, referenceImage):
+        """
+        Set the name of the image to use for the reference pixel grid and 
+        projection. If not set, then no resampling will be allowed
+        """
+        self.referenceImage = referenceImage
+    def setProgress(self, progress):
+        """
+        Set the progress display object. Default is to 
+        use cuiprogress.CUIProgressBar
+        """
+        self.progress = progress
+    def setCreationOptions(self, creationoptions):
+        """
+        Set a list of GDAL creation options (should match with the driver). 
+        Each list element is a string of the form "NAME=VALUE". 
+        """
+        self.creationoptions = creationoptions
+    def setStatsCache(self, statscache):
+        "Set the stats cache, if statistics are known from some other source."
+        self.statscache = statscache
+    def setStatsIgnore(self, statsIgnore):
+        """
+        Set the global default value to use as the 
+        null value when calculating stats.
+        """
+        self.statsIgnore = statsIgnore
+    def setCalcStats(self, calcStats):
+        """
+        Set True to calc stats, False otherwise. If True, then statistics and 
+        pyramid layers are calculated (if supported by the driver
+        """
+        self.calcStats = calcStats
+    def setThematic(self, thematicFlag):
+        "Set boolean value of thematic flag (may not be supported by the GDAL driver)"
+        self.thematic = thematicFlag
+
+
+def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         """
         Apply the given 'userFunction' to the given
         input and output files. 
@@ -79,40 +191,31 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
         and will always be passed to the userFunction. It can, of course, 
         be ignored. It is an instance of the readerinfo.ReaderInfo class. 
         
-        referenceImage defines which of the input images will be used to 
-        supply the pixel grid on which numpy arrays will be supplied. 
-        If None, then no reprojecting will be allowed. 
+        The controls argument, if given, is an instance of the 
+        ApplierControls class, which allows control of various 
+        aspects of the reading and writing of images. See the class 
+        documentation for further details. 
         
-        footprint is one of imagereader.INTERSECTION or imagereader.UNION. 
-        
-        windowxsize and windowysize define the size of the blocks in which 
-        data is processed. When a value is given for overlap, the blocks 
-        will actually be larger by this much, to allow them to overlap, 
-        for use with focal operations such as local mean. 
-        
-        drivername and creationoptions are given to GDAL to control how 
-        output files are created. 
-        
-        calcStats controls whether statistics are calculated on the output 
-        file(s). When True, stats (and pyramid layers) will be saved on the
-        output files. The given statsIgnore value will be used for calculation
-        of statistics, and a statscache object can be given if these values
-        are already known from some other source. 
         
         """
+        # Get default controls object if none given. 
+        if controls is None:
+            controls = ApplierControls()
         
         inputBlocks = BlockAssociations()
         outputBlocks = BlockAssociations()
-        reader = imagereader.ImageReader(infiles.__dict__, footprint, windowxsize, windowysize, overlap, statscache)
+        reader = imagereader.ImageReader(infiles.__dict__, 
+            controls.footprint, controls.windowxsize, controls.windowysize, 
+            controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
 
-        if referenceImage is not None:
-            reader.allowResample(refpath=referenceImage)
+        if controls.referenceImage is not None:
+            reader.allowResample(refpath=controls.referenceImage)
 
         writerdict = {}
         
-        if progress is not None:
-            progress.setTotalSteps(100)
-            progress.setProgress(0)
+        if controls.progress is not None:
+            controls.progress.setTotalSteps(100)
+            controls.progress.setProgress(0)
             lastpercent = 0
         
         for (info, blockdict) in reader:
@@ -150,13 +253,13 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
                         for i in range(numFiles):
                             filename = outfileName[i]
                             writer = imagewriter.ImageWriter(filename, info=info, 
-                                firstblock=outblock[i], drivername=drivername,
-                                creationoptions=creationoptions)
+                                firstblock=outblock[i], drivername=controls.drivername,
+                                creationoptions=controls.creationoptions)
                             writerdict[name].append(writer)
                     else:
                         # This name in the dictionary is just a single filename
                         writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
-                            drivername=drivername, creationoptions=creationoptions)
+                            drivername=controls.drivername, creationoptions=controls.creationoptions)
                         writerdict[name] = writer
                 else:
                     # The output writers exist, so select the correct one and write the block
@@ -172,22 +275,22 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, progress=None,
                         # This name is just a single file, and we write a single block
                         writerdict[name].write(outblock)
                     
-            if progress is not None:
+            if controls.progress is not None:
                 percent = info.getPercent()
                 if percent != lastpercent:
-                    progress.setProgress(percent)
+                    controls.progress.setProgress(percent)
                     lastpercent = percent
                 
-        if progress is not None:
-            progress.setProgress(100)    
+        if controls.progress is not None:
+            controls.progress.setProgress(100)    
                 
         for name in outfiles.__dict__.keys():
             writer = writerdict[name]
             if isinstance(writer, list):
                 for singleWriter in writer:
-                    singleWriter.close(calcStats, statsIgnore, progress)
+                    singleWriter.close(controls.calcStats, controls.statsIgnore, controls.progress)
             else:
-                writer.close(calcStats,statsIgnore,progress)
+                writer.close(controls.calcStats, controls.statsIgnore, controls.progress)
         
 
 
