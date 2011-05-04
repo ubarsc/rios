@@ -218,7 +218,7 @@ class InputCollection(object):
             raise rioserrors.ParameterError(msg)
             
 
-    def resampleToReference(self, ds, nullValList, workingRegion, resamplemethod):
+    def resampleToReference(self, ds, nullValList, workingRegion, resamplemethod, tempdir='.'):
         """
         Resamples any inputs that do not match the reference, to the 
         reference image. 
@@ -241,15 +241,17 @@ class InputCollection(object):
         # and destination WKT strings.
         import tempfile
         # the src prf file
-        (fileh,src_prf) = tempfile.mkstemp('.prf',dir='.')
+        (fileh,src_prf) = tempfile.mkstemp('.prf',dir=tempdir)
+        fileobj = os.fdopen(fileh,'w')
         srcproj = self.specialProjFixes(ds.GetProjection())
-        os.write(fileh, srcproj)
-        os.close(fileh)
+        fileobj.write(srcproj)
+        fileobj.close()
         
         # the dest prf file
-        (fileh,dest_prf) = tempfile.mkstemp('.prf',dir='.')
-        os.write(fileh, self.referencePixGrid.projection)
-        os.close(fileh)
+        (fileh,dest_prf) = tempfile.mkstemp('.prf',dir=tempdir)
+        fileobj = os.fdopen(fileh,'w')
+        fileobj.write( self.referencePixGrid.projection)
+        fileobj.close()
 
         # get the driver from the input dataset
         # so we know the default extension, and type
@@ -261,7 +263,7 @@ class InputCollection(object):
         ext = ''
         if "DMD_EXTENSION" in drivermeta:
           ext = '.' + drivermeta["DMD_EXTENSION"]
-        (fileh,temp_image) = tempfile.mkstemp(ext,dir='.')
+        (fileh,temp_image) = tempfile.mkstemp(ext,dir=tempdir)
         os.close(fileh)
           
         # build the command line for gdalwarp
@@ -336,7 +338,7 @@ class InputCollection(object):
         return newds
         
             
-    def resampleAllToReference(self, footprint, resamplemethod):
+    def resampleAllToReference(self, footprint, resamplemethod, tempdir='.'):
         """
         Reamples all datasets that don't match the reference to the
         same as the reference.
@@ -375,7 +377,7 @@ class InputCollection(object):
                 ds = self.datasetList[count]
                 nullVals = self.nullValList[count]
                 
-                newds = self.resampleToReference(ds, nullVals, workingRegion, resamplemethod)
+                newds = self.resampleToReference(ds, nullVals, workingRegion, resamplemethod, tempdir)
                 
                 # stash the new temp dataset as our input item
                 self.datasetList[count] = newds

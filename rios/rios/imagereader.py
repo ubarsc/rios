@@ -207,12 +207,15 @@ class ImageReader(object):
         return ImageIterator(self)
 
     def allowResample(self, resamplemethod="near", refpath=None, refgeotrans=None, 
-            refproj=None, refNCols=None, refNRows=None):
+            refproj=None, refNCols=None, refNRows=None, tempdir='.'):
         """
         By default, resampling is disabled (all datasets must
         match). Calling this enables it. 
         Either refgeotrans, refproj, refNCols and refNRows must be passed, 
         or refpath passed and the info read from that file.
+
+        tempdir is the temporary directory where the resampling happens. By 
+        default the current directory.
         
         If resampling is needed it will happen before the call returns.
         
@@ -223,7 +226,7 @@ class ImageReader(object):
              
         try:   
             # resample all in collection to reference
-            self.inputs.resampleAllToReference(self.footprint, resamplemethod)
+            self.inputs.resampleAllToReference(self.footprint, resamplemethod, tempdir)
         finally:
             # if the user interrupted, then ensure all temp
             # files removed.
