@@ -256,11 +256,15 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
                                 firstblock=outblock[i], drivername=controls.drivername,
                                 creationoptions=controls.creationoptions)
                             writerdict[name].append(writer)
+                            if controls.thematic:
+                                writer.setThematic()
                     else:
                         # This name in the dictionary is just a single filename
                         writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
                             drivername=controls.drivername, creationoptions=controls.creationoptions)
                         writerdict[name] = writer
+                        if controls.thematic:
+                            writer.setThematic()
                 else:
                     # The output writers exist, so select the correct one and write the block
                     if isinstance(outfileName, list):
