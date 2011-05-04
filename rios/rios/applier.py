@@ -49,7 +49,7 @@ class ApplierControls(object):
         windowxsize     X size of rios block (pixels)
         windowysize     Y size of rios block (pixels)
         overlap         Number of pixels in margin for block overlaps
-        footprint       iagereader.INTERSECTION or imagereader.UNION
+        footprint       imageio.INTERSECTION or imageio.UNION
         drivername      global GDAL driver short name for output
         creationoptions global GDAL creation options for output
         thematic        global True/False for thematic outputs
