@@ -71,7 +71,7 @@ class ApplierControls(object):
         self.windowxsize = imagereader.DEFAULTWINDOWXSIZE
         self.windowysize = imagereader.DEFAULTWINDOWYSIZE
         self.footprint = imagereader.DEFAULTFOOTPRINT
-        self.referenceimage = None
+        self.referenceImage = None
         self.progress = None
         self.creationoptions = imagewriter.DEFAULTCREATIONOPTIONS
         self.statscache = None
