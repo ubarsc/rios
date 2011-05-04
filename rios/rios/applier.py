@@ -34,8 +34,26 @@ class FilenameAssociations(object):
     
     """
     pass
-class BlockAssociations(object): pass
-class OtherInputs(object): pass
+
+class BlockAssociations(object): 
+    """
+    Generic object to store the image blocks used within
+    the applied function. The attributes are named the same way 
+    as in the corresponding FilenameAssociations object, but are
+    blocks of image data, instead of filenames. Where lists of 
+    filenames were used, lists of image blocks are used here. 
+    """
+    pass
+    
+class OtherInputs(object): 
+    """
+    Generic object to store any extra inputs and outputs used 
+    inside the function being applied. This class was originally
+    named for inputs, but in fact works just as well for outputs, 
+    too. Any items stored on this will be persistent between 
+    iterations of the block loop. 
+    """
+    pass
 
 class ApplierControls(object):
     """
