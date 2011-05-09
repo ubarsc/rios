@@ -77,6 +77,7 @@ class ApplierControls(object):
         statsIgnore     global stats ignore value for output
         statscache      stats cache if pre-calculated
         calcStats       True/False to signal calculate statistics/pyramids
+        tempdir         Name of directory for temp files (resampling, etc.)
     
     Default values are provided for all attributes, and can then be over-ridden
     with the 'set' methods given. 
@@ -96,6 +97,7 @@ class ApplierControls(object):
         self.statsIgnore = 0
         self.calcStats = True
         self.thematic = False
+        self.tempdir = '.'
     
     def setLoggingStream(self, loggingstream):
         """
@@ -168,6 +170,9 @@ class ApplierControls(object):
     def setThematic(self, thematicFlag):
         "Set boolean value of thematic flag (may not be supported by the GDAL driver)"
         self.thematic = thematicFlag
+    def setTempdir(self, tempdir):
+        "Set directory to use for temporary files for resampling, etc. "
+        self.tempdir = tempdir
 
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
@@ -227,7 +232,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
 
         if controls.referenceImage is not None:
-            reader.allowResample(refpath=controls.referenceImage)
+            reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir)
 
         writerdict = {}
         
