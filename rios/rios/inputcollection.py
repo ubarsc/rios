@@ -14,6 +14,8 @@ from . import rioserrors
 from . import pixelgrid
 from osgeo import gdal
 
+GDALWARP = 'gdalwarp'
+
 class InputIterator(object):
     """
     Class to allow iteration across an InputCollection instance.
@@ -268,7 +270,7 @@ class InputCollection(object):
           
         # build the command line for gdalwarp
         # as a list for subprocess - also a bit easier to read
-        cmdList = ['gdalwarp']
+        cmdList = [GDALWARP]
         
         # source projection prf file
         cmdList.append('-s_srs')
@@ -338,7 +340,7 @@ class InputCollection(object):
         return newds
         
             
-    def resampleAllToReference(self, footprint, resamplemethod, tempdir='.'):
+    def resampleAllToReference(self, footprint, resamplemethodlist, tempdir='.'):
         """
         Reamples all datasets that don't match the reference to the
         same as the reference.
@@ -376,7 +378,8 @@ class InputCollection(object):
                 # resample the dataset
                 ds = self.datasetList[count]
                 nullVals = self.nullValList[count]
-                
+
+                resamplemethod = resamplemethodlist[count]
                 newds = self.resampleToReference(ds, nullVals, workingRegion, resamplemethod, tempdir)
                 
                 # stash the new temp dataset as our input item
