@@ -216,6 +216,11 @@ class ImageReader(object):
 
         tempdir is the temporary directory where the resampling happens. By 
         default the current directory.
+
+        resamplemethod is the method used - must be supported by gdalwarp.
+        This can be a single string if all files are to be resampled by the
+        same method, or a list or dictionary (to match what passed to the 
+        constructor) contain the methods for each file.
         
         If resampling is needed it will happen before the call returns.
         
@@ -224,9 +229,43 @@ class ImageReader(object):
         self.inputs.setReference(refpath, refgeotrans, refproj,
                 refNCols, refNRows)
              
+        if isinstance(resamplemethod, basestring):
+            # turn it into a list with the same method repeated
+            resamplemethodlist = [resamplemethod] * len(self.inputs)
+        elif isinstance(resamplemethod, dict):
+            # dictionary - check they passed a dictionary to the constructor
+            # and the keys match
+            if not isinstance(self.imageContainer, dict):
+                msg = 'Can only pass a dictionary if a dictionary passed to the constructor'
+                raise rioserrors.ParameterError(msg)
+            elif self.imageContainer.keys() != resamplemethod.keys():
+                msg = 'Dictionary keys must match those passed to the constructor'
+                raise rioserrors.ParameterError(msg)
+            else:
+                # create a list out of the dictionary in the same way as the constructor does
+                resamplemethodlist = []
+                for name in resamplemethod.keys():
+                    method = resamplemethod[name]
+                    if isinstance(method, list):
+                        # We have actually been given a list of method, so tack then all on to the resamplemethodlist
+                        resamplemethodlist.extend(method)
+                    elif isinstance(method, basestring):
+                        # We just have a single method
+                        resamplemethodlist.append(method)
+                    else:
+                        msg = "Dictionary must contain either lists or strings. Got '%s' instead" % type(filename)
+                        raise rioserrors.ParameterError(msg)
+
+        else:
+            # we assume they have passed a list/tuple
+            if len(resamplemethod) != len(self.inputs):
+                msg = 'must pass correct number of resample methods'
+                raise rioserrors.ParameterError(msg)
+            resamplemethodlist = resamplemethod
+
         try:   
             # resample all in collection to reference
-            self.inputs.resampleAllToReference(self.footprint, resamplemethod, tempdir)
+            self.inputs.resampleAllToReference(self.footprint, resamplemethodlist, tempdir)
         finally:
             # if the user interrupted, then ensure all temp
             # files removed.
