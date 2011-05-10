@@ -50,7 +50,13 @@ reader = ImageReader(imageDict)
 
 # have they given us a reference dataset
 if cmdargs.reference is not None:
-    reader.allowResample(refpath=cmdargs.reference)
+
+    # test the dictionary of resample methods functionality
+    resampleDict = {}
+    for name in imageDict.keys():
+        resampleDict[name] = "near"
+
+    reader.allowResample(refpath=cmdargs.reference,resamplemethod=resampleDict)
     
 # now read thru the image(s)
 for (info,blockdict) in reader:
