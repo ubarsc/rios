@@ -14,6 +14,9 @@ from . import imagereader
 from . import imagewriter
 from . import rioserrors
 
+# This should be defined lower down
+DEFAULT_RESAMPLEMETHOD = "near"
+
 class FilenameAssociations(object): 
     """
     Class for associating external image filenames with internal
@@ -78,6 +81,7 @@ class ApplierControls(object):
         statscache      stats cache if pre-calculated
         calcStats       True/False to signal calculate statistics/pyramids
         tempdir         Name of directory for temp files (resampling, etc.)
+        thematic        One of 'thematic' or 'athematic'
     
     Default values are provided for all attributes, and can then be over-ridden
     with the 'set' methods given. 
@@ -98,6 +102,7 @@ class ApplierControls(object):
         self.calcStats = True
         self.thematic = False
         self.tempdir = '.'
+        self.resampleMethod = DEFAULT_RESAMPLEMETHOD
     
     def setLoggingStream(self, loggingstream):
         """
@@ -173,6 +178,9 @@ class ApplierControls(object):
     def setTempdir(self, tempdir):
         "Set directory to use for temporary files for resampling, etc. "
         self.tempdir = tempdir
+    def setResampleMethod(self, resampleMethod):
+        "Set resample method to be used for all resampling"
+        self.resampleMethod = resampleMethod
 
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
@@ -232,7 +240,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
 
         if controls.referenceImage is not None:
-            reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir)
+            reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
+                resamplemethod=controls.resampleMethod)
 
         writerdict = {}
         
