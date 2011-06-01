@@ -220,7 +220,7 @@ class InputCollection(object):
             raise rioserrors.ParameterError(msg)
             
 
-    def resampleToReference(self, ds, nullValList, workingRegion, resamplemethod, tempdir='.'):
+    def resampleToReference(self, ds, nullValList, workingRegion, resamplemethod, tempdir='.', useVRT=False):
         """
         Resamples any inputs that do not match the reference, to the 
         reference image. 
@@ -255,16 +255,20 @@ class InputCollection(object):
         fileobj.write( self.referencePixGrid.projection)
         fileobj.close()
 
-        # get the driver from the input dataset
-        # so we know the default extension, and type
-        # for the temporary file.
-        driver = gdal.IdentifyDriver(infile)
-        drivermeta = driver.GetMetadata()
+        if useVRT:
+            ext = '.vrt'
+        else:
+            # get the driver from the input dataset
+            # so we know the default extension, and type
+            # for the temporary file.
+            driver = gdal.IdentifyDriver(infile)
+            drivermeta = driver.GetMetadata()
         
-        # temp image file name - based on driver extension
-        ext = ''
-        if "DMD_EXTENSION" in drivermeta:
-          ext = '.' + drivermeta["DMD_EXTENSION"]
+            # temp image file name - based on driver extension
+            ext = ''
+            if "DMD_EXTENSION" in drivermeta:
+                ext = '.' + drivermeta["DMD_EXTENSION"]
+
         (fileh,temp_image) = tempfile.mkstemp(ext,dir=tempdir)
         os.close(fileh)
           
@@ -294,7 +298,12 @@ class InputCollection(object):
         
         # output format
         cmdList.append('-of')
-        cmdList.append(driver.ShortName)
+        if useVRT:
+            driverName = 'VRT'
+        else:
+            driverName = driver.ShortName
+        cmdList.append(driverName)
+        
         
         # resample method
         cmdList.append('-r')
@@ -340,7 +349,7 @@ class InputCollection(object):
         return newds
         
             
-    def resampleAllToReference(self, footprint, resamplemethodlist, tempdir='.'):
+    def resampleAllToReference(self, footprint, resamplemethodlist, tempdir='.', useVRT=False):
         """
         Reamples all datasets that don't match the reference to the
         same as the reference.
@@ -380,7 +389,7 @@ class InputCollection(object):
                 nullVals = self.nullValList[count]
 
                 resamplemethod = resamplemethodlist[count]
-                newds = self.resampleToReference(ds, nullVals, workingRegion, resamplemethod, tempdir)
+                newds = self.resampleToReference(ds, nullVals, workingRegion, resamplemethod, tempdir, useVRT)
                 
                 # stash the new temp dataset as our input item
                 self.datasetList[count] = newds
