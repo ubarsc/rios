@@ -147,14 +147,14 @@ class ImageWriter(object):
     def setColorTable(self, colourtable, band=1):
         """
         Sets the output colour table. Pass a list
-        of tuples of colours
+        of sequences of colours, or a 2d array
         """
         bandh = self.ds.GetRasterBand(band)
         
         gdalct = gdal.ColorTable()
         count = 0
         for col in colourtable:
-            gdalct.SetColorEntry(count,col)
+            gdalct.SetColorEntry(count,tuple(col))
             count += 1
         bandh.SetRasterColorTable(gdalct)
         
