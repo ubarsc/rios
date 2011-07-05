@@ -14,8 +14,16 @@ from . import imagereader
 from . import imagewriter
 from . import rioserrors
 
-# This should be defined lower down
+# All default values, copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
+DEFAULTFOOTPRINT = imagereader.DEFAULTFOOTPRINT
+DEFAULTWINDOWXSIZE = imagereader.DEFAULTWINDOWXSIZE
+DEFAULTWINDOWYSIZE = imagereader.DEFAULTWINDOWYSIZE
+DEFAULTOVERLAP = imagereader.DEFAULTOVERLAP
+DEFAULTLOGGINGSTREAM = imagereader.DEFAULTLOGGINGSTREAM
+DEFAULTDRIVERNAME = imagewriter.DEFAULTDRIVERNAME
+DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
+
 
 class FilenameAssociations(object): 
     """
@@ -28,12 +36,6 @@ class FilenameAssociations(object):
     on the 'inputs' or 'outputs' objects inside the applied function. 
     Each such attribute will be an image data block or a list of image 
     data blocks, accordingly. 
-    
-    In the future, we intend to also allow filenameControl objects, 
-    instead of just strings for the filename, which will allow fine
-    control of individual files, where currently settings such as the 
-    driver used are global to all output files. However, I haven't yet 
-    implemented this.
     
     """
     pass
@@ -70,7 +72,7 @@ class ApplierControls(object):
         windowxsize     X size of rios block (pixels)
         windowysize     Y size of rios block (pixels)
         overlap         Number of pixels in margin for block overlaps
-        footprint       imageio.INTERSECTION or imageio.UNION
+        footprint       applier.INTERSECTION or applier.UNION
         drivername      global GDAL driver short name for output
         creationoptions global GDAL creation options for output
         thematic        global True/False for thematic outputs
@@ -79,108 +81,188 @@ class ApplierControls(object):
         progress        progress object
         statsIgnore     global stats ignore value for output
         statscache      stats cache if pre-calculated
-        calcStats       True/False to signal calculate statistics/pyramids
+        calcStats       True/False to signal calculate statistics and pyramids
         tempdir         Name of directory for temp files (resampling, etc.)
         thematic        One of 'thematic' or 'athematic'
+        resampleMethod  String for resample method, when required (as per GDAL)
     
     Default values are provided for all attributes, and can then be over-ridden
     with the 'set' methods given. 
     
+    Some 'set' methods take an optional imagename argument. If given, this should be 
+    the same internal name used for a given image as in the FilenameAssociations
+    objects. This is the internal name for that image, and the method will set 
+    the parameter in question for that specific image, which will over-ride the
+    global value set when no imagename is given. 
+    
     """
     def __init__(self):
         self.loggingstream = sys.stdout
-        self.drivername = imagewriter.DEFAULTDRIVERNAME
-        self.overlap = imagereader.DEFAULTOVERLAP
-        self.windowxsize = imagereader.DEFAULTWINDOWXSIZE
-        self.windowysize = imagereader.DEFAULTWINDOWYSIZE
-        self.footprint = imagereader.DEFAULTFOOTPRINT
+        self.drivername = DEFAULTDRIVERNAME
+        self.overlap = DEFAULTOVERLAP
+        self.windowxsize = DEFAULTWINDOWXSIZE
+        self.windowysize = DEFAULTWINDOWYSIZE
+        self.footprint = DEFAULTFOOTPRINT
         self.referenceImage = None
         self.progress = None
-        self.creationoptions = imagewriter.DEFAULTCREATIONOPTIONS
+        self.creationoptions = DEFAULTCREATIONOPTIONS
         self.statscache = None
         self.statsIgnore = 0
         self.calcStats = True
         self.thematic = False
         self.tempdir = '.'
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
+        
+        # Options specific to a named image. This was added on later, and is 
+        # only valid for some of the attributes, so it looks a bit out-of-place.
+        # Instead of the options being attributes of self, they are keys in a
+        # dictionary. This dictionary is managed by the two methods
+        # setOptionForImagename() and getOptionForImagename(). 
+        self.optionsByImage = {}
     
+    def setOptionForImagename(self, option, imagename, value):
+        """
+        Set the given option specifically for the given imagename. This 
+        method is for internal use only. If you wish to set a particular 
+        attribute, use the corresponding 'set' method. 
+        """
+        if imagename is None:
+            setattr(self, option, value)
+        else:
+            if not self.optionsByImage.has_key(option):
+                self.optionsByImage[option] = {}
+            self.optionsByImage[option][imagename] = value
+            
+    def getOptionForImagename(self, option, imagename):
+        """
+        Returns the value of a particular option for the 
+        given imagename. If only the global option has been set,
+        then that is returned, but if a specific value has been set for 
+        the given imagename, then use that. 
+        
+        The imagename is the same internal name as used for the image
+        in the FilenameAssociations objects. 
+        
+        """
+        value = getattr(self, option)
+        if self.optionsByImage.has_key(option):
+            if self.optionsByImage[option].has_key(imagename):
+                value = self.optionsByImage[option][imagename]
+        return value
+        
     def setLoggingStream(self, loggingstream):
         """
         Set the rios logging stream to the given file-like object. 
         """
         self.loggingstream = loggingstream
+        
     def setOverlap(self, overlap):
         """
         Set the overlap to the given value.
         Overlap is a number of pixels, and is somewhat mis-named. It refers 
-        to the amount of margin added each block of input, so that the blocks 
+        to the amount of margin added to each block of input, so that the blocks 
         will overlap, hence the actual amount of overlap is really more like
         double this value (allowing for odd and even numbers, etc). 
-        
         """
         self.overlap = overlap
-    def setOutputDriverName(self, drivername):
+        
+    def setOutputDriverName(self, drivername, imagename=None):
         """
         Set the output driver name to the given GDAL shortname
         """
-        self.drivername = drivername
+        self.setOptionForImagename('drivername', imagename, drivername)
+        
     def setWindowXsize(self, windowxsize):
         """
         Set the X size of the blocks used. Images are processed in 
         blocks (windows) of 'windowxsize' columns, and 'windowysize' rows. 
         """
         self.windowxsize = windowxsize
+        
     def setWindowYsize(self, windowysize):
         """
         Set the Y size of the blocks used. Images are processed in 
         blocks (windows) of 'windowxsize' columns, and 'windowysize' rows. 
         """
         self.windowysize = windowysize
+        
     def setFootprintType(self, footprint):
-        "Set type of footprint, one of INTERSECTION or UNION from imagereader"
+        "Set type of footprint, one of INTERSECTION or UNION from this module"
         self.footprint = footprint
+        
     def setReferenceImage(self, referenceImage):
         """
         Set the name of the image to use for the reference pixel grid and 
         projection. If not set, then no resampling will be allowed
         """
         self.referenceImage = referenceImage
+        
     def setProgress(self, progress):
         """
         Set the progress display object. Default is to 
         use cuiprogress.CUIProgressBar
         """
         self.progress = progress
-    def setCreationOptions(self, creationoptions):
+        
+    def setCreationOptions(self, creationoptions, imagename=None):
         """
         Set a list of GDAL creation options (should match with the driver). 
         Each list element is a string of the form "NAME=VALUE". 
         """
-        self.creationoptions = creationoptions
-    def setStatsCache(self, statscache):
+        self.setOptionForImagename('creationoptions', imagename, creationoptions)
+        
+    def setStatsCache(self, statscache, imagename=None):
         "Set the stats cache, if statistics are known from some other source."
-        self.statscache = statscache
-    def setStatsIgnore(self, statsIgnore):
+        self.setOptionForImagename('statscache', imagename, statscache)
+        
+    def setStatsIgnore(self, statsIgnore, imagename=None):
         """
         Set the global default value to use as the 
         null value when calculating stats.
         """
-        self.statsIgnore = statsIgnore
-    def setCalcStats(self, calcStats):
+        self.setOptionForImagename('statsIgnore', imagename, statsIgnore)
+        
+    def setCalcStats(self, calcStats, imagename=None):
         """
         Set True to calc stats, False otherwise. If True, then statistics and 
         pyramid layers are calculated (if supported by the driver
         """
-        self.calcStats = calcStats
-    def setThematic(self, thematicFlag):
+        self.setOptionForImagename('calcStats', imagename, calcStats)
+        
+    def setThematic(self, thematicFlag, imagename=None):
         "Set boolean value of thematic flag (may not be supported by the GDAL driver)"
-        self.thematic = thematicFlag
+        self.setOptionForImagename('thematic', imagename, thematicFlag)
+        
     def setTempdir(self, tempdir):
         "Set directory to use for temporary files for resampling, etc. "
         self.tempdir = tempdir
-    def setResampleMethod(self, resampleMethod):
-        "Set resample method to be used for all resampling"
-        self.resampleMethod = resampleMethod
+        
+    def setResampleMethod(self, resampleMethod, imagename=None):
+        """
+        Set resample method to be used for all resampling. Possible 
+        options are those defined by gdalwarp, i.e. 'near', 'bilinear', 
+        'cubic', 'cubicspline', 'lanczos'. 
+        """
+        self.setOptionForImagename('resampleMethod', imagename, resampleMethod)
+    
+    def makeResampleDict(self, imageDict):
+        """
+        Make a dictionary of resample methods, one for every image
+        name in the given dictionary
+        """
+        d = {}
+        imagenamelist = imageDict.keys()
+        for name in imagenamelist:
+            method = self.getOptionForImagename('resampleMethod', name)
+            if isinstance(imageDict[name], list):
+                # We have a list of images for this name, so make a list of 
+                # resample methods
+                d[name] = [method] * len(imageDict[name])
+            else:
+                # We have just one image, so the corresponding entry is just one 
+                # resample method
+                d[name] = method
+        return d
 
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
@@ -240,8 +322,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
 
         if controls.referenceImage is not None:
+            resampleDict = controls.makeResampleDict(infiles.__dict__)
             reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
-                resamplemethod=controls.resampleMethod, useVRT=True)
+                resamplemethod=resampleDict, useVRT=True)
 
         writerdict = {}
         
@@ -285,17 +368,19 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
                         for i in range(numFiles):
                             filename = outfileName[i]
                             writer = imagewriter.ImageWriter(filename, info=info, 
-                                firstblock=outblock[i], drivername=controls.drivername,
-                                creationoptions=controls.creationoptions)
+                                firstblock=outblock[i], 
+                                drivername=controls.getOptionForImagename('drivername', name), 
+                                creationoptions=controls.getOptionForImagename('creationoptions', name))
                             writerdict[name].append(writer)
-                            if controls.thematic:
+                            if controls.getOptionForImagename('thematic', name):
                                 writer.setThematic()
                     else:
                         # This name in the dictionary is just a single filename
                         writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
-                            drivername=controls.drivername, creationoptions=controls.creationoptions)
+                            drivername=controls.getOptionForImagename('drivername', name), 
+                            creationoptions=controls.getOptionForImagename('creationoptions', name))
                         writerdict[name] = writer
-                        if controls.thematic:
+                        if controls.getOptionForImagename('thematic', name):
                             writer.setThematic()
                 else:
                     # The output writers exist, so select the correct one and write the block
@@ -324,9 +409,11 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             writer = writerdict[name]
             if isinstance(writer, list):
                 for singleWriter in writer:
-                    singleWriter.close(controls.calcStats, controls.statsIgnore, controls.progress)
+                    singleWriter.close(controls.getOptionForImagename('calcStats', name), 
+                        controls.getOptionForImagename('statsIgnore', name), controls.progress)
             else:
-                writer.close(controls.calcStats, controls.statsIgnore, controls.progress)
+                writer.close(controls.getOptionForImagename('calcStats', name), 
+                    controls.getOptionForImagename('statsIgnore', name), controls.progress)
         
 
 
