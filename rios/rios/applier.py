@@ -241,7 +241,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
         if controls.referenceImage is not None:
             reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
-                resamplemethod=controls.resampleMethod)
+                resamplemethod=controls.resampleMethod, useVRT=True)
 
         writerdict = {}
         
