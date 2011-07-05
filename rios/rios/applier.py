@@ -12,9 +12,10 @@ import sys
 
 from . import imagereader
 from . import imagewriter
+from . import imageio
 from . import rioserrors
 
-# All default values, copied in from their appropriate rios modules. 
+# All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
 DEFAULTFOOTPRINT = imagereader.DEFAULTFOOTPRINT
 DEFAULTWINDOWXSIZE = imagereader.DEFAULTWINDOWXSIZE
@@ -23,6 +24,8 @@ DEFAULTOVERLAP = imagereader.DEFAULTOVERLAP
 DEFAULTLOGGINGSTREAM = imagereader.DEFAULTLOGGINGSTREAM
 DEFAULTDRIVERNAME = imagewriter.DEFAULTDRIVERNAME
 DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
+INTERSECTION = imageio.INTERSECTION
+UNION = imageio.UNION
 
 
 class FilenameAssociations(object): 
