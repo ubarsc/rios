@@ -33,3 +33,9 @@ class KeysMismatch(RiosError):
 
 class MismatchedListLengthsError(RiosError):
     "Two lists had different lengths, when they were supposed to be the same length"
+
+class AttributeTableColumnError(RiosError):
+    "Unable to find specified column"
+
+class AttributeTableTypeError(RiosError):
+    "Type does not match that expected"
