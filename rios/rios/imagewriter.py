@@ -8,6 +8,7 @@ import math
 from osgeo import gdal
 from . import imageio
 from . import rioserrors
+from . import rat
 
 DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE','IGNOREUTM=TRUE']
 DEFAULTDRIVERNAME = 'HFA'
@@ -215,7 +216,13 @@ class ImageWriter(object):
             outblock = block[band, self.overlap:slice_bottomMost, self.overlap:slice_rightMost]
                 
             bh.WriteArray(outblock, xcoord, ycoord)
-        
+
+    def setAttributeColumn(self, colName, sequence, colType=None, bandNumber=1):
+        """
+        Puts the sequence into colName in the output file. See rios.rat.writeColumn
+        for more information. You probably also want to call setThematic().
+        """
+        rat.writeColumn(self.ds, colName, sequence, colType, bandNumber)
     
     def reset(self):
         """
