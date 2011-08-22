@@ -113,7 +113,7 @@ def getColumnNames(imgFile, bandNumber=1):
     """
     Given either an open gdal dataset, or a filename,
     Return the names of the columns in the attribute table
-    associated with the gdalBand as a list.
+    associated with the file as a list.
     """
     if isinstance(imgFile, basestring):
         ds = gdal.Open(str(imgFile))
@@ -186,7 +186,7 @@ def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1):
     Given either an open gdal dataset, or a filename,
     writes the data specified in sequence (can be list, tuple or array etc)
     to the named column in the attribute table assocated with the
-    gdalBand. colType must be one of gdal.GFT_Integer,gdal.GFT_Real,gdal.GFT_String.
+    file. colType must be one of gdal.GFT_Integer,gdal.GFT_Real,gdal.GFT_String.
     """
     if isinstance(imgFile, basestring):
         ds = gdal.Open(str(imgFile), gdal.GA_Update)
