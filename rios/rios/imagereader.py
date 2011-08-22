@@ -145,6 +145,12 @@ class ImageReader(object):
         self.windowysize = windowysize
         self.overlap = overlap
         self.statscache = statscache
+        # just create a new instance of the AttributeTableCache
+        # possibly this should be passed in like statscache so the
+        # attributes can be cached between instances of ImageReader
+        # but considering retrieving an attribute nowhere as expensive
+        # as getting global statistics, probably overkill.
+        self.ratcache = readerinfo.AttributeTableCache()
         self.loggingstream = loggingstream
         
         # these are None until prepare() is called
@@ -297,7 +303,7 @@ class ImageReader(object):
         
         # create a ReaderInfo class with the info it needs
         # a copy of this class is passed with each iteration
-        self.info = readerinfo.ReaderInfo(self.workingGrid, self.statscache, 
+        self.info = readerinfo.ReaderInfo(self.workingGrid, self.statscache, self.ratcache,
                         self.windowxsize, self.windowysize, self.overlap, self.loggingstream)
         
     def readBlock(self,nblock):

@@ -15,11 +15,12 @@ class CmdArgs(object):
     self.parser = optparse.OptionParser()
     self.parser.add_option("--reference",dest="reference",help="Path to reference image")
     self.parser.add_option("--globalstats",dest="globalstats",action="store_true",default=False,help="Print global statistics")
+    self.parser.add_option("--attribute",dest="attribute",help="attribute name to read")
 
     (options, self.args) = self.parser.parse_args()
     self.__dict__.update(options.__dict__)
 
-def print_report(count,info,block,globalstats):
+def print_report(count,info,block,globalstats,attribute):
 
     fname = info.getFilenameFor(block)
         
@@ -30,6 +31,10 @@ def print_report(count,info,block,globalstats):
         if globalstats:
             globalmean = info.global_mean(block,layer+1)
             print("  global mean = %f" % globalmean)
+
+        if attribute is not None:
+            column = info.getAttributeColumn(block, attribute)
+            print("  attribute %s = %s" % (attribute,column[:10]))
 
 
 # get command line args
@@ -58,7 +63,7 @@ for (info,blocklist) in reader:
     count = 1
     for block in blocklist:
     
-        print_report(count, info, block, cmdargs.globalstats) 
+        print_report(count, info, block, cmdargs.globalstats, cmdargs.attribute) 
         sys.stdout.write("%d%%\n" % info.getPercent())
         
 

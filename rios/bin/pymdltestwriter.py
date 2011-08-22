@@ -16,6 +16,7 @@ class CmdArgs(object):
     self.parser = optparse.OptionParser()
     self.parser.add_option("--out",dest="out",help="Print global statistics")
     self.parser.add_option("--reference",dest="reference",help="Path to reference image")
+    self.parser.add_option("--outputattribute",dest="outputattribute",help="output attribute in the form colName=value1,value2...")
 
     (options, self.args) = self.parser.parse_args()
     self.__dict__.update(options.__dict__)
@@ -62,6 +63,11 @@ for (info,blocklist) in reader:
         
         # no, create it with the info object, and the firstblock
         writer = ImageWriter(cmdargs.out, info=info, firstblock=outblock)
+
+        # set the attribute info if necessary
+        (colName,values) = cmdargs.outputattribute.split('=')
+        values = values.split(',')
+        writer.setAttributeColumn(colName, values)
         
     else:
         # yep, just write this block

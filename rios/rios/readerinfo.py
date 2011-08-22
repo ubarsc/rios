@@ -8,10 +8,14 @@ read and info on the current block
 
 import math
 from . import imageio
+from . import rat
 
-class StatisticsCache:
+class StatisticsCache(object):
     """
-    Allows statistics for all the files to be easily cached
+    Allows global statistics for all the files used to be cached
+    Statistics are stored here associated with the filename
+    so if there are multiple calls to global_stats for one
+    file the statistics will only get calculated once. 
     """
     def __init__(self):
         self.stats = {}
@@ -32,7 +36,7 @@ class StatisticsCache:
 
     def setStats(self,fname,band,ignore,stats):
         """
-        Returns tuple with (min,max,mean,stddev) in cache
+        Sets tuple with (min,max,mean,stddev) in cache
         """
         if ignore is None:
             key = '%s %d' % (fname,band)
@@ -40,13 +44,44 @@ class StatisticsCache:
             key = '%s %d %f' % (fname,band,ignore)
         self.stats[key] = stats
 
+class AttributeTableCache(object):
+    """
+    Allows attribute columns to be cached. This means
+    that an attribute column can be requested for each
+    block through the image, but the actual column data
+    will only be read the first time and cached for 
+    subsequent calls.
+    """
+    def __init__(self):
+        self.rats = {}
+
+    def getColumn(self, fname, band, colName):
+        """
+        Returns the column if previously cached, otherwise
+        None.
+        """
+        key = '%s %d %s' % (fname, band, colName)
+        if key in self.rats:
+            return self.rats[key]
+        else:
+            return None
+
+    def setColumn(self, fname, band, colName, column):
+        """
+        Puts the column into the cache
+        """
+        key = '%s %d %s' % (fname, band, colName)
+        self.rats[key] = column
+
+
 class ReaderInfo(object):
     """
     ReaderInfo class. Holds information about the area being
     read and info on the current block
     
     """
-    def __init__(self, workingGrid, statscache, windowxsize, windowysize,
+    def __init__(self, workingGrid, statscache, ratcache, 
+                    windowxsize, windowysize,
                     overlap, loggingstream):
                     
         self.loggingstream = loggingstream
@@ -75,6 +110,9 @@ class ReaderInfo(object):
         
         # save the statistics cache. 
         self.statscache = statscache
+
+        # save the RAT cache
+        self.ratcache = ratcache
         
         # The feilds below apply to a particular block
         # and are filled in after this object is copied 
@@ -262,6 +300,19 @@ class ReaderInfo(object):
                     float(self.xtotalblocks * self.ytotalblocks) * 100)
         return percent
 
+    def getAttributeColumn(self, block, colName, band=1):
+        """
+        Gets the attribute for the given block and column name
+        Caches columns so only first call actually extracts data
+        """
+        (ds,fname) = self.blocklookup[id(block)]
+
+        column = self.ratcache.getColumn(fname, band, colName)
+        if column is None:
+            column = rat.readColumn(ds, colName, band)
+            self.ratcache.setColumn(fname, band, colName, column)
+        
+        return column
         
     def global_stats(self,block,band=1,ignore=None):
         """
