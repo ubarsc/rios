@@ -244,8 +244,10 @@ class ImageReader(object):
             if not isinstance(self.imageContainer, dict):
                 msg = 'Can only pass a dictionary if a dictionary passed to the constructor'
                 raise rioserrors.ParameterError(msg)
-            elif self.imageContainer.keys() != resamplemethod.keys():
-                msg = 'Dictionary keys must match those passed to the constructor'
+            elif sorted(self.imageContainer.keys()) != sorted(resamplemethod.keys()):
+                msg = ('Dictionary keys must match those passed to the constructor, '+
+                    'constructor keys = %s, resample keys = %s') % (self.imageContainer.keys(),
+                    resamplemethod.keys())
                 raise rioserrors.ParameterError(msg)
             else:
                 # create a list out of the dictionary in the same way as the constructor does
