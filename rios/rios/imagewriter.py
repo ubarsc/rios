@@ -96,10 +96,14 @@ class ImageWriter(object):
             raise rioserrors.ParameterError(msg)
                         
         if firstblock is not None:
+        	# RIOS only works with 3-d image arrays, where the first dimension is 
+            # the number of bands. Check that this is what the user gave us to write. 
+            if len(firstblock.shape) != 3:
+                raise rioserrors.ArrayShapeError(
+                    "Shape of array to write must be 3-d. Shape is actually %s"%repr(firstblock.shape))
+
             # get the number of bands out of the block
-            nbands = 1
-            if len(firstblock.shape) != 2:
-                (nbands,y,x) = firstblock.shape
+            (nbands,y,x) = firstblock.shape
             # and the datatype
             gdaldatatype = imageio.NumpyTypeToGDALType(firstblock.dtype)
                         
