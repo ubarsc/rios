@@ -39,3 +39,6 @@ class AttributeTableColumnError(RiosError):
 
 class AttributeTableTypeError(RiosError):
     "Type does not match that expected"
+
+class ArrayShapeError(RiosError):
+    "Error in shape of an array"
