@@ -419,7 +419,6 @@ class InputCollection(object):
     
         match = True
         for pixGrid in self.pixgridList:
-            print pixGrid
             if not self.referencePixGrid.equalPixSize(pixGrid):
                 match = False
                 break
