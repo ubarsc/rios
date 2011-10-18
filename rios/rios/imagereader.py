@@ -213,7 +213,8 @@ class ImageReader(object):
         return ImageIterator(self)
 
     def allowResample(self, resamplemethod="near", refpath=None, refgeotrans=None, 
-            refproj=None, refNCols=None, refNRows=None, tempdir='.', useVRT=False):
+            refproj=None, refNCols=None, refNRows=None, refPixgrid=None, 
+            tempdir='.', useVRT=False):
         """
         By default, resampling is disabled (all datasets must
         match). Calling this enables it. 
@@ -233,7 +234,7 @@ class ImageReader(object):
         """
         # set the reference in our InputCollection
         self.inputs.setReference(refpath, refgeotrans, refproj,
-                refNCols, refNRows)
+                refNCols, refNRows, refPixgrid)
              
         if isinstance(resamplemethod, basestring):
             # turn it into a list with the same method repeated
