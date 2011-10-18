@@ -9,6 +9,8 @@ writing modules
 import numpy
 from osgeo import gdalconst
 
+from . import rioserrors
+
 INTERSECTION=0
 UNION=1
 
@@ -54,7 +56,7 @@ def GDALTypeToNumpyType(gdaltype):
     for (numpy_type,test_gdal_type) in dataTypeMapping:
         if test_gdal_type == gdaltype:
             return numpy_type
-    raise IndexError()
+    raise rioserrors.TypeConversionError("Unknown GDAL datatype: %s"%gdaltype)
 
 def NumpyTypeToGDALType(numpytype):
     """
@@ -64,4 +66,4 @@ def NumpyTypeToGDALType(numpytype):
     for (test_numpy_type,gdaltype) in dataTypeMapping:
         if test_numpy_type == numpytype:
             return gdaltype
-    raise IndexError()
+    raise rioserrors.TypeConversionError("Unknown numpy datatype: %s"%numpytype)
