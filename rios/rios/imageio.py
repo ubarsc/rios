@@ -39,10 +39,13 @@ def pix2wld(transform,x,y):
   geoy = transform[3] + transform[4] * x + transform[5] * y
           
   return Coord(geox,geoy)
-  
+
+# Mappings between numpy datatypes and GDAL datatypes.
+# Note that ambiguities are resolved by the order - the first one found 
+# is the one chosen. 
 dataTypeMapping = [
-    (numpy.bool,gdalconst.GDT_Byte),
     (numpy.uint8,gdalconst.GDT_Byte),
+    (numpy.bool,gdalconst.GDT_Byte),
     (numpy.int16,gdalconst.GDT_Int16),
     (numpy.uint16,gdalconst.GDT_UInt16),
     (numpy.int32,gdalconst.GDT_Int32),
