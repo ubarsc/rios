@@ -42,3 +42,6 @@ class AttributeTableTypeError(RiosError):
 
 class ArrayShapeError(RiosError):
     "Error in shape of an array"
+
+class TypeConversionError(RiosError):
+    "Unknown type conversion"
