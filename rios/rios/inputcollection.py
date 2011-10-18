@@ -184,7 +184,7 @@ class InputCollection(object):
         return InputIterator(self)
             
     def setReference(self, refpath=None, refgeotrans=None, 
-            refproj=None, refNCols=None, refNRows=None ):
+            refproj=None, refNCols=None, refNRows=None, refPixgrid=None):
         """
         Sets the reference dataset for resampling purposes.
         
@@ -215,8 +215,12 @@ class InputCollection(object):
                     nrows=refNRows, ncols=refNCols, projection=proj)
             self.referencePixGrid = pixGrid 
             
+        elif refPixgrid is not None:
+            # Or maybe we have been given a complete pixel grid already
+            refPixgrid.projection = self.specialProjFixes(refPixgrid.projection)
+            self.referencePixGrid = refPixgrid
         else:
-            msg = 'Must pass either refpath or all the other params'
+            msg = 'Must pass either refpath or refPixgrid or all the other params'
             raise rioserrors.ParameterError(msg)
             
 
@@ -415,6 +419,7 @@ class InputCollection(object):
     
         match = True
         for pixGrid in self.pixgridList:
+            print pixGrid
             if not self.referencePixGrid.equalPixSize(pixGrid):
                 match = False
                 break

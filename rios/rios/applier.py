@@ -80,6 +80,7 @@ class ApplierControls(object):
         creationoptions global GDAL creation options for output
         thematic        global True/False for thematic outputs
         referenceImage  Image for reference projection and grid
+        referencePixgrid pixelGrid for reference projection and grid
         loggingstream   file-like for logging of messages
         progress        progress object
         statsIgnore     global stats ignore value for output
@@ -107,6 +108,7 @@ class ApplierControls(object):
         self.windowysize = DEFAULTWINDOWYSIZE
         self.footprint = DEFAULTFOOTPRINT
         self.referenceImage = None
+        self.referencePixgrid = None
         self.progress = None
         self.creationoptions = DEFAULTCREATIONOPTIONS
         self.statscache = None
@@ -196,9 +198,21 @@ class ApplierControls(object):
     def setReferenceImage(self, referenceImage):
         """
         Set the name of the image to use for the reference pixel grid and 
-        projection. If not set, then no resampling will be allowed
+        projection. If neither referenceImage nor referencePixgrid are set, 
+        then no resampling will be allowed. Only set one of referenceImage or
+        referencePixgrid. 
+        
         """
         self.referenceImage = referenceImage
+        
+    def setReferencePixgrid(self, referencePixgrid):
+        """
+        Set the reference pixel grid. If neither referenceImage nor 
+        referencePixgrid are set, then no resampling will be allowed. 
+        Only set one of referenceImage or referencePixgrid. The referencePixgrid
+        argument is of type pixelgrid.PixelGridDefn(). 
+        """
+        self.referencePixgrid = referencePixgrid
         
     def setProgress(self, progress):
         """
@@ -327,6 +341,11 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         if controls.referenceImage is not None:
             resampleDict = controls.makeResampleDict(infiles.__dict__)
             reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
+                resamplemethod=resampleDict, useVRT=True)
+        elif controls.referencePixgrid is not None:
+            resampleDict = controls.makeResampleDict(infiles.__dict__)
+            reader.allowResample(refPixgrid=controls.referencePixgrid, 
+                tempdir=controls.tempdir, 
                 resamplemethod=resampleDict, useVRT=True)
 
         writerdict = {}
