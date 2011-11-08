@@ -212,8 +212,6 @@ class PixelGridDefn(object):
         xMax = max(tr_x, br_x)
         yMin = min(bl_y, br_y)
         yMax = max(tl_y, tr_y)
-        xRes = targetGrid.xRes
-        yRes = targetGrid.yRes
         
         # Snap bounds to align with those in target grid
         xMin = self.snapToGrid(xMin, targetGrid.xMin, targetGrid.xRes)
