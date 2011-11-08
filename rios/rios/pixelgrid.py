@@ -21,10 +21,25 @@ class PixelGridDefn(object):
     
     Methods are defined for relationships with
     other instances, including:
-        intersection
-        union
-        reproject
-        alignedWith
+        intersection()
+        union()
+        reproject()
+        alignedWith()
+        isComparible()
+    
+    Attributes defined on the object:
+        xMin
+        xMax
+        yMin
+        yMax
+        xRes
+        yRes
+        projection
+        geotransform
+        
+    NOTE: The bounds defined the external corners of the image, i.e. the
+    top-left corner of the top-left pixel, through to the bottom-right
+    corner of the bottom-right pixel. This is in accordance with GDAL conventions. 
     
     """
     def __init__(self, geotransform=None, nrows=None, ncols=None, projection=None,
@@ -62,6 +77,14 @@ class PixelGridDefn(object):
         """
         Returns True if self is aligned with other. This means that
         they represent the same grid, with different extents. 
+        
+        Alignment is checked within a small tolerance, so that exact 
+        floating point matches are not required. However, notionally it
+        is possible to get a match which shouldn't be. The tolerance is
+        calculated as 
+            tolerance = 0.01 * pixsize / npix
+        and if a mis-alignment is <= tolerance, it is assumed to be zero. 
+        For further details, read the source code. 
         
         """
         aligned = True
@@ -144,7 +167,7 @@ class PixelGridDefn(object):
     def equalPixSize(self, other):
         """
         Returns True if pixel size of self is equal to that of other. 
-        Currently only checks absolute euqality, probably should 
+        Currently only checks absolute equality, probably should 
         work out a tolerance. 
         
         """
