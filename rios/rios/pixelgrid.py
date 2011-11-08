@@ -25,7 +25,7 @@ class PixelGridDefn(object):
         union()
         reproject()
         alignedWith()
-        isComparible()
+        isComparable()
     
     Attributes defined on the object:
         xMin
