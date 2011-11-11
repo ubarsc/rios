@@ -152,7 +152,8 @@ class PixelGridDefn(object):
     def isComparable(self, other):
         """
         Checks whether self is comparable with other. Returns
-        True or False. 
+        True or False. Grids are comparable if they have equal pixel
+        size, and the same projection. 
         
         """
         comparable = True
