@@ -35,7 +35,6 @@ class PixelGridDefn(object):
         xRes
         yRes
         projection
-        geotransform
         
     NOTE: The bounds defined the external corners of the image, i.e. the
     top-left corner of the top-left pixel, through to the bottom-right
