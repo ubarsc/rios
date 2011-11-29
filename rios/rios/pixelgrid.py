@@ -35,7 +35,6 @@ class PixelGridDefn(object):
         xRes
         yRes
         projection
-        geotransform
         
     NOTE: The bounds defined the external corners of the image, i.e. the
     top-left corner of the top-left pixel, through to the bottom-right
@@ -152,7 +151,8 @@ class PixelGridDefn(object):
     def isComparable(self, other):
         """
         Checks whether self is comparable with other. Returns
-        True or False. 
+        True or False. Grids are comparable if they have equal pixel
+        size, and the same projection. 
         
         """
         comparable = True
@@ -224,12 +224,24 @@ class PixelGridDefn(object):
             xRes=targetGrid.xRes, yRes=targetGrid.yRes, projection=targetGrid.projection)
         
         return newPixelGrid
+    
+    def getDimensions(self):
+        """
+        Utility method which returns the number of rows and columns
+        in the grid. Returns a tuple
+            (nrows, ncols)
+        calculated from the min/max/res values. 
+        
+        """
+        nrows = self.getNumPix(self.yMax, self.yMin, self.yRes)
+        ncols = self.getNumPix(self.xMax, self.xMin, self.xRes)
+        return (nrows, ncols)
         
     @staticmethod
     def getNumPix(gridMax, gridMin, gridRes):
         """
         Works out how many pixels lie between the given min and max, 
-        at the given resolution
+        at the given resolution. This is for internal use only. 
         """
         npix = int(round(gridMax - gridMin) / gridRes)
         return npix
@@ -239,7 +251,7 @@ class PixelGridDefn(object):
         """
         Returns the nearest value to val which is a whole multiple of
         res away from valOnGrid, so that val is effectively on the same
-        grid as valOnGrid. 
+        grid as valOnGrid. This is for internal use only. 
         
         """
         diff = val - valOnGrid
