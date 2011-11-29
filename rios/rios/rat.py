@@ -196,3 +196,28 @@ def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1):
     gdalBand = ds.GetRasterBand(bandNumber) 
 
     writeColumnToBand(gdalBand, colName, sequence, colType) 
+
+def getColorTable(imgFile, bandNumber=1):
+    """
+    Given either an open gdal dataset, or a filename,
+    reads the color table as an array that can be passed
+    to ImageWriter.setColorTable()
+    """
+    if isinstance(imgFile, basestring):
+        ds = gdal.Open(str(imgFile))
+    elif isinstance(imgFile, gdal.Dataset):
+        ds = imgFile
+
+    gdalBand = ds.GetRasterBand(bandNumber)
+    colorTable = gdalBand.GetColorTable()
+    if colorTable is None:
+        raise rioserrors.AttributeTableColumnError("Image has no color table")
+
+    count = colorTable.GetCount()
+    colorArray = numpy.zeros((count,4),numpy.uint8)
+    for index in range(count):
+        colorEntry = colorTable.GetColorEntry(index)
+        colorArray[index] = colorEntry
+
+    return colorArray
+
