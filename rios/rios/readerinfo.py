@@ -94,13 +94,14 @@ class ReaderInfo(object):
         self.yRes = workingGrid.yRes
         self.projection = workingGrid.projection
         self.transform = workingGrid.makeGeoTransform()
+        self.workingGrid = workingGrid
         
         # save the window size and overlap
         self.windowxsize = windowxsize
         self.windowysize = windowysize
         self.overlap = overlap
         
-        # work out the areabeing read
+        # work out the area being read
         self.xsize = int(round((self.xMax - self.xMin) / self.xRes))
         self.ysize = int(round((self.yMax - self.yMin) / self.yRes))
         
