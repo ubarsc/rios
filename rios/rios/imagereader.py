@@ -262,7 +262,7 @@ class ImageReader(object):
                         # We just have a single method
                         resamplemethodlist.append(method)
                     else:
-                        msg = "Dictionary must contain either lists or strings. Got '%s' instead" % type(filename)
+                        msg = "Dictionary must contain either lists or strings. Got '%s' instead" % type(method)
                         raise rioserrors.ParameterError(msg)
 
         else:
