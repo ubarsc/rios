@@ -262,7 +262,7 @@ class ImageReader(object):
                         # We just have a single method
                         resamplemethodlist.append(method)
                     else:
-                        msg = "Dictionary must contain either lists or strings. Got '%s' instead" % type(filename)
+                        msg = "Dictionary must contain either lists or strings. Got '%s' instead" % type(method)
                         raise rioserrors.ParameterError(msg)
 
         else:
@@ -513,21 +513,19 @@ class ImageReader(object):
         xoff_margin = xoff - margin
         yoff_margin = yoff - margin
         
-        # Restrict this to what is available
+        # Restrict this to what is available in the file
         xoff_margin_file = max(xoff_margin, imgLeftBound)
         xoff_margin_file = min(xoff_margin_file, imgRightBound-1)
-        xSize_margin_file = min(xSize_margin, imgRightBound - xoff_margin_file)
-        if xoff_margin < imgLeftBound:
-            xSize_margin_file = xSize_margin_file - (imgLeftBound - xoff_margin)
-        if xoff_margin >= imgRightBound:
-            xSize_margin_file = 0
+        xright_margin_file = xoff_margin + xSize_margin
+        xright_margin_file = min(xright_margin_file, imgRightBound)
+        xSize_margin_file = xright_margin_file - xoff_margin_file
+
         yoff_margin_file = max(yoff_margin, imgTopBound)
         yoff_margin_file = min(yoff_margin_file, imgBottomBound-1)
         ySize_margin_file = min(ySize_margin, imgBottomBound - yoff_margin_file)
-        if yoff_margin < imgTopBound:
-            ySize_margin_file = ySize_margin_file - (imgTopBound - yoff_margin)
-        if yoff_margin >= imgBottomBound:
-            ySize_margin_file = 0
+        ybottom_margin_file = yoff_margin + ySize_margin
+        ybottom_margin_file = min(ybottom_margin_file, imgBottomBound)
+        ySize_margin_file = ybottom_margin_file - yoff_margin_file
         
         # How many pixels on each edge of the block we end up NOT reading from 
         # the file, and thus have to leave as null in the array
