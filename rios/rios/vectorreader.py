@@ -25,7 +25,7 @@ class Vector(object):
     should be rasterized. Used for passing to VectorReader.
     """
     def __init__(self, filename, inputlayer=0, burnvalue=DEFAULTBURNVALUE,
-                    attribute=None, alltouched=False, datatype=numpy.uint8, 
+                    attribute=None, filter=None, alltouched=False, datatype=numpy.uint8, 
                     tempdir='.', driver=DEFAULTDRIVERNAME, 
                     driveroptions=DEFAULTCREATIONOPTIONS):
         """
@@ -35,6 +35,8 @@ class Vector(object):
         burnvalue is the value that gets written into the raster inside a polygon.
         Alternatively, attribute may be the name of an attribute that is looked up
         for the value to write into the raster inside a polygon.
+        If you want to filter the attributes in the vector, pass filter which
+        is in the format of an SQL WHERE clause.
         By default, only pixels whose centre lies within the a polygon get
         rasterised. To have all pixels touched by a polygon rasterised, set
         alltouched=True. 
@@ -63,7 +65,11 @@ class Vector(object):
         validtypes = [ogr.wkbMultiPolygon,ogr.wkbMultiPolygon25D,ogr.wkbPolygon,ogr.wkbPolygon25D]
         if layerdefn.GetGeomType() not in validtypes:
             raise rioserrors.VectorGeometryTypeError("Can only rasterize polygon types")
-        
+
+        # apply the attribute filter if passed
+        if filter is not None:
+            self.layer.SetAttributeFilter(filter)     
+
         # create a temporary file name based on raster
         # driver extension
         # save GDAL driver object for dataset creation later
