@@ -1,4 +1,4 @@
-    This file is part of PyModeller
+    This file is part of RIOS
     Copyright (C) 2010  Sam Gillingham.
 
     This program is free software: you can redistribute it and/or modify
