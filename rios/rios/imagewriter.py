@@ -3,9 +3,11 @@
 Contains the ImageWriter class
 
 """
-
 import math
+
+import numpy
 from osgeo import gdal
+
 from . import imageio
 from . import rioserrors
 from . import rat
@@ -149,19 +151,14 @@ class ImageWriter(object):
         band1 = self.ds.GetRasterBand(1)
         band1.SetMetadataItem('LAYER_TYPE','thematic')
                         
-    def setColorTable(self, colourtable, band=1):
+    def setColorTable(self, colortable, band=1):
         """
-        Sets the output colour table. Pass a list
-        of sequences of colours, or a 2d array
+        Sets the output color table. Pass a list
+        of sequences of colors, or a 2d array, as per the
+        docstring for rat.setColorTable(). 
         """
-        bandh = self.ds.GetRasterBand(band)
-        
-        gdalct = gdal.ColorTable()
-        count = 0
-        for col in colourtable:
-            gdalct.SetColorEntry(count,tuple(col))
-            count += 1
-        bandh.SetRasterColorTable(gdalct)
+        colorTableArray = numpy.array(colortable)
+        rat.setColorTable(self.ds, colorTableArray, layernum=band)
         
     def setLayerNames(self,names):
         """
