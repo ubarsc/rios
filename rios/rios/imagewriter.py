@@ -26,6 +26,8 @@ def setDefaultDriver():
     If RIOS_DFLT_DRIVEROPTIONS is set, it should be a space-separated list
     of driver creation options, e.g. "COMPRESS=LZW TILED=YES", and should
     be appropriate for the selected GDAL driver. 
+    
+    If not otherwise supplied, the default is to use the HFA driver, with compression. 
         
     """
     global DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS
