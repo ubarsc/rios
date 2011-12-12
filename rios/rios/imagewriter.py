@@ -3,15 +3,42 @@
 Contains the ImageWriter class
 
 """
-
+import os
 import math
+
+import numpy
 from osgeo import gdal
+
 from . import imageio
 from . import rioserrors
 from . import rat
 
-DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE','IGNOREUTM=TRUE']
-DEFAULTDRIVERNAME = 'HFA'
+def setDefaultDriver():
+    """
+    Sets some default values into global variables, defining
+    what defaults we should use for GDAL driver. On any given
+    output file these can be over-ridden, and can be over-ridden globally
+    using the environment variables 
+        $RIOS_DFLT_DRIVER
+        $RIOS_DFLT_DRIVEROPTIONS
+    
+    If RIOS_DFLT_DRIVER is set, then it should be a gdal short driver name
+    If RIOS_DFLT_DRIVEROPTIONS is set, it should be a space-separated list
+    of driver creation options, e.g. "COMPRESS=LZW TILED=YES", and should
+    be appropriate for the selected GDAL driver. 
+    
+    If not otherwise supplied, the default is to use the HFA driver, with compression. 
+        
+    """
+    global DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS
+    DEFAULTDRIVERNAME = os.getenv('RIOS_DFLT_DRIVER', default='HFA')
+    DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE','IGNOREUTM=TRUE']
+    creationOptionsStr = os.getenv('RIOS_DFLT_DRIVEROPTIONS')
+    if creationOptionsStr is not None:
+        DEFAULTCREATIONOPTIONS = creationOptionsStr.split()
+
+setDefaultDriver()
+    
 
 def allnotNone(items):
     for i in items:
@@ -149,19 +176,14 @@ class ImageWriter(object):
         band1 = self.ds.GetRasterBand(1)
         band1.SetMetadataItem('LAYER_TYPE','thematic')
                         
-    def setColorTable(self, colourtable, band=1):
+    def setColorTable(self, colortable, band=1):
         """
-        Sets the output colour table. Pass a list
-        of sequences of colours, or a 2d array
+        Sets the output color table. Pass a list
+        of sequences of colors, or a 2d array, as per the
+        docstring for rat.setColorTable(). 
         """
-        bandh = self.ds.GetRasterBand(band)
-        
-        gdalct = gdal.ColorTable()
-        count = 0
-        for col in colourtable:
-            gdalct.SetColorEntry(count,tuple(col))
-            count += 1
-        bandh.SetRasterColorTable(gdalct)
+        colorTableArray = numpy.array(colortable)
+        rat.setColorTable(self.ds, colorTableArray, layernum=band)
         
     def setLayerNames(self,names):
         """
