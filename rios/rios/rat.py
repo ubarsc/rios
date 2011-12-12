@@ -201,7 +201,11 @@ def getColorTable(imgFile, bandNumber=1):
     """
     Given either an open gdal dataset, or a filename,
     reads the color table as an array that can be passed
-    to ImageWriter.setColorTable()
+    to ImageWriter.setColorTable() or rat.setColorTable()
+    
+    The returned colour table is a numpy array, described in detail
+    in the docstring for rat.setColorTable(). 
+    
     """
     if isinstance(imgFile, basestring):
         ds = gdal.Open(str(imgFile))
@@ -214,10 +218,91 @@ def getColorTable(imgFile, bandNumber=1):
         raise rioserrors.AttributeTableColumnError("Image has no color table")
 
     count = colorTable.GetCount()
-    colorArray = numpy.zeros((count,4),numpy.uint8)
+    colorArray = numpy.zeros((count, 5), dtype=numpy.uint8)
     for index in range(count):
         colorEntry = colorTable.GetColorEntry(index)
-        colorArray[index] = colorEntry
+        arrayEntry = [index] + list(colorEntry)
+        colorArray[index] = numpy.array(arrayEntry)
 
     return colorArray
+
+
+def setColorTable(imgfile, colorTblArray, layernum=1):
+    """
+    Set the color table for the specified band. You can specify either 
+    the imgfile as either a filename string or a gdal.Dataset object. The
+    layer number defaults to 1, i.e. the first layer in the file. 
+    
+    The color table is given as a numpy array of 5 columns. There is one row 
+    (i.e. first array index) for every value to be set, and the columns
+    are:
+        pixelValue
+        Red
+        Green
+        Blue
+        Opacity
+    The Red/Green/Blue values are on the range 0-255, with 255 meaning full 
+    color, and the opacity is in the range 0-255, with 255 meaning fully 
+    opaque. 
+    
+    The pixels values in the first column must be in ascending order, but do 
+    not need to be a complete set (i.e. you don't need to supply a color for 
+    every possible pixel value - any not given will default to transparent black).
+    It does not even need to be contiguous. 
+    
+    For reasons of backwards compatability, a 4-column array will also be accepted, 
+    and will be treated as though the row index corresponds to the pixelValue (i.e. 
+    starting at zero). 
+    
+    """
+    arrayShape = colorTblArray.shape
+    if len(arrayShape) != 2:
+        raise rioserrors.ArrayShapeError("ColorTableArray must be 2D. Found shape %s instead"%arrayShape)
+        
+    (numRows, numCols) = arrayShape
+    # Handle the backwards-compatible case of a 4-column array
+    if numCols == 4:
+        numCols = 5
+        arrayShape = (numRows, numCols)
+        colorTbl5cols = numpy.zeros(arrayShape, dtype=numpy.uint8)
+        colorTbl5cols[:, 0] = numpy.arange(numRows)
+        colorTbl5cols[:, 1:] = colorTblArray
+        colorTblArray = colorTbl5cols
+        
+    if numCols != 5:
+        raise rioserrors.ArrayShapeError("Color table array has %d columns, expecting 5"%numCols)
+    
+    # Open the image file and get the band object
+    if isinstance(imgfile, gdal.Dataset):
+        ds = imgfile
+    elif isinstance(imgfile, basestring):
+        ds = gdal.Open(imgfile, gdal.GA_Update)
+    
+    bandobj = ds.GetRasterBand(layernum)
+    
+    clrTbl = gdal.ColorTable()
+    maxPixVal = colorTblArray[:, 0].max()
+    i = 0
+    # This loop sets an entry for every pixel value up to the largest given. Imagine
+    # bitches if we don't do this. 
+    tblMaxVal = maxPixVal
+    if bandobj.DataType == gdal.GDT_Byte:
+        # For Byte files, we always add rows for entries up to 255. Imagine gets 
+        # confused if we don't
+        tblMaxVal = 255
+        
+    for pixVal in range(tblMaxVal+1):
+        while  i < numRows and colorTblArray[i, 0] < pixVal:
+            i += 1
+        if i < numRows:
+            tblPixVal = colorTblArray[i, 0]
+            if tblPixVal == pixVal:
+                colEntry = tuple(colorTblArray[i, 1:])
+            else:
+                colEntry = (0, 0, 0, 0)
+        else:
+            colEntry = (0, 0, 0, 0)
+        clrTbl.SetColorEntry(pixVal, colEntry)
+    
+    bandobj.SetRasterColorTable(clrTbl)
 
