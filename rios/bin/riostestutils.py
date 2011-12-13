@@ -76,6 +76,20 @@ def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT, yTop=DEFAULT_
     del ds
 
 
+def genThematicFile(filename):
+    """
+    Generate a thematic file
+    """
+    ds = createTestFile(filename)
+    
+    band = ds.GetRasterBand(1)
+    arr = numpy.zeros((DEFAULT_ROWS, DEFAULT_COLS))
+    band.WriteArray(arr)
+    
+    band.SetMetadataItem('LAYER_TYPE', 'thematic')
+    del ds
+
+
 def report(testName, message):
     """
     Report a test result
@@ -87,4 +101,5 @@ def reportStart(testName):
     """
     Report the beginning of a given test
     """
-    print("\nStarting test", testName)
+    print("\n####################")
+    print("Starting test:", testName)
