@@ -12,6 +12,7 @@ import sys
 import os
 import optparse
 import shutil
+import subprocess
 
 
 def main():
@@ -35,7 +36,16 @@ def checkTag(cmdargs):
     Actually, currently it does nothing. 
     
     """
-    pass
+    cmdList = ["hg", "tags"]
+    proc = subprocess.Popen(cmdList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdoutStr, stderrStr) = proc.communicate()
+    tagLines = stdoutStr.split('\n')
+    requiredTag = "rios-%s" % cmdargs.versionnumber
+    tagList = [line.split()[0] for line in tagLines if len(line) > 0]
+    matchList = [(tag==requiredTag) for tag in tagList]
+    found = any(matchList)
+    if not found:
+        raise MissingTagError("Must have hg tag '%s'"%requiredTag)
 
 
 def copyAll(cmdargs):
@@ -79,6 +89,7 @@ class CmdArgs:
             p.print_help()
             sys.exit()
 
+class MissingTagError(Exception): pass
 
 if __name__ == "__main__":
     main()
