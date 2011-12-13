@@ -45,3 +45,18 @@ class ArrayShapeError(RiosError):
 
 class TypeConversionError(RiosError):
     "Unknown type conversion"
+
+class VectorAttributeError(RiosError):
+    "Unable to find specified index in vector file"
+
+class VectorGeometryTypeError(RiosError):
+    "Unexpected Geometry type"
+
+class VectorProjectionError(RiosError):
+    "Vector projection does not match raster projection"
+
+class VectorRasterizationError(RiosError):
+    "Rasterisation of Vector dataset failed"
+
+class VectorLayerError(RiosError):
+    "Unable to find the specified layer"
