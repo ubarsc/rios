@@ -5,6 +5,7 @@ the scripts.
 Good idea to use 'install --prefix=/opt/xxxxx' so not installed
 with Python.
 """
+import glob
 from distutils.core import setup
 
 setup(name='rios',
@@ -12,10 +13,8 @@ setup(name='rios',
       description='Raster Input/Output Simplification',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
-      scripts=['bin/pymdltestreader.py','bin/pymdltestwriter.py',
-		'bin/pymdltestreaderdict.py','bin/pymdltestapplier.py',
-        'bin/testapplier.py', 'bin/testrios.py', 'bin/riostestutils.py',
-        'bin/testavg.py', 'bin/testcolortable.py', 'bin/testresample.py'],
+      scripts=glob.glob('bin/*.py'),
       packages=['rios'],
-      license='LICENSE.txt'
+      license='LICENSE.txt', 
+      url='https://bitbucket.org/chchrsc/rios'
      )
