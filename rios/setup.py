@@ -14,7 +14,8 @@ setup(name='rios',
       author_email='gillingham.sam@gmail.com',
       scripts=['bin/pymdltestreader.py','bin/pymdltestwriter.py',
 		'bin/pymdltestreaderdict.py','bin/pymdltestapplier.py',
-        'bin/testapplier.py'],
+        'bin/testapplier.py', 'bin/testrios.py', 'bin/riostestutils.py',
+        'bin/testavg.py', 'bin/testcolortable.py', 'bin/testresample.py'],
       packages=['rios'],
       license='LICENSE.txt'
      )
