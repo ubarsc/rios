@@ -10,3 +10,5 @@ of tests of some capabilities of RIOS.
 import testavg
 testavg.run()
 
+import testresample
+testresample.run()
