@@ -9,7 +9,7 @@ import glob
 from distutils.core import setup
 
 setup(name='rios',
-      version='1.0',
+      version='1.0.1',
       description='Raster Input/Output Simplification',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
