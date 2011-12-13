@@ -22,6 +22,8 @@ def run():
     """
     Run the test
     """
+    riostestutils.reportStart(TESTNAME)
+    
     ramp1 = 'ramp1.img'
     ramp2 = 'ramp2.img'
     riostestutils.genRampImageFile(ramp1)
