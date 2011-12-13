@@ -183,6 +183,37 @@ class PixelGridDefn(object):
         srOther = osr.SpatialReference(other.projection)
         return bool(srSelf.IsSame(srOther))
         
+    def equivalentProjection(self, otherspatialref, pixtolerance):
+        """
+        Similar to equalProjection but does a less accurate test
+        by checking converting coordinates from projection of self
+        to otherspatialref and checking they are within pixtolerance
+        pixels of each other.
+        The coordinates used for this are the four corners and centre
+        of image.
+        """
+        srSelf = osr.SpatialReference(self.projection)
+        transform = osr.CoordinateTransformation(srSelf, otherspatialref)
+
+        xtol = pixtolerance * self.xRes
+        ytol = pixtolerance * self.yRes
+        
+        points = []
+        points.append((self.xMin,self.yMax)) # upper left
+        points.append((self.xMax,self.yMax)) # upper right
+        points.append((self.xMax,self.yMin)) # bottom right
+        points.append((self.xMin,self.yMin)) # bottom left
+        points.append((self.xMin + ((self.xMax - self.xMin) / 2), 
+                        self.yMin + ((self.yMax - self.yMin) / 2)))  # middle
+
+        equal = True
+        for (x,y) in points:
+            otherx,othery,z = transform.TransformPoint(x,y)
+            if abs(x - otherx) > xtol or abs(y - othery) > ytol:
+                equal = False
+                break
+
+        return equal
     
     def makeGeoTransform(self):
         """
