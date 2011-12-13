@@ -1,3 +1,2 @@
 include *.txt
 global-include *.py
-exclude bin/makeDistribution.py
