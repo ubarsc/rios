@@ -21,3 +21,5 @@ RIOS Installation steps, for Linux and similar.
        the environment variables, which are then given to GDAL
             RIOS_DFLT_DRIVER="short name of GDAL driver"
             RIOS_DFLT_DRIVEROPTIONS="list of driver options (space-separated)"
+    6. Test the installation by executing the command 
+           testrios.py
