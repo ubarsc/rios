@@ -34,8 +34,8 @@ def run():
     checkResult(outfile)
     
     # Clean up
-    #for filename in [ramp1, ramp2, outfile]:
-    #    os.remove(filename)
+    for filename in [ramp1, ramp2, outfile]:
+        os.remove(filename)
 
 
 def calcAverage(file1, file2, avgfile):
