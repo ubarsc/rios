@@ -23,4 +23,4 @@ testcolortable.run()
 
 
 # After all tests
-riostestutils.report("ALL TESTS", "Passed")
+riostestutils.report("ALL TESTS", "Completed")
