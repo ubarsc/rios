@@ -33,8 +33,6 @@ def checkTag(cmdargs):
     version we are actually tarring, just assumes that 
     the user has done this right. 
     
-    Actually, currently it does nothing. 
-    
     """
     cmdList = ["hg", "tags"]
     proc = subprocess.Popen(cmdList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
