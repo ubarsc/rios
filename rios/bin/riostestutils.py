@@ -18,9 +18,12 @@ from rios import rioserrors
 DEFAULT_ROWS = 500
 DEFAULT_COLS = 500
 DEFAULT_DTYPE = gdal.GDT_Byte
+DEFAULT_XLEFT = 500000
+DEFAULT_YTOP = 7000000
 
 def createTestFile(filename, numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS, 
-    dtype=DEFAULT_DTYPE, numBands=1, epsg=28355, xLeft=50000, yTop=700000, xPix=10, yPix=10):
+    dtype=DEFAULT_DTYPE, numBands=1, epsg=28355, xLeft=DEFAULT_XLEFT, 
+    yTop=DEFAULT_YTOP, xPix=10, yPix=10):
     """
     Create a simple test file, on a standard footprint. Has some fairly arbitrary
     default values for all the relevant characteristics, which can be
@@ -58,11 +61,11 @@ def genRampArray(nRows=DEFAULT_ROWS, nCols=DEFAULT_COLS):
     return ramp
 
 
-def genRampImageFile(filename, reverse=False):
+def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT, yTop=DEFAULT_YTOP):
     """
     Generate a test image of a simple 2-d linear ramp. 
     """
-    ds = createTestFile(filename)
+    ds = createTestFile(filename, xLeft=xLeft, yTop=yTop)
     ramp = genRampArray()
     if reverse:
         # Flip left-to-right
@@ -79,3 +82,9 @@ def report(testName, message):
     """
     fullMessage = "%s: %s" % (testName, message)
     print(fullMessage)
+
+def reportStart(testName):
+    """
+    Report the beginning of a given test
+    """
+    print("\nStarting test", testName)
