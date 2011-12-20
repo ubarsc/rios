@@ -76,9 +76,9 @@ class ApplierControls(object):
         windowysize     Y size of rios block (pixels)
         overlap         Number of pixels in margin for block overlaps
         footprint       applier.INTERSECTION or applier.UNION
-        drivername      global GDAL driver short name for output
-        creationoptions global GDAL creation options for output
-        thematic        global True/False for thematic outputs
+        drivername      GDAL driver short name for output
+        creationoptions GDAL creation options for output
+        thematic        True/False for thematic outputs
         referenceImage  Image for reference projection and grid
         referencePixgrid pixelGrid for reference projection and grid
         loggingstream   file-like for logging of messages
@@ -87,7 +87,6 @@ class ApplierControls(object):
         statscache      stats cache if pre-calculated
         calcStats       True/False to signal calculate statistics and pyramids
         tempdir         Name of directory for temp files (resampling, etc.)
-        thematic        One of 'thematic' or 'athematic'
         resampleMethod  String for resample method, when required (as per GDAL)
     
     Default values are provided for all attributes, and can then be over-ridden
