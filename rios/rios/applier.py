@@ -83,7 +83,7 @@ class ApplierControls(object):
         referencePixgrid pixelGrid for reference projection and grid
         loggingstream   file-like for logging of messages
         progress        progress object
-        statsIgnore     global stats ignore value for output
+        statsIgnore     global stats ignore value for output (i.e. null value)
         statscache      stats cache if pre-calculated
         calcStats       True/False to signal calculate statistics and pyramids
         tempdir         Name of directory for temp files (resampling, etc.)
@@ -264,7 +264,7 @@ class ApplierControls(object):
     def makeResampleDict(self, imageDict):
         """
         Make a dictionary of resample methods, one for every image
-        name in the given dictionary
+        name in the given dictionary. This method is for internal use only. 
         """
         d = {}
         imagenamelist = imageDict.keys()
