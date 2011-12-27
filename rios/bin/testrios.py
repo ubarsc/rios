@@ -17,8 +17,8 @@ testresample.run()
 import testcolortable
 testcolortable.run()
 
-
-
+import testvector
+testvector.run()
 
 
 
