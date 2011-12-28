@@ -42,7 +42,9 @@ class FilenameAssociations(object):
     data blocks, accordingly. 
     
     """
-    pass
+    def __len__(self):
+        "Number of names defined on this instance (a list counts as only one name)"
+        return len(self.__dict__.keys())
 
 class BlockAssociations(object): 
     """
