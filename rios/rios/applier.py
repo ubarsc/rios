@@ -628,15 +628,24 @@ def makeVectorObjects(vectorfiles, controls):
     namelist = sorted(vectorfiles.__dict__.keys())
     for name in namelist:
         burnvalue = controls.getOptionForImagename('burnvalue', name)
+        vectordatatype = controls.getOptionForImagename('vectordatatype', name)
+        alltouched = controls.getOptionForImagename('alltouched', name)
+        vectorlayer = controls.getOptionForImagename('vectorlayer', name)
+        burnattribute = controls.getOptionForImagename('burnattribute', name)
+        filtersql = controls.getOptionForImagename('filtersql', name)
         
         fileValue = getattr(vectorfiles, name)
         if isinstance(fileValue, list):
             veclist = []
             for filename in fileValue:
-                vec = vectorreader.Vector(filename, burnvalue=burnvalue)
+                vec = vectorreader.Vector(filename, burnvalue=burnvalue, datatype=vectordatatype,
+                    attribute=burnattribute, filter=filtersql, inputlayer=vectorlayer,
+                    alltouched=alltouched)
                 veclist.append(vec)
             vectordict[name] = veclist
         elif isinstance(fileValue, basestring):
-            vectordict[name] = vectorreader.Vector(fileValue, burnvalue=burnvalue)
+            vectordict[name] = vectorreader.Vector(fileValue, burnvalue=burnvalue, 
+                datatype=vectordatatype, attribute=burnattribute, filter=filtersql, 
+                inputlayer=vectorlayer, alltouched=alltouched)
 
     return vectordict
