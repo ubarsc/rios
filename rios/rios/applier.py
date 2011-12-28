@@ -14,6 +14,7 @@ from . import imagereader
 from . import imagewriter
 from . import imageio
 from . import rioserrors
+from . import vectorreader
 
 # All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
@@ -330,11 +331,17 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         if controls is None:
             controls = ApplierControls()
         
-        reader = imagereader.ImageReader(infiles.__dict__, 
+        (imagefiles, vectorfiles) = separateVectors(infiles)
+        reader = imagereader.ImageReader(imagefiles.__dict__, 
             controls.footprint, controls.windowxsize, controls.windowysize, 
             controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
 
-        handleInputResampling(infiles, controls, reader)
+        vecreader = None
+        if len(vectorfiles) > 0:
+            vectordict = makeVectorObjects(vectorfiles)
+            vecreader = vectorreader.VectorReader(vectordict)
+        
+        handleInputResampling(imagefiles, controls, reader)
 
         writerdict = {}
         inputBlocks = BlockAssociations()
@@ -347,6 +354,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         
         for (info, blockdict) in reader:
             inputBlocks.__dict__.update(blockdict)
+            vecblocks = vecreader.rasterize(info)
+            inputBlocks.__dict__.update(vecblocks)
             
             # Make a tuple of the arguments to pass to the function. 
             # Must have inputBlocks and outputBlocks, but if otherArgs 
