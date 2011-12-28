@@ -10,6 +10,7 @@ a raster processing chain.
 
 import sys
 
+import numpy
 from osgeo import gdal
 from osgeo import ogr
 
@@ -96,9 +97,13 @@ class ApplierControls(object):
         resampleMethod  String for resample method, when required (as per GDAL)
     
     Options relating to vector input files
-        burnvalue       Value to burn into raster
+        burnvalue       Value to burn into raster from vector
         filtersql       SQL where clause used to filter vector features
-        alltouched      Boolean 
+        alltouched      Boolean. If True, all pixels touched are included in vector. 
+        burnattribute   Name of vector attribute used to supply burnvalue
+        vectorlayer     Number (or name) of vector layer
+        vectordatatype  Numpy datatype to use for raster created from vector
+        
     
     Default values are provided for all attributes, and can then be over-ridden
     with the 'set' methods given. 
@@ -127,6 +132,14 @@ class ApplierControls(object):
         self.thematic = False
         self.tempdir = '.'
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
+        # Vector fields
+        self.burnvalue = 1
+        self.burnattribute = None
+        self.filtersql = None
+        self.alltouched = False
+        self.vectordatatype = numpy.uint8
+        self.vectorlayer = 0
+        
         
         # Options specific to a named image. This was added on later, and is 
         # only valid for some of the attributes, so it looks a bit out-of-place.
@@ -272,6 +285,53 @@ class ApplierControls(object):
         """
         self.setOptionForImagename('resampleMethod', imagename, resampleMethod)
     
+    def setBurnValue(self, burnvalue, vectorname=None):
+        """
+        Set the burn value to be used when rasterizing the input vector(s).
+        If vectorname given, set only for that vector. Default is 1. 
+        """
+        self.setOptionForImagename('burnvalue', vectorname, burnvalue)
+    
+    def setBurnAttribute(self, burnattribute, vectorname=None):
+        """
+        Set the vector attribute name from which to get the burn value
+        for each vector feature. If vectorname is given, set only for that
+        vector input. Default is to use burnvalue instead of burnattribute. 
+        """
+        self.setOptionForImagename('burnattribute', vectorname, burnattribute)
+    
+    def setFilterSQL(self, filtersql, vectorname=None):
+        """
+        Set an SQL WHERE clause which will be used to filter vector features.
+        If vectorname is given, then set only for that vector
+        """
+        self.setOptionForImagename('filtersql', vectorname, filtersql)
+    
+    def setAlltouched(self, alltouched, vectorname=None):
+        """
+        Set boolean value of alltouched attribute. If alltouched is True, then
+        pixels will count as "inside" a vector polygon if they touch the polygon,
+        rather than only if their centre is inside. 
+        If vectornmame given, then set only for that vector. 
+        """
+        self.setOptionForImagename('alltouched', vectorname, alltouched)
+    
+    def setVectorDatatype(self, vectordatatype, vectorname=None):
+        """
+        Set numpy datatype to use for rasterized vectors
+        If vectorname given, set only for that vector
+        """
+        self.setOptionForImagename('vectordatatype', vectorname, vectordatatype)
+    
+    def setVectorlayer(self, vectorlayer, vectorname=None):
+        """
+        Set number/name of vector layer, for vector formats which have 
+        multiple layers. Not required for plain shapefiles. 
+        Can be either a layer number (start at zero) or 
+        a layer name. If vectorname given, set only for that vector.
+        """
+        self.setOptionForImagename('vectorlayer', vectorname, vectorlayer)
+    
     def makeResampleDict(self, imageDict):
         """
         Make a dictionary of resample methods, one for every image
@@ -364,8 +424,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         
         for (info, blockdict) in reader:
             inputBlocks.__dict__.update(blockdict)
-            vecblocks = vecreader.rasterize(info)
-            inputBlocks.__dict__.update(vecblocks)
+            if vecreader is not None:
+                vecblocks = vecreader.rasterize(info)
+                inputBlocks.__dict__.update(vecblocks)
             
             # Make a tuple of the arguments to pass to the function. 
             # Must have inputBlocks and outputBlocks, but if otherArgs 
@@ -565,7 +626,7 @@ def makeVectorObjects(vectorfiles, controls):
     """
     vectordict = {}
     namelist = sorted(vectorfiles.__dict__.keys())
-    for name in nameList:
+    for name in namelist:
         burnvalue = controls.getOptionForImagename('burnvalue', name)
         
         fileValue = getattr(vectorfiles, name)
