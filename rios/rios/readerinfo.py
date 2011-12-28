@@ -85,15 +85,7 @@ class ReaderInfo(object):
                     overlap, loggingstream):
                     
         self.loggingstream = loggingstream
-        # grab what we need from the working grid
-        self.xMin = workingGrid.xMin
-        self.xMax = workingGrid.xMax
-        self.yMin = workingGrid.yMin
-        self.yMax = workingGrid.yMax
-        self.xRes = workingGrid.xRes
-        self.yRes = workingGrid.yRes
-        self.projection = workingGrid.projection
-        self.transform = workingGrid.makeGeoTransform()
+        # grab the working grid
         self.workingGrid = workingGrid
         
         # save the window size and overlap
@@ -102,8 +94,10 @@ class ReaderInfo(object):
         self.overlap = overlap
         
         # work out the area being read
-        self.xsize = int(round((self.xMax - self.xMin) / self.xRes))
-        self.ysize = int(round((self.yMax - self.yMin) / self.yRes))
+        self.xsize = int(round((self.workingGrid.xMax - 
+                        self.workingGrid.xMin) / self.workingGrid.xRes))
+        self.ysize = int(round((self.workingGrid.yMax - 
+                        self.workingGrid.yMin) / self.workingGrid.yRes))
         
         # total number of blocks
         self.xtotalblocks = int(math.ceil(float(self.xsize) / self.windowxsize))
@@ -165,14 +159,14 @@ class ReaderInfo(object):
         Return the current transform between world
         and pixel coords
         """
-        return self.transform
+        return self.workingGrid.makeGeoTransform()
         
     def getProjection(self):
         """
         Return the WKT describing the current
         projection system
         """
-        return self.projection
+        return self.workingGrid.projection
 
     def getTotalBlocks(self):
         """
@@ -224,7 +218,7 @@ class ReaderInfo(object):
         """
         Gets the current pixel size and returns it as a tuple (x and y)
         """
-        return (self.xRes,self.yRes)
+        return (self.workingGrid.xRes,self.workingGrid.yRes)
     
     def getPixColRow(self,x,y):
         """
@@ -239,7 +233,7 @@ class ReaderInfo(object):
         Get the image coordinate for the nominated block x and y
         """
         (col,row) = self.getPixColRow(x,y)
-        coord = imageio.pix2wld(self.transform,col,row)
+        coord = imageio.pix2wld(self.workingGrid.makeGeoTransform(),col,row)
         return (coord.x,coord.y)
 
     def isFirstBlock(self):

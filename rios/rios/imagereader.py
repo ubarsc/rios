@@ -363,7 +363,7 @@ class ImageReader(object):
         ycoord = yblock * self.windowysize
         
         # convert this to world coords
-        blocktl = imageio.pix2wld( info.transform, xcoord, ycoord )
+        blocktl = imageio.pix2wld( info.getTransform(), xcoord, ycoord )
 
         # work out the bottom right coord for this block
         nBlockBottomX = (( xblock + 1 ) * self.windowxsize)
@@ -377,7 +377,7 @@ class ImageReader(object):
           nBlockBottomY = ysize
 
         # work out the world coords for the bottom right
-        blockbr = imageio.pix2wld( info.transform, nBlockBottomX, nBlockBottomY )
+        blockbr = imageio.pix2wld( info.getTransform(), nBlockBottomX, nBlockBottomY )
         
         # set this back to our copy of the info object
         info.setBlockBounds(blocktl,blockbr)
