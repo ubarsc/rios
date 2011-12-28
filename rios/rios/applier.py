@@ -10,10 +10,15 @@ a raster processing chain.
 
 import sys
 
+import numpy
+from osgeo import gdal
+from osgeo import ogr
+
 from . import imagereader
 from . import imagewriter
 from . import imageio
 from . import rioserrors
+from . import vectorreader
 
 # All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
@@ -41,7 +46,9 @@ class FilenameAssociations(object):
     data blocks, accordingly. 
     
     """
-    pass
+    def __len__(self):
+        "Number of names defined on this instance (a list counts as only one name)"
+        return len(self.__dict__.keys())
 
 class BlockAssociations(object): 
     """
@@ -83,11 +90,20 @@ class ApplierControls(object):
         referencePixgrid pixelGrid for reference projection and grid
         loggingstream   file-like for logging of messages
         progress        progress object
-        statsIgnore     global stats ignore value for output
+        statsIgnore     global stats ignore value for output (i.e. null value)
         statscache      stats cache if pre-calculated
         calcStats       True/False to signal calculate statistics and pyramids
         tempdir         Name of directory for temp files (resampling, etc.)
         resampleMethod  String for resample method, when required (as per GDAL)
+    
+    Options relating to vector input files
+        burnvalue       Value to burn into raster from vector
+        filtersql       SQL where clause used to filter vector features
+        alltouched      Boolean. If True, all pixels touched are included in vector. 
+        burnattribute   Name of vector attribute used to supply burnvalue
+        vectorlayer     Number (or name) of vector layer
+        vectordatatype  Numpy datatype to use for raster created from vector
+        
     
     Default values are provided for all attributes, and can then be over-ridden
     with the 'set' methods given. 
@@ -116,6 +132,14 @@ class ApplierControls(object):
         self.thematic = False
         self.tempdir = '.'
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
+        # Vector fields
+        self.burnvalue = 1
+        self.burnattribute = None
+        self.filtersql = None
+        self.alltouched = False
+        self.vectordatatype = numpy.uint8
+        self.vectorlayer = 0
+        
         
         # Options specific to a named image. This was added on later, and is 
         # only valid for some of the attributes, so it looks a bit out-of-place.
@@ -215,8 +239,8 @@ class ApplierControls(object):
         
     def setProgress(self, progress):
         """
-        Set the progress display object. Default is to 
-        use cuiprogress.CUIProgressBar
+        Set the progress display object. Default is no progress
+        object. 
         """
         self.progress = progress
         
@@ -261,10 +285,57 @@ class ApplierControls(object):
         """
         self.setOptionForImagename('resampleMethod', imagename, resampleMethod)
     
+    def setBurnValue(self, burnvalue, vectorname=None):
+        """
+        Set the burn value to be used when rasterizing the input vector(s).
+        If vectorname given, set only for that vector. Default is 1. 
+        """
+        self.setOptionForImagename('burnvalue', vectorname, burnvalue)
+    
+    def setBurnAttribute(self, burnattribute, vectorname=None):
+        """
+        Set the vector attribute name from which to get the burn value
+        for each vector feature. If vectorname is given, set only for that
+        vector input. Default is to use burnvalue instead of burnattribute. 
+        """
+        self.setOptionForImagename('burnattribute', vectorname, burnattribute)
+    
+    def setFilterSQL(self, filtersql, vectorname=None):
+        """
+        Set an SQL WHERE clause which will be used to filter vector features.
+        If vectorname is given, then set only for that vector
+        """
+        self.setOptionForImagename('filtersql', vectorname, filtersql)
+    
+    def setAlltouched(self, alltouched, vectorname=None):
+        """
+        Set boolean value of alltouched attribute. If alltouched is True, then
+        pixels will count as "inside" a vector polygon if they touch the polygon,
+        rather than only if their centre is inside. 
+        If vectornmame given, then set only for that vector. 
+        """
+        self.setOptionForImagename('alltouched', vectorname, alltouched)
+    
+    def setVectorDatatype(self, vectordatatype, vectorname=None):
+        """
+        Set numpy datatype to use for rasterized vectors
+        If vectorname given, set only for that vector
+        """
+        self.setOptionForImagename('vectordatatype', vectorname, vectordatatype)
+    
+    def setVectorlayer(self, vectorlayer, vectorname=None):
+        """
+        Set number/name of vector layer, for vector formats which have 
+        multiple layers. Not required for plain shapefiles. 
+        Can be either a layer number (start at zero) or 
+        a layer name. If vectorname given, set only for that vector.
+        """
+        self.setOptionForImagename('vectorlayer', vectorname, vectorlayer)
+    
     def makeResampleDict(self, imageDict):
         """
         Make a dictionary of resample methods, one for every image
-        name in the given dictionary
+        name in the given dictionary. This method is for internal use only. 
         """
         d = {}
         imagenamelist = imageDict.keys()
@@ -325,37 +396,37 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         aspects of the reading and writing of images. See the class 
         documentation for further details. 
         
-        
         """
         # Get default controls object if none given. 
         if controls is None:
             controls = ApplierControls()
         
-        inputBlocks = BlockAssociations()
-        outputBlocks = BlockAssociations()
-        reader = imagereader.ImageReader(infiles.__dict__, 
+        (imagefiles, vectorfiles) = separateVectors(infiles)
+        reader = imagereader.ImageReader(imagefiles.__dict__, 
             controls.footprint, controls.windowxsize, controls.windowysize, 
             controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
 
-        if controls.referenceImage is not None:
-            resampleDict = controls.makeResampleDict(infiles.__dict__)
-            reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
-                resamplemethod=resampleDict, useVRT=True)
-        elif controls.referencePixgrid is not None:
-            resampleDict = controls.makeResampleDict(infiles.__dict__)
-            reader.allowResample(refPixgrid=controls.referencePixgrid, 
-                tempdir=controls.tempdir, 
-                resamplemethod=resampleDict, useVRT=True)
+        vecreader = None
+        if len(vectorfiles) > 0:
+            vectordict = makeVectorObjects(vectorfiles, controls)
+            vecreader = vectorreader.VectorReader(vectordict)
+        
+        handleInputResampling(imagefiles, controls, reader)
 
         writerdict = {}
+        inputBlocks = BlockAssociations()
+        outputBlocks = BlockAssociations()
         
         if controls.progress is not None:
             controls.progress.setTotalSteps(100)
             controls.progress.setProgress(0)
-            lastpercent = 0
+        lastpercent = 0
         
         for (info, blockdict) in reader:
             inputBlocks.__dict__.update(blockdict)
+            if vecreader is not None:
+                vecblocks = vecreader.rasterize(info)
+                inputBlocks.__dict__.update(vecblocks)
             
             # Make a tuple of the arguments to pass to the function. 
             # Must have inputBlocks and outputBlocks, but if otherArgs 
@@ -367,92 +438,214 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             # Now call the function with those args
             userFunction(*functionArgs)
             
-            for name in outfiles.__dict__.keys():
-
-                if name not in outputBlocks.__dict__:
-                    msg = 'Output key %s not found in output blocks' % name
-                    raise rioserrors.KeysMismatch(msg)
-
-                outblock = outputBlocks.__dict__[name]
-                outfileName = getattr(outfiles, name)
-                if name not in writerdict:
-                    # We have not yet created the output writers
-                    if isinstance(outfileName, list):
-                        # We have a list of filenames under this name in the dictionary,
-                        # and so we must create a list of writers. The outblock will also be 
-                        # a list of blocks
-                        writerdict[name] = []
-                        numFiles = len(outfileName)
-                        if len(outblock) != numFiles:
-                            raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
-                                "but only %d blocks given")%(name, numFiles, len(outblock)))
-                        for i in range(numFiles):
-                            filename = outfileName[i]
-                            writer = imagewriter.ImageWriter(filename, info=info, 
-                                firstblock=outblock[i], 
-                                drivername=controls.getOptionForImagename('drivername', name), 
-                                creationoptions=controls.getOptionForImagename('creationoptions', name))
-                            writerdict[name].append(writer)
-                            if controls.getOptionForImagename('thematic', name):
-                                writer.setThematic()
-                    else:
-                        # This name in the dictionary is just a single filename
-                        writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
-                            drivername=controls.getOptionForImagename('drivername', name), 
-                            creationoptions=controls.getOptionForImagename('creationoptions', name))
-                        writerdict[name] = writer
-                        if controls.getOptionForImagename('thematic', name):
-                            writer.setThematic()
-                else:
-                    # The output writers exist, so select the correct one and write the block
-                    if isinstance(outfileName, list):
-                        # We have a list of files for this name, and a list of blocks to write
-                        numFiles = len(outfileName)
-                        if len(outblock) != numFiles:
-                            raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
-                                "but only %d blocks given")%(name, numFiles, len(outblock)))
-                        for i in range(numFiles):
-                            writerdict[name][i].write(outblock[i])
-                    else:
-                        # This name is just a single file, and we write a single block
-                        writerdict[name].write(outblock)
-                    
-            if controls.progress is not None:
-                percent = info.getPercent()
-                if percent != lastpercent:
-                    controls.progress.setProgress(percent)
-                    lastpercent = percent
+            writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info)
+            lastpercent = updateProgress(controls, info, lastpercent)
                 
         if controls.progress is not None:
-            controls.progress.setProgress(100)    
-                
-        for name in outfiles.__dict__.keys():
-            writer = writerdict[name]
-            if isinstance(writer, list):
-                for singleWriter in writer:
-                    singleWriter.close(controls.getOptionForImagename('calcStats', name), 
-                        controls.getOptionForImagename('statsIgnore', name), controls.progress)
-            else:
-                writer.close(controls.getOptionForImagename('calcStats', name), 
+            controls.progress.setProgress(100)
+
+        closeOutputImages(writerdict, outfiles, controls)
+
+
+def closeOutputImages(writerdict, outfiles, controls):
+    """
+    Called by apply() to close all output image files. 
+    """
+    for name in outfiles.__dict__.keys():
+        writer = writerdict[name]
+        if isinstance(writer, list):
+            for singleWriter in writer:
+                singleWriter.close(controls.getOptionForImagename('calcStats', name), 
                     controls.getOptionForImagename('statsIgnore', name), controls.progress)
+        else:
+            writer.close(controls.getOptionForImagename('calcStats', name), 
+                controls.getOptionForImagename('statsIgnore', name), controls.progress)
+
+
+def updateProgress(controls, info, lastpercent):
+    """
+    Called by apply() to update progress
+    """
+    if controls.progress is not None:
+        percent = info.getPercent()
+        if percent != lastpercent:
+            controls.progress.setProgress(percent)
+            lastpercent = percent
+    return lastpercent
+
+
+def handleInputResampling(infiles, controls, reader):
+    """
+    Called by apply() to handle automatic resampling of input rasters.
+    Most of the work is done by the read.allowResample() method. 
+    """
+    if controls.referenceImage is not None:
+        resampleDict = controls.makeResampleDict(infiles.__dict__)
+        reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
+            resamplemethod=resampleDict, useVRT=True)
+    elif controls.referencePixgrid is not None:
+        resampleDict = controls.makeResampleDict(infiles.__dict__)
+        reader.allowResample(refPixgrid=controls.referencePixgrid, 
+            tempdir=controls.tempdir, 
+            resamplemethod=resampleDict, useVRT=True)
+
+
+def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
+    """
+    Called by apply(), to write the output blocks, after
+    they have been created by the user function. 
+    For internal use only. 
+    
+    For all names given in outfiles object, look for a data block 
+    of the same name in the outputBlocks object. If the given name
+    is a list, then the corresponding name should be a list of blocks. 
+    
+    """
+    for name in outfiles.__dict__.keys():
+        if name not in outputBlocks.__dict__:
+            msg = 'Output key %s not found in output blocks' % name
+            raise rioserrors.KeysMismatch(msg)
+
+        outblock = outputBlocks.__dict__[name]
+        outfileName = getattr(outfiles, name)
+        if name not in writerdict:
+            # We have not yet created the output writers
+            if isinstance(outfileName, list):
+                # We have a list of filenames under this name in the dictionary,
+                # and so we must create a list of writers. The outblock will also be 
+                # a list of blocks
+                writerdict[name] = []
+                numFiles = len(outfileName)
+                if len(outblock) != numFiles:
+                    raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
+                        "but only %d blocks given")%(name, numFiles, len(outblock)))
+                for i in range(numFiles):
+                    filename = outfileName[i]
+                    writer = imagewriter.ImageWriter(filename, info=info, 
+                        firstblock=outblock[i], 
+                        drivername=controls.getOptionForImagename('drivername', name), 
+                        creationoptions=controls.getOptionForImagename('creationoptions', name))
+                    writerdict[name].append(writer)
+                    if controls.getOptionForImagename('thematic', name):
+                        writer.setThematic()
+            else:
+                # This name in the dictionary is just a single filename
+                writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
+                    drivername=controls.getOptionForImagename('drivername', name), 
+                    creationoptions=controls.getOptionForImagename('creationoptions', name))
+                writerdict[name] = writer
+                if controls.getOptionForImagename('thematic', name):
+                    writer.setThematic()
+        else:
+            # The output writers exist, so select the correct one and write the block
+            if isinstance(outfileName, list):
+                # We have a list of files for this name, and a list of blocks to write
+                numFiles = len(outfileName)
+                if len(outblock) != numFiles:
+                    raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
+                        "but only %d blocks given")%(name, numFiles, len(outblock)))
+                for i in range(numFiles):
+                    writerdict[name][i].write(outblock[i])
+            else:
+                # This name is just a single file, and we write a single block
+                writerdict[name].write(outblock)
+
+
+def separateVectors(infiles):
+    """
+    Given a FilenameAssociations object, separate out the files which 
+    are raster, and the files which are vectors. Returns two FilenameAssociations
+    objects, carrying the same attribute names, but each has only the raster
+    or the vectors. 
+    
+    """
+    imagefiles = FilenameAssociations()
+    vectorfiles = FilenameAssociations()
+    
+    nameList = sorted(infiles.__dict__.keys())
+    for name in nameList:
+        fileValue = getattr(infiles, name)
+        if isinstance(fileValue, basestring):
+            testFilename = fileValue
+        elif isinstance(fileValue, list):
+            # We only check the first filename in a list. If the user
+            # mixed rasters and vectors in one list, things would go horribly wrong
+            testFilename = fileValue[0]
+
+        if opensAsRaster(testFilename):
+            setattr(imagefiles, name, fileValue)
+        elif opensAsVector(testFilename):
+            setattr(vectorfiles, name, fileValue)
+        else:
+            raise rioserrors.FileOpenError("Failed to open file '%s' as either raster or vector"%testFilename)
         
+    return (imagefiles, vectorfiles)
 
 
-############
-# Example
+def opensAsRaster(filename):
+    """
+    Return True if filename opens as a GDAL raster, False otherwise
+    """
+    usingExceptions = gdal.GetUseExceptions()
+    gdal.UseExceptions()
+    try:
+        ds = gdal.Open(filename)
+    except Exception:
+        ds = None
+    opensOK = (ds is not None)
+    
+    if not usingExceptions:
+        gdal.DontUseExceptions()
+    return opensOK
 
-#def thefunc(info, inputs, outputs, otherargs):
-#     bob_a = inputs.bob1 * otherargs.factor
-#     outputs.bob3 = bob_a + inputs.bob2
 
-#inputs = FilenameAssociations()
-#inputs.bob1 = "some/dir/bob1.img"
-#inputs.bob2 = "some/other/dir/bob2.img"
-#outputs = FilenameAssociations()
-#outputs.bob3 = "output/dir/bob3.img"
-#otherargs = OtherInputs()
-#otherargs.factor = 12
+def opensAsVector(filename):
+    """
+    Return True if filename opens as an OGR vector, False otherwise
+    """
+    usingExceptions = ogr.GetUseExceptions()
+    ogr.UseExceptions()
+    try:
+        ds = ogr.Open(filename)
+    except Exception:
+        ds = None
+    opensOK = (ds is not None)
+    
+    if not usingExceptions:
+        ogr.DontUseExceptions()
+    return opensOK
 
-#apply(thefunc,inputs,outputs,otherargs)
 
+def makeVectorObjects(vectorfiles, controls):
+    """
+    Returns a dictionary of vectorreader.Vector objects,
+    with the keys being the attribute names used
+    on the vectorfiles object. This is then ready to
+    go into the vectorreader.VectorReader constructor. 
+    
+    """
+    vectordict = {}
+    namelist = sorted(vectorfiles.__dict__.keys())
+    for name in namelist:
+        burnvalue = controls.getOptionForImagename('burnvalue', name)
+        vectordatatype = controls.getOptionForImagename('vectordatatype', name)
+        alltouched = controls.getOptionForImagename('alltouched', name)
+        vectorlayer = controls.getOptionForImagename('vectorlayer', name)
+        burnattribute = controls.getOptionForImagename('burnattribute', name)
+        filtersql = controls.getOptionForImagename('filtersql', name)
+        
+        fileValue = getattr(vectorfiles, name)
+        if isinstance(fileValue, list):
+            veclist = []
+            for filename in fileValue:
+                vec = vectorreader.Vector(filename, burnvalue=burnvalue, datatype=vectordatatype,
+                    attribute=burnattribute, filter=filtersql, inputlayer=vectorlayer,
+                    alltouched=alltouched)
+                veclist.append(vec)
+            vectordict[name] = veclist
+        elif isinstance(fileValue, basestring):
+            vectordict[name] = vectorreader.Vector(fileValue, burnvalue=burnvalue, 
+                datatype=vectordatatype, attribute=burnattribute, filter=filtersql, 
+                inputlayer=vectorlayer, alltouched=alltouched)
 
+    return vectordict

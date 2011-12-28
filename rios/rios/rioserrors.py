@@ -6,8 +6,10 @@ All exceptions used within rios.
 
 class RiosError(Exception): pass
 
-# 
-class ImageOpenError(RiosError):
+class FileOpenError(RiosError):
+    "Failed to open an input or output file"
+    
+class ImageOpenError(FileOpenError):
     "Image wasn't able to be opened by GDAL"
     
 class ParameterError(RiosError):
