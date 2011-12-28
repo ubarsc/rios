@@ -331,8 +331,6 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         if controls is None:
             controls = ApplierControls()
         
-        inputBlocks = BlockAssociations()
-        outputBlocks = BlockAssociations()
         reader = imagereader.ImageReader(infiles.__dict__, 
             controls.footprint, controls.windowxsize, controls.windowysize, 
             controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
@@ -340,6 +338,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         handleInputResampling(infiles, controls, reader)
 
         writerdict = {}
+        inputBlocks = BlockAssociations()
+        outputBlocks = BlockAssociations()
         
         if controls.progress is not None:
             controls.progress.setTotalSteps(100)
@@ -363,17 +363,24 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             lastpercent = updateProgress(controls, info, lastpercent)
                 
         if controls.progress is not None:
-            controls.progress.setProgress(100)    
-                
-        for name in outfiles.__dict__.keys():
-            writer = writerdict[name]
-            if isinstance(writer, list):
-                for singleWriter in writer:
-                    singleWriter.close(controls.getOptionForImagename('calcStats', name), 
-                        controls.getOptionForImagename('statsIgnore', name), controls.progress)
-            else:
-                writer.close(controls.getOptionForImagename('calcStats', name), 
+            controls.progress.setProgress(100)
+
+        closeOutputImages(writerdict, outfiles, controls)
+
+
+def closeOutputImages(writerdict, outfiles, controls):
+    """
+    Called by apply() to close all output image files. 
+    """
+    for name in outfiles.__dict__.keys():
+        writer = writerdict[name]
+        if isinstance(writer, list):
+            for singleWriter in writer:
+                singleWriter.close(controls.getOptionForImagename('calcStats', name), 
                     controls.getOptionForImagename('statsIgnore', name), controls.progress)
+        else:
+            writer.close(controls.getOptionForImagename('calcStats', name), 
+                controls.getOptionForImagename('statsIgnore', name), controls.progress)
 
 
 def updateProgress(controls, info, lastpercent):
