@@ -472,23 +472,3 @@ def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
                 # This name is just a single file, and we write a single block
                 writerdict[name].write(outblock)
 
-
-
-############
-# Example
-
-#def thefunc(info, inputs, outputs, otherargs):
-#     bob_a = inputs.bob1 * otherargs.factor
-#     outputs.bob3 = bob_a + inputs.bob2
-
-#inputs = FilenameAssociations()
-#inputs.bob1 = "some/dir/bob1.img"
-#inputs.bob2 = "some/other/dir/bob2.img"
-#outputs = FilenameAssociations()
-#outputs.bob3 = "output/dir/bob3.img"
-#otherargs = OtherInputs()
-#otherargs.factor = 12
-
-#apply(thefunc,inputs,outputs,otherargs)
-
-
