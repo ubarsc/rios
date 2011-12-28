@@ -325,7 +325,6 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         aspects of the reading and writing of images. See the class 
         documentation for further details. 
         
-        
         """
         # Get default controls object if none given. 
         if controls is None:
@@ -423,7 +422,6 @@ def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
     
     """
     for name in outfiles.__dict__.keys():
-
         if name not in outputBlocks.__dict__:
             msg = 'Output key %s not found in output blocks' % name
             raise rioserrors.KeysMismatch(msg)
