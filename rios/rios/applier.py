@@ -95,6 +95,11 @@ class ApplierControls(object):
         tempdir         Name of directory for temp files (resampling, etc.)
         resampleMethod  String for resample method, when required (as per GDAL)
     
+    Options relating to vector input files
+        burnvalue       Value to burn into raster
+        filtersql       SQL where clause used to filter vector features
+        alltouched      Boolean 
+    
     Default values are provided for all attributes, and can then be over-ridden
     with the 'set' methods given. 
     
@@ -343,7 +348,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
         vecreader = None
         if len(vectorfiles) > 0:
-            vectordict = makeVectorObjects(vectorfiles)
+            vectordict = makeVectorObjects(vectorfiles, controls)
             vecreader = vectorreader.VectorReader(vectordict)
         
         handleInputResampling(imagefiles, controls, reader)
@@ -548,3 +553,29 @@ def opensAsVector(filename):
     if not usingExceptions:
         ogr.DontUseExceptions()
     return opensOK
+
+
+def makeVectorObjects(vectorfiles, controls):
+    """
+    Returns a dictionary of vectorreader.Vector objects,
+    with the keys being the attribute names used
+    on the vectorfiles object. This is then ready to
+    go into the vectorreader.VectorReader constructor. 
+    
+    """
+    vectordict = {}
+    namelist = sorted(vectorfiles.__dict__.keys())
+    for name in nameList:
+        burnvalue = controls.getOptionForImagename('burnvalue', name)
+        
+        fileValue = getattr(vectorfiles, name)
+        if isinstance(fileValue, list):
+            veclist = []
+            for filename in fileValue:
+                vec = vectorreader.Vector(filename, burnvalue=burnvalue)
+                veclist.append(vec)
+            vectordict[name] = veclist
+        elif isinstance(fileValue, basestring):
+            vectordict[name] = vectorreader.Vector(fileValue, burnvalue=burnvalue)
+
+    return vectordict
