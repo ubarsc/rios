@@ -337,15 +337,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             controls.footprint, controls.windowxsize, controls.windowysize, 
             controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
 
-        if controls.referenceImage is not None:
-            resampleDict = controls.makeResampleDict(infiles.__dict__)
-            reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
-                resamplemethod=resampleDict, useVRT=True)
-        elif controls.referencePixgrid is not None:
-            resampleDict = controls.makeResampleDict(infiles.__dict__)
-            reader.allowResample(refPixgrid=controls.referencePixgrid, 
-                tempdir=controls.tempdir, 
-                resamplemethod=resampleDict, useVRT=True)
+        handleInputResampling(infiles, controls, reader)
 
         writerdict = {}
         
@@ -387,7 +379,22 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             else:
                 writer.close(controls.getOptionForImagename('calcStats', name), 
                     controls.getOptionForImagename('statsIgnore', name), controls.progress)
-        
+
+
+def handleInputResampling(infiles, controls, reader):
+    """
+    Called by apply() to handle automatic resampling of input rasters.
+    Most of the work is done by the read.allowResample() method. 
+    """
+    if controls.referenceImage is not None:
+        resampleDict = controls.makeResampleDict(infiles.__dict__)
+        reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
+            resamplemethod=resampleDict, useVRT=True)
+    elif controls.referencePixgrid is not None:
+        resampleDict = controls.makeResampleDict(infiles.__dict__)
+        reader.allowResample(refPixgrid=controls.referencePixgrid, 
+            tempdir=controls.tempdir, 
+            resamplemethod=resampleDict, useVRT=True)
 
 
 def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
