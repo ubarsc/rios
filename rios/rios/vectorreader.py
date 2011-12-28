@@ -189,7 +189,7 @@ class VectorReader(object):
             if err != gdal.CE_None:
                 raise rioserrors.VectorRasterizationError("Rasterization failed")
 
-        except:
+        except Exception:
             # if there has been an exception
             # ensure all the files are cleaned up
             vector.cleanup()
