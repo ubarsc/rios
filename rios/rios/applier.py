@@ -10,6 +10,9 @@ a raster processing chain.
 
 import sys
 
+from osgeo import gdal
+from osgeo import ogr
+
 from . import imagereader
 from . import imagewriter
 from . import imageio
@@ -481,3 +484,67 @@ def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
                 # This name is just a single file, and we write a single block
                 writerdict[name].write(outblock)
 
+
+def separateVectors(infiles):
+    """
+    Given a FilenameAssociations object, separate out the files which 
+    are raster, and the files which are vectors. Returns two FilenameAssociations
+    objects, carrying the same attribute names, but each has only the raster
+    or the vectors. 
+    
+    """
+    imagefiles = FilenameAssociations()
+    vectorfiles = FilenameAssociations()
+    
+    nameList = sorted(infiles.__dict__.keys())
+    for name in nameList:
+        fileValue = getattr(infiles, name)
+        if isinstance(fileValue, basestring):
+            testFilename = fileValue
+        elif isinstance(fileValue, list):
+            # We only check the first filename in a list. If the user
+            # mixed rasters and vectors in one list, things would go horribly wrong
+            testFilename = fileValue[0]
+
+        if opensAsRaster(testFilename):
+            setattr(imagefiles, name, fileValue)
+        elif opensAsVector(testFilename):
+            setattr(vectorfiles, name, fileValue)
+        else:
+            raise rioserrors.FileOpenError("Failed to open file '%s' as either raster or vector"%testFilename)
+        
+    return (imagefiles, vectorfiles)
+
+
+def opensAsRaster(filename):
+    """
+    Return True if filename opens as a GDAL raster, False otherwise
+    """
+    usingExceptions = gdal.GetUseExceptions()
+    gdal.UseExceptions()
+    try:
+        ds = gdal.Open(filename)
+    except Exception:
+        ds = None
+    opensOK = (ds is not None)
+    
+    if not usingExceptions:
+        gdal.DontUseExceptions()
+    return opensOK
+
+
+def opensAsVector(filename):
+    """
+    Return True if filename opens as an OGR vector, False otherwise
+    """
+    usingExceptions = ogr.GetUseExceptions()
+    ogr.UseExceptions()
+    try:
+        ds = ogr.Open(filename)
+    except Exception:
+        ds = None
+    opensOK = (ds is not None)
+    
+    if not usingExceptions:
+        ogr.DontUseExceptions()
+    return opensOK
