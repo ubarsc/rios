@@ -367,55 +367,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             # Now call the function with those args
             userFunction(*functionArgs)
             
-            for name in outfiles.__dict__.keys():
-
-                if name not in outputBlocks.__dict__:
-                    msg = 'Output key %s not found in output blocks' % name
-                    raise rioserrors.KeysMismatch(msg)
-
-                outblock = outputBlocks.__dict__[name]
-                outfileName = getattr(outfiles, name)
-                if name not in writerdict:
-                    # We have not yet created the output writers
-                    if isinstance(outfileName, list):
-                        # We have a list of filenames under this name in the dictionary,
-                        # and so we must create a list of writers. The outblock will also be 
-                        # a list of blocks
-                        writerdict[name] = []
-                        numFiles = len(outfileName)
-                        if len(outblock) != numFiles:
-                            raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
-                                "but only %d blocks given")%(name, numFiles, len(outblock)))
-                        for i in range(numFiles):
-                            filename = outfileName[i]
-                            writer = imagewriter.ImageWriter(filename, info=info, 
-                                firstblock=outblock[i], 
-                                drivername=controls.getOptionForImagename('drivername', name), 
-                                creationoptions=controls.getOptionForImagename('creationoptions', name))
-                            writerdict[name].append(writer)
-                            if controls.getOptionForImagename('thematic', name):
-                                writer.setThematic()
-                    else:
-                        # This name in the dictionary is just a single filename
-                        writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
-                            drivername=controls.getOptionForImagename('drivername', name), 
-                            creationoptions=controls.getOptionForImagename('creationoptions', name))
-                        writerdict[name] = writer
-                        if controls.getOptionForImagename('thematic', name):
-                            writer.setThematic()
-                else:
-                    # The output writers exist, so select the correct one and write the block
-                    if isinstance(outfileName, list):
-                        # We have a list of files for this name, and a list of blocks to write
-                        numFiles = len(outfileName)
-                        if len(outblock) != numFiles:
-                            raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
-                                "but only %d blocks given")%(name, numFiles, len(outblock)))
-                        for i in range(numFiles):
-                            writerdict[name][i].write(outblock[i])
-                    else:
-                        # This name is just a single file, and we write a single block
-                        writerdict[name].write(outblock)
+            writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info)
                     
             if controls.progress is not None:
                 percent = info.getPercent()
@@ -436,6 +388,69 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
                 writer.close(controls.getOptionForImagename('calcStats', name), 
                     controls.getOptionForImagename('statsIgnore', name), controls.progress)
         
+
+
+def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
+    """
+    Called by apply(), to write the output blocks, after
+    they have been created by the user function. 
+    For internal use only. 
+    
+    For all names given in outfiles object, look for a data block 
+    of the same name in the outputBlocks object. If the given name
+    is a list, then the corresponding name should be a list of blocks. 
+    
+    """
+    for name in outfiles.__dict__.keys():
+
+        if name not in outputBlocks.__dict__:
+            msg = 'Output key %s not found in output blocks' % name
+            raise rioserrors.KeysMismatch(msg)
+
+        outblock = outputBlocks.__dict__[name]
+        outfileName = getattr(outfiles, name)
+        if name not in writerdict:
+            # We have not yet created the output writers
+            if isinstance(outfileName, list):
+                # We have a list of filenames under this name in the dictionary,
+                # and so we must create a list of writers. The outblock will also be 
+                # a list of blocks
+                writerdict[name] = []
+                numFiles = len(outfileName)
+                if len(outblock) != numFiles:
+                    raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
+                        "but only %d blocks given")%(name, numFiles, len(outblock)))
+                for i in range(numFiles):
+                    filename = outfileName[i]
+                    writer = imagewriter.ImageWriter(filename, info=info, 
+                        firstblock=outblock[i], 
+                        drivername=controls.getOptionForImagename('drivername', name), 
+                        creationoptions=controls.getOptionForImagename('creationoptions', name))
+                    writerdict[name].append(writer)
+                    if controls.getOptionForImagename('thematic', name):
+                        writer.setThematic()
+            else:
+                # This name in the dictionary is just a single filename
+                writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
+                    drivername=controls.getOptionForImagename('drivername', name), 
+                    creationoptions=controls.getOptionForImagename('creationoptions', name))
+                writerdict[name] = writer
+                if controls.getOptionForImagename('thematic', name):
+                    writer.setThematic()
+        else:
+            # The output writers exist, so select the correct one and write the block
+            if isinstance(outfileName, list):
+                # We have a list of files for this name, and a list of blocks to write
+                numFiles = len(outfileName)
+                if len(outblock) != numFiles:
+                    raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
+                        "but only %d blocks given")%(name, numFiles, len(outblock)))
+                for i in range(numFiles):
+                    writerdict[name][i].write(outblock[i])
+            else:
+                # This name is just a single file, and we write a single block
+                writerdict[name].write(outblock)
+
 
 
 ############
