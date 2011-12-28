@@ -10,6 +10,7 @@ import os
 
 import numpy
 
+from rios import applier
 from rios import imagereader
 from rios import vectorreader
 
@@ -33,8 +34,12 @@ def run():
     
     meanVal2 = calcMeanWithNumpy()
     
-    if meanVal == meanVal2:
+    meanVal3 = calcMeanWithRiosApplier(imgfile, vecfile)
+    
+    if meanVal == meanVal2 and meanVal == meanVal3:
         riostestutils.report(TESTNAME, "Passed")
+    elif meanVal != meanVal3:
+        riostestutils.report(TESTNAME, "Failed. Applier and low-level disagree (%s != %s)"%(meanVal, meanVal3))
     else:
         riostestutils.report(TESTNAME, "Failed. Mean values unequal (%s != %s)"%(meanVal, meanVal2))
     
@@ -79,6 +84,39 @@ def calcMeanWithRios(imgfile, vecfile):
     return meanVal
 
 
+def calcMeanWithRiosApplier(imgfile, vecfile):
+    """
+    Use RIOS's vector facilities, through the applier, to calculate the
+    mean of the image within the vector
+    """
+    infiles = applier.FilenameAssociations()
+    outfiles = applier.FilenameAssociations()
+    controls = applier.ApplierControls()
+    otherargs = applier.OtherInputs()
+    infiles.img = imgfile
+    infiles.vec = vecfile
+    controls.setBurnValue(-1)
+    controls.setVectorDatatype(numpy.int16)
+    otherargs.total = 0
+    otherargs.count = 0
+    
+    applier.apply(meanWithinVec, infiles, outfiles, otherargs, controls=controls)
+
+    mean = otherargs.total / otherargs.count
+    return mean
+    
+
+def meanWithinVec(info, inputs, outputs, otherargs):
+    """
+    Called from RIOS applier to accumulate sum and count of values
+    within a vector
+    """
+    mask = (inputs.vec < 0)
+    vals = inputs.img[mask]
+    otherargs.count += len(vals)
+    otherargs.total += vals.sum()
+
+    
 def calcMeanWithNumpy():
     """
     Calculate the mean using numpy. This kind of relies on just "knowing" how the 
