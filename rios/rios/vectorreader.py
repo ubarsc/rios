@@ -49,7 +49,7 @@ class Vector(object):
         # open the file and get the requested layer
         self.ds = ogr.Open(filename)
         if self.ds is None:
-            raise rioserros.ImageOpenError("Unable to open OGR dataset: %s" % filename)
+            raise rioserrors.ImageOpenError("Unable to open OGR dataset: %s" % filename)
         self.layer = self.ds.GetLayer(inputlayer)
         if self.layer is None:
             raise rioserrors.VectorLayerError("Unable to find layer: %s" % inputlayer)
@@ -59,7 +59,7 @@ class Vector(object):
         if attribute is not None:
             fieldidx = layerdefn.GetFieldIndex(attribute)
             if fieldidx == -1:
-                raise rioserros.VectorAttributeError("Attribute does not exist in file: %s" % attribute)
+                raise rioserrors.VectorAttributeError("Attribute does not exist in file: %s" % attribute)
 
         # check they have passed a polygon type
         validtypes = [ogr.wkbMultiPolygon,ogr.wkbMultiPolygon25D,ogr.wkbPolygon,ogr.wkbPolygon25D]
@@ -189,13 +189,12 @@ class VectorReader(object):
             if err != gdal.CE_None:
                 raise rioserrors.VectorRasterizationError("Rasterization failed")
 
-        finally:
-            # ensure this is called if an exception
-            # is raised to remove temp files etc.
-            # commented out because it seems to be called all the time
-            # any ideas?
-            #vector.cleanup()
-            pass
+        except:
+            # if there has been an exception
+            # ensure all the files are cleaned up
+            vector.cleanup()
+            # and the exception raised again
+            raise
 
         # normally GDAL just returns a 2D array for single
         # layer datasets, but to fit with the RIOS paradigm
@@ -249,6 +248,5 @@ class VectorReader(object):
             self.vectorContainer.cleanup()
 
         else:
-            blockContainer = []
             for vector in self.vectorContainer:
                 vector.cleanup()
