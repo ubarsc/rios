@@ -215,8 +215,8 @@ class ApplierControls(object):
         
     def setProgress(self, progress):
         """
-        Set the progress display object. Default is to 
-        use cuiprogress.CUIProgressBar
+        Set the progress display object. Default is no progress
+        object. 
         """
         self.progress = progress
         
