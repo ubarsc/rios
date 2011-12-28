@@ -344,7 +344,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         if controls.progress is not None:
             controls.progress.setTotalSteps(100)
             controls.progress.setProgress(0)
-            lastpercent = 0
+        lastpercent = 0
         
         for (info, blockdict) in reader:
             inputBlocks.__dict__.update(blockdict)
@@ -360,12 +360,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             userFunction(*functionArgs)
             
             writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info)
-                    
-            if controls.progress is not None:
-                percent = info.getPercent()
-                if percent != lastpercent:
-                    controls.progress.setProgress(percent)
-                    lastpercent = percent
+            lastpercent = updateProgress(controls, info, lastpercent)
                 
         if controls.progress is not None:
             controls.progress.setProgress(100)    
@@ -379,6 +374,18 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             else:
                 writer.close(controls.getOptionForImagename('calcStats', name), 
                     controls.getOptionForImagename('statsIgnore', name), controls.progress)
+
+
+def updateProgress(controls, info, lastpercent):
+    """
+    Called by apply() to update progress
+    """
+    if controls.progress is not None:
+        percent = info.getPercent()
+        if percent != lastpercent:
+            controls.progress.setProgress(percent)
+            lastpercent = percent
+    return lastpercent
 
 
 def handleInputResampling(infiles, controls, reader):
