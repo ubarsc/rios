@@ -11,6 +11,7 @@ import tempfile
 from .imagewriter import DEFAULTDRIVERNAME
 from .imagewriter import DEFAULTCREATIONOPTIONS
 from . import rioserrors
+from .imagereader import ImageReader
 from .imageio import NumpyTypeToGDALType
 from osgeo import ogr
 from osgeo import gdal
@@ -27,7 +28,8 @@ class Vector(object):
     def __init__(self, filename, inputlayer=0, burnvalue=DEFAULTBURNVALUE,
                     attribute=None, filter=None, alltouched=False, datatype=numpy.uint8, 
                     tempdir='.', driver=DEFAULTDRIVERNAME, 
-                    driveroptions=DEFAULTCREATIONOPTIONS):
+                    driveroptions=DEFAULTCREATIONOPTIONS,
+                    nullval=0):
         """
         Constructs a Vector object. filename should be a path to an OGR readable
         dataset. 
@@ -97,6 +99,8 @@ class Vector(object):
         self.datatype = datatype
         # burnvalue
         self.burnvalue = burnvalue
+        # Value used for area not burned
+        self.nullval = nullval
 
     def cleanup(self):
         """
@@ -143,68 +147,40 @@ class VectorReader(object):
         A single numpy array is returned of rasterized data.
         """
         try:
-            # create an output dataset of the right size
-            # with the driver specified by vector.
-            (blockxsize, blockysize) = info.getBlockSize()
-            gdaldatatype = NumpyTypeToGDALType(vector.datatype)
-            outds = vector.driver.Create(vector.temp_image, blockxsize, blockysize, 1, 
-                                    gdaldatatype, vector.driveroptions)
-            if outds is None:
-                raise rioserrors.ImageOpenError("Unable to create temporary file %s" % vector.temp_image)
-
-            # for some reason info.getTransform() 
-            # returns the transform for the whole image
-            # need to adjust it to be for the block
-            transform = list(info.getTransform())
-            blocktl,blockbr = info.getBlockBounds()
-            transform[0] = blocktl.x
-            transform[3] = blocktl.y
-            outds.SetGeoTransform(transform)
-
-            projection = info.getProjection()
-            outds.SetProjection(projection)
-
             if info.isFirstBlock():
-                # if processing the first block, we 
-                # checks to ensure the projection
-                # of the raster is 'equivalent enough' to
-                # that of the vector. This is because:
-                # 1) We can't do on-the-fly reprojection
-                #    due to limitation of the GDAL bindings
-                #    (can't create the pfnTransformer argument)
-                #    so we need to stop if the projections aren't the same.
-                # 2) Due to differences with the way projections
-                #    are stored in different formats often they
-                #    end up being slightly different when they
-                #    should be the same.
-                spatialref = vector.layer.GetSpatialRef()
-                if not info.workingGrid.equivalentProjection(spatialref, pixtolerance):
-                    raise rioserrors.VectorProjectionError("Raster and Vector projections do not match")
-
-
-            # now perform the actual rasterisation
-            err = gdal.RasterizeLayer(outds, [1], vector.layer, burn_values=[vector.burnvalue], 
+                #if not sameProj:
+                #    # Replace vector.layer with a vrt of same proj
+                    
+                # Haven't yet rasterized, so do this for the whole workingGrid
+                (nrows, ncols) = info.workingGrid.getDimensions()
+                numLayers = 1
+                gdaldatatype = NumpyTypeToGDALType(vector.datatype)
+                outds = vector.driver.Create(vector.temp_image, ncols, nrows, numLayers, 
+                    gdaldatatype, vector.driveroptions)
+                if outds is None:
+                    raise rioserrors.ImageOpenError("Unable to create temporary file %s" % vector.temp_image)
+                outds.SetGeoTransform(info.getTransform())
+                outds.SetProjection(info.getProjection())
+                err = gdal.RasterizeLayer(outds, [1], vector.layer, burn_values=[vector.burnvalue], 
                                         options=vector.options)
-
-            if err != gdal.CE_None:
-                raise rioserrors.VectorRasterizationError("Rasterization failed")
-
+                if err != gdal.CE_None:
+                    raise rioserrors.VectorRasterizationError("Rasterization failed")
+                
+                vector.rasterDS = outds
         except Exception:
             # if there has been an exception
             # ensure all the files are cleaned up
             vector.cleanup()
             # and the exception raised again
             raise
+        
+        xoff, yoff = info.getPixColRow(0, 0)
+        ncols, nrows = info.getBlockSize()
+        margin = info.getOverlapSize()
+        block = ImageReader.readBlockWithMargin(vector.rasterDS, xoff, yoff, ncols, nrows, 
+            vector.datatype, margin, [vector.nullval])
 
-        # normally GDAL just returns a 2D array for single
-        # layer datasets, but to fit with the RIOS paradigm
-        # we need to convert to 3D
-        datashape = (1,blockysize,blockxsize)
-        data = numpy.empty(datashape, vector.datatype)
-        data[0] = outds.ReadAsArray()
-        del outds
-
-        return data
+        return block
 
     def rasterize(self, info, pixtolerance=DEFAULTPIXTOLERANCE):
         """
