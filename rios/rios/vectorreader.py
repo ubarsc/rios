@@ -20,7 +20,6 @@ from osgeo import osr
 import numpy
 
 DEFAULTBURNVALUE = 1
-DEFAULTPIXTOLERANCE = 0.5
 
 class Vector(object):
     """
@@ -197,13 +196,19 @@ class VectorReader(object):
         self.vectorContainer = vectorContainer
 
     @staticmethod
-    def rasterizeSingle(info, vector, pixtolerance=DEFAULTPIXTOLERANCE):
+    def rasterizeSingle(info, vector):
         """
         Static method to rasterize a single Vector for the extents
-        specified in the info object. A test is performed to ensure
-        the projections of vector and raster are the same to within
-        pixtolerance.
+        specified in the info object. 
+        
+        For efficiency, it rasterizes the whole working grid, and caches 
+        this, and then reads the relevant section of the gridd for the 
+        current block. 
+        
+        Will reproject the vector into the working projection, if required. 
+        
         A single numpy array is returned of rasterized data.
+        
         """
         try:
             if info.isFirstBlock():
@@ -243,30 +248,30 @@ class VectorReader(object):
 
         return block
     
-    def rasterize(self, info, pixtolerance=DEFAULTPIXTOLERANCE):
+    def rasterize(self, info):
         """
         Rasterize the container of Vector objects passed to the 
         constuctor. Returns blocks in the same form as the 
         container passed to the constructor.
-        A test is performed to ensure
-        the projections of vector and raster are the same to within
-        pixtolerance.
 
         """
         if isinstance(self.vectorContainer, dict):
             blockContainer = {}
             for key in self.vectorContainer:
                 vector = self.vectorContainer[key]
-                block = self.rasterizeSingle(info, vector, pixtolerance)
+                if isinstance(vector, list):
+                    block = [self.rasterizeSingle(info, v) for v in vector]
+                else:
+                    block = self.rasterizeSingle(info, vector)
                 blockContainer[key] = block
 
         elif isinstance(self.vectorContainer, Vector):
-            blockContainer = self.rasterizeSingle(info, self.vectorContainer, pixtolerance)
+            blockContainer = self.rasterizeSingle(info, self.vectorContainer)
     
         else:
             blockContainer = []
             for vector in self.vectorContainer:
-                block = self.rasterizeSingle(info, vector, pixtolerance)
+                block = self.rasterizeSingle(info, vector)
                 blockContainer.append(block)
 
         return blockContainer
