@@ -19,6 +19,7 @@ from . import imagewriter
 from . import imageio
 from . import rioserrors
 from . import vectorreader
+from . import cuiprogress
 
 # All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
@@ -124,7 +125,7 @@ class ApplierControls(object):
         self.footprint = DEFAULTFOOTPRINT
         self.referenceImage = None
         self.referencePixgrid = None
-        self.progress = None
+        self.progress = cuiprogress.SilentProgress()
         self.creationoptions = DEFAULTCREATIONOPTIONS
         self.statscache = None
         self.statsIgnore = 0
