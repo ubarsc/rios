@@ -8,6 +8,7 @@ ImageReader and ImageWriter classes.
 """
 import os
 import tempfile
+import subprocess
 from .imagewriter import DEFAULTDRIVERNAME
 from .imagewriter import DEFAULTCREATIONOPTIONS
 from . import rioserrors
@@ -15,6 +16,7 @@ from .imagereader import ImageReader
 from .imageio import NumpyTypeToGDALType
 from osgeo import ogr
 from osgeo import gdal
+from osgeo import osr
 import numpy
 
 DEFAULTBURNVALUE = 1
@@ -49,6 +51,8 @@ class Vector(object):
 
         """
         # open the file and get the requested layer
+        self.filename = filename
+        self.layerid = inputlayer
         self.ds = ogr.Open(filename)
         if self.ds is None:
             raise rioserrors.ImageOpenError("Unable to open OGR dataset: %s" % filename)
@@ -83,6 +87,7 @@ class Vector(object):
         # save the driver options
         self.driveroptions = driveroptions
 
+        self.tempdir = tempdir
         (fileh,self.temp_image) = tempfile.mkstemp(ext,dir=tempdir)
         # close the file so we can get GDAL to clobber it
         # probably a security hole - not sure
@@ -113,10 +118,64 @@ class Vector(object):
         self.layer = None
         del self.ds
         self.ds = None
+        if hasattr(self, 'reprojectedFile'):
+            drvr = self.reprojectedDS.GetDriver()
+            delattr(self, 'reprojectedDS')
+            drvr.DeleteDataSource(self.reprojectedFile)
 
     def __del__(self):
         # destructor - call cleanup
         self.cleanup()
+    
+    def matchingProj(self, proj):
+        """
+        Returns True if the current vector has the same projection
+        as the given projection. The projectino can be given as either
+        a WKT string, or an osr.SpatialReference instance. 
+        
+        """
+        if isinstance(proj, osr.SpatialReference):
+            sr = proj
+        else:
+            sr = osr.SpatialReference(wkt=proj)
+        selfSr = self.layer.GetSpatialRef()
+        return selfSr.IsSame(sr)
+    
+    def reproject(self, proj):
+        """
+        Reproject the current vector to the given projection. Places the
+        result in a temporary shapefile, and opens it. Returns the ogr.Layer
+        object resulting. 
+         
+        Assumes that shapefile format will always be sufficient - I can't think 
+        of any reason why not. 
+        
+        This reprojection becomes a part of the "state" of the current object, i.e.
+        there can only be one "reprojected" copy of the current vector. This should
+        be fine. 
+        
+        """
+        if isinstance(proj, osr.SpatialReference):
+            projWKT = proj.ExportAsWkt()
+        else:
+            projWKT = proj
+        
+        (fd, tmpVectorfile) = tempfile.mkstemp(prefix='tmp', suffix='.shp',dir=self.tempdir)
+        os.close(fd)
+        # This is naughty, but otherwise ogr2ogr won't work
+        os.remove(tmpVectorfile)
+        cmdList = ["ogr2ogr", '-f', "ESRI Shapefile", '-t_srs', projWKT,
+            tmpVectorfile, self.filename]
+        proc = subprocess.Popen(cmdList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        (stdoutStr, stderrStr) = proc.communicate()
+        if len(stdoutStr) > 0 or len(stderrStr) > 0:
+            msg = "Trouble reprojecting vector\n\n"+stdoutStr+'\n'+stderrStr
+            raise rioserrors.VectorProjectionError(msg)
+        
+        self.reprojectedFile = tmpVectorfile
+        self.reprojectedDS = ogr.Open(tmpVectorfile)
+        layer = self.reprojectedDS.GetLayer(self.layerid)
+        return layer
 
 
 class VectorReader(object):
@@ -148,8 +207,10 @@ class VectorReader(object):
         """
         try:
             if info.isFirstBlock():
-                #if not sameProj:
-                #    # Replace vector.layer with a vrt of same proj
+                projection = info.getProjection()
+                veclayer = vector.layer
+                if not vector.matchingProj(projection):
+                    veclayer = vector.reproject(projection)
                     
                 # Haven't yet rasterized, so do this for the whole workingGrid
                 (nrows, ncols) = info.workingGrid.getDimensions()
@@ -160,8 +221,8 @@ class VectorReader(object):
                 if outds is None:
                     raise rioserrors.ImageOpenError("Unable to create temporary file %s" % vector.temp_image)
                 outds.SetGeoTransform(info.getTransform())
-                outds.SetProjection(info.getProjection())
-                err = gdal.RasterizeLayer(outds, [1], vector.layer, burn_values=[vector.burnvalue], 
+                outds.SetProjection(projection)
+                err = gdal.RasterizeLayer(outds, [1], veclayer, burn_values=[vector.burnvalue], 
                                         options=vector.options)
                 if err != gdal.CE_None:
                     raise rioserrors.VectorRasterizationError("Rasterization failed")
@@ -181,7 +242,7 @@ class VectorReader(object):
             vector.datatype, margin, [vector.nullval])
 
         return block
-
+    
     def rasterize(self, info, pixtolerance=DEFAULTPIXTOLERANCE):
         """
         Rasterize the container of Vector objects passed to the 
