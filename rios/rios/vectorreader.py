@@ -175,9 +175,9 @@ class VectorReader(object):
             raise
         
         xoff, yoff = info.getPixColRow(0, 0)
-        ncols, nrows = info.getBlockSize()
+        blockcols, blockrows = info.getBlockSize()
         margin = info.getOverlapSize()
-        block = ImageReader.readBlockWithMargin(vector.rasterDS, xoff, yoff, ncols, nrows, 
+        block = ImageReader.readBlockWithMargin(vector.rasterDS, xoff, yoff, blockcols, blockrows, 
             vector.datatype, margin, [vector.nullval])
 
         return block
