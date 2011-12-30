@@ -633,6 +633,7 @@ def makeVectorObjects(vectorfiles, controls):
         vectorlayer = controls.getOptionForImagename('vectorlayer', name)
         burnattribute = controls.getOptionForImagename('burnattribute', name)
         filtersql = controls.getOptionForImagename('filtersql', name)
+        tempdir = controls.tempdir
         
         fileValue = getattr(vectorfiles, name)
         if isinstance(fileValue, list):
@@ -640,12 +641,12 @@ def makeVectorObjects(vectorfiles, controls):
             for filename in fileValue:
                 vec = vectorreader.Vector(filename, burnvalue=burnvalue, datatype=vectordatatype,
                     attribute=burnattribute, filter=filtersql, inputlayer=vectorlayer,
-                    alltouched=alltouched)
+                    alltouched=alltouched, tempdir=tempdir)
                 veclist.append(vec)
             vectordict[name] = veclist
         elif isinstance(fileValue, basestring):
             vectordict[name] = vectorreader.Vector(fileValue, burnvalue=burnvalue, 
                 datatype=vectordatatype, attribute=burnattribute, filter=filtersql, 
-                inputlayer=vectorlayer, alltouched=alltouched)
+                inputlayer=vectorlayer, alltouched=alltouched, tempdir=tempdir)
 
     return vectordict
