@@ -108,7 +108,7 @@ class Vector(object):
 
     def cleanup(self):
         """
-        Remove temproary file and close dataset
+        Remove temporary file(s) and close dataset
 
         """
         if os.path.exists(self.temp_image):
@@ -121,6 +121,7 @@ class Vector(object):
             drvr = self.reprojectedDS.GetDriver()
             delattr(self, 'reprojectedDS')
             drvr.DeleteDataSource(self.reprojectedFile)
+            delattr(self, 'reprojectedFile')
 
     def __del__(self):
         # destructor - call cleanup
