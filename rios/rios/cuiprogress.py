@@ -29,7 +29,7 @@ class CUIProgressBar(object):
         self.totalsteps = steps
 
     def setProgress(self,progress):
-          if sys.stdout.isatty(): # don't write if a long file etc
+          if sys.stdout.isatty(): # don't write if a log file etc
               progress = int(float(progress) / self.totalsteps * 100)
               sys.stdout.write('%d%%\r' % progress)
 
