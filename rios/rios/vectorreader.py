@@ -12,6 +12,7 @@ import subprocess
 from .imagewriter import DEFAULTDRIVERNAME
 from .imagewriter import DEFAULTCREATIONOPTIONS
 from . import rioserrors
+from . import cuiprogress
 from .imagereader import ImageReader
 from .imageio import NumpyTypeToGDALType
 from osgeo import ogr
@@ -178,12 +179,19 @@ class Vector(object):
         return layer
 
 
+def rasterizeProgressFunc(value, string, progressObj):
+    """
+    called by gdal.RasterizeLayer
+    """
+    percent = int(value * 100)
+    progressObj.setProgress(percent)
+
 class VectorReader(object):
     """
     Class that performs rasterization of Vector objects.
 
     """
-    def __init__(self, vectorContainer):
+    def __init__(self, vectorContainer, progress=None):
         """
         vectorContainer is a single Vector object, or a 
         list or dictionary that contains
@@ -192,12 +200,17 @@ class VectorReader(object):
         from rasterize(), if a list is passed, 
         a list of blocks is returned, if a dictionary a dictionary is
         returned for each call to rasterize() with the same keys.
-
+        progress is an instance of a Progress class, if none 
+        an instance of cuiprogress.CUIProgress is created an used
         """
         self.vectorContainer = vectorContainer
+        if progress is None:
+            self.progress = cuiprogress.CUIProgressBar()
+        else:
+            self.progress = progress
 
     @staticmethod
-    def rasterizeSingle(info, vector):
+    def rasterizeSingle(info, vector, progress):
         """
         Static method to rasterize a single Vector for the extents
         specified in the info object. 
@@ -228,8 +241,13 @@ class VectorReader(object):
                     raise rioserrors.ImageOpenError("Unable to create temporary file %s" % vector.temp_image)
                 outds.SetGeoTransform(info.getTransform())
                 outds.SetProjection(projection)
+
+                progress.setLabelText("Rasterizing...")
                 err = gdal.RasterizeLayer(outds, [1], veclayer, burn_values=[vector.burnvalue], 
-                                        options=vector.options)
+                                        options=vector.options, callback=rasterizeProgressFunc,
+                                        callback_data=progress)
+                progress.reset()
+
                 if err != gdal.CE_None:
                     raise rioserrors.VectorRasterizationError("Rasterization failed")
                 
@@ -261,18 +279,18 @@ class VectorReader(object):
             for key in self.vectorContainer:
                 vector = self.vectorContainer[key]
                 if isinstance(vector, list):
-                    block = [self.rasterizeSingle(info, v) for v in vector]
+                    block = [self.rasterizeSingle(info, v, self.progress) for v in vector]
                 else:
-                    block = self.rasterizeSingle(info, vector)
+                    block = self.rasterizeSingle(info, vector, self.progress)
                 blockContainer[key] = block
 
         elif isinstance(self.vectorContainer, Vector):
-            blockContainer = self.rasterizeSingle(info, self.vectorContainer)
+            blockContainer = self.rasterizeSingle(info, self.vectorContainer, self.progress)
     
         else:
             blockContainer = []
             for vector in self.vectorContainer:
-                block = self.rasterizeSingle(info, vector)
+                block = self.rasterizeSingle(info, vector, self.progress)
                 blockContainer.append(block)
 
         return blockContainer
