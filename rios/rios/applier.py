@@ -410,7 +410,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         vecreader = None
         if len(vectorfiles) > 0:
             vectordict = makeVectorObjects(vectorfiles, controls)
-            vecreader = vectorreader.VectorReader(vectordict)
+            vecreader = vectorreader.VectorReader(vectordict, progress=controls.progress)
         
         handleInputResampling(imagefiles, controls, reader)
 
