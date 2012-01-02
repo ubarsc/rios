@@ -21,7 +21,7 @@
 
 import sys
 
-class CUIProgressBar:
+class CUIProgressBar(object):
     def __init__(self):
         self.totalsteps = 100
 
@@ -55,7 +55,7 @@ class CUIProgressBar:
         sys.stdout.write("Info: %s\n" % text)
 
 
-class SilentProgress:
+class SilentProgress(object):
     """
     A progress object which is completely silent. 
     """
