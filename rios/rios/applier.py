@@ -587,7 +587,9 @@ def opensAsRaster(filename):
     """
     Return True if filename opens as a GDAL raster, False otherwise
     """
-    usingExceptions = gdal.GetUseExceptions()
+    usingExceptions = False
+    if hasattr(gdal, 'GetUseExceptions'):
+        usingExceptions = gdal.GetUseExceptions()
     gdal.UseExceptions()
     try:
         ds = gdal.Open(filename)
@@ -604,7 +606,9 @@ def opensAsVector(filename):
     """
     Return True if filename opens as an OGR vector, False otherwise
     """
-    usingExceptions = ogr.GetUseExceptions()
+    usingExceptions = False
+    if hasattr(ogr, 'GetUseExceptions'):
+        usingExceptions = ogr.GetUseExceptions()
     ogr.UseExceptions()
     try:
         ds = ogr.Open(filename)
