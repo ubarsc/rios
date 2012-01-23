@@ -8,7 +8,7 @@ Requirements.
 RIOS Installation steps, for Linux and similar. 
 -----------------------------------------------
     1. Decide where you are going to install RIOS. This will be referred 
-       to as riosRoot. 
+       to here as riosRoot. 
     2. tar xfz rios-m.n.tar.gz
     3. cd rios-m.n
     4. python setup.py install --prefix=riosRoot
@@ -17,9 +17,12 @@ RIOS Installation steps, for Linux and similar.
             Add riosRoot/lib/pythonA.B/site-packages to $PYTHONPATH
        where pythonA.B refers to the version of python you are running. 
 
-       If you wish to use a default GDAL driver other than HFA, then set
-       the environment variables, which are then given to GDAL
-            RIOS_DFLT_DRIVER="short name of GDAL driver"
-            RIOS_DFLT_DRIVEROPTIONS="list of driver options (space-separated)"
     6. Test the installation by executing the command 
            testrios.py
+
+Environment Variables
+---------------------
+    If you wish to use a default GDAL driver other than HFA, then set
+    the environment variables, which are then given to GDAL
+         RIOS_DFLT_DRIVER="short name of GDAL driver"
+         RIOS_DFLT_DRIVEROPTIONS="list of driver options (space-separated)"
