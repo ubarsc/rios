@@ -70,7 +70,12 @@ class Vector(object):
         # check they have passed a polygon type
         validtypes = [ogr.wkbMultiPolygon,ogr.wkbMultiPolygon25D,ogr.wkbPolygon,ogr.wkbPolygon25D]
         if layerdefn.GetGeomType() not in validtypes:
-            raise rioserrors.VectorGeometryTypeError("Can only rasterize polygon types")
+            gdalVersion = None
+            if hasattr(gdal, '__version__'):
+                gdalVersion = gdal.__version__
+            if gdalVersion is None or gdalVersion < '1.9.0':
+                raise rioserrors.VectorGeometryTypeError("Can only rasterize polygon types "+
+                    "with this version of gdal. Need gdal version >= 1.9.0")
 
         # apply the attribute filter if passed
         if filter is not None:
