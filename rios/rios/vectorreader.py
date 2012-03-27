@@ -169,7 +169,9 @@ class Vector(object):
             tmpVectorfile, self.filename]
         proc = subprocess.Popen(cmdList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         (stdoutStr, stderrStr) = proc.communicate()
-        if len(stdoutStr) > 0 or len(stderrStr) > 0:
+        # sometimes warnings etc printed to stderr so we can't
+        # rely on that for testing success. Use returncode instead.
+        if proc.returncode != 0:
             msg = "Trouble reprojecting vector\n\n"+stdoutStr+'\n'+stderrStr
             raise rioserrors.VectorProjectionError(msg)
         
