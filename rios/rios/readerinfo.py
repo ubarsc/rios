@@ -279,13 +279,24 @@ class ReaderInfo(object):
         underlying the block. This should be the
         same as what was set for the stats ignore value
         when that dataset was created. 
+        The value is cast to the same data type as the 
+        dataset.
         Note: actually returns the no data value for
         the first band by default. The assumption is that the dataset
         was created using PyModeller hence the same for all bands.
         """
+        from numpy import cast
         ds = self.getGDALDatasetFor(block)
         band = ds.GetRasterBand(band)
-        return band.GetNoDataValue()
+        novalue = band.GetNoDataValue()
+
+        # if there is a valid novalue, cast it to the type
+        # of the dataset. Note this creates a numpy 0-d array
+        if not novalue is None:
+            numpytype = imageio.GDALTypeToNumpyType(band.DataType)
+            novalue = cast[numpytype](novalue)
+
+        return novalue
         
     def getPercent(self):
         """
