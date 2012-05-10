@@ -33,10 +33,6 @@ DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
 INTERSECTION = imageio.INTERSECTION
 UNION = imageio.UNION
 
-# Couple of extra function which we should bring into this namespace, so that 
-# users can access them from here.
-from imageio import GDALTypeToNumpyType, NumpyTypeToGDALType
-
 
 class FilenameAssociations(object): 
     """
