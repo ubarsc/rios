@@ -167,14 +167,12 @@ class ImageWriter(object):
                     
     def setThematic(self):
         """
-        Sets the output file to thematic
+        Sets the output file to thematic. If file is multi-layer,
+        then all bands are set to thematic. 
         """
-        if self.ds.RasterCount != 1:
-            msg = 'Only able to set single layer images as Thematic'
-            raise rioserrors.ThematicError(msg)
-        
-        band1 = self.ds.GetRasterBand(1)
-        band1.SetMetadataItem('LAYER_TYPE','thematic')
+        for i in range(1, self.ds.RasterCount+1):
+            band = self.ds.GetRasterBand(i)
+            band.SetMetadataItem('LAYER_TYPE','thematic')
                         
     def setColorTable(self, colortable, band=1):
         """
