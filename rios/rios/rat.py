@@ -173,7 +173,14 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None):
             val = sequence[rowNum]
 
         if colType == gdal.GFT_Integer:
-            attrTbl.SetValueAsInt(rowNum, colNum, val)
+            # appears that swig cannot convert numpy.int64
+            # to the int type required by SetValueAsInt
+            # so we need to cast. 
+            # This is a problem as readColumn returns numpy.int64 
+            # for integer columns. 
+            # Seems fine converting numpy.float64 to 
+            # float however for SetValueAsDouble.
+            attrTbl.SetValueAsInt(rowNum, colNum, int(val))
         elif colType == gdal.GFT_Real:
             attrTbl.SetValueAsDouble(rowNum, colNum, val)
         else:
