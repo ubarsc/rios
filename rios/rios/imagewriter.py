@@ -255,13 +255,15 @@ class ImageWriter(object):
         """
         self.blocknum = 0
     
-    def close(self,calcStats=False,statsIgnore=None,progress=None):
+    def close(self, calcStats=False, statsIgnore=None, progress=None, omitPyramids=False):
         """
         Closes the open dataset
         """
         if calcStats:
             from . import calcstats
-            calcstats.calcStats(self.ds,progress,statsIgnore)
+            calcstats.addStatistics(self.ds, progress, statsIgnore)
+            if not omitPyramids:
+                calcstats.addPyramid(self.ds, progress)
         
         self.ds.FlushCache()
         del self.ds

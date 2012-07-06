@@ -94,6 +94,7 @@ class ApplierControls(object):
         statsIgnore     global stats ignore value for output (i.e. null value)
         statscache      stats cache if pre-calculated
         calcStats       True/False to signal calculate statistics and pyramids
+        omitPyramids    True/False to omit pyramids when doing stats
         tempdir         Name of directory for temp files (resampling, etc.)
         resampleMethod  String for resample method, when required (as per GDAL)
     
@@ -130,6 +131,7 @@ class ApplierControls(object):
         self.statscache = None
         self.statsIgnore = 0
         self.calcStats = True
+        self.omitPyramids = False
         self.thematic = False
         self.tempdir = '.'
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
@@ -269,6 +271,15 @@ class ApplierControls(object):
         pyramid layers are calculated (if supported by the driver
         """
         self.setOptionForImagename('calcStats', imagename, calcStats)
+        
+    def setOmitPyramids(self, omitPyramids, imagename=None):
+        """
+        Set True to omit pyramid layers, False otherwise. If True, then when
+        statistics are being calculated, pyramid layers will be omitted, 
+        otherwise they will be created at the same time. 
+        Usual default is False. 
+        """
+        self.setOptionForImagename('omitPyramids', imagename, omitPyramids)
         
     def setThematic(self, thematicFlag, imagename=None):
         "Set boolean value of thematic flag (may not be supported by the GDAL driver)"
@@ -457,10 +468,12 @@ def closeOutputImages(writerdict, outfiles, controls):
         if isinstance(writer, list):
             for singleWriter in writer:
                 singleWriter.close(controls.getOptionForImagename('calcStats', name), 
-                    controls.getOptionForImagename('statsIgnore', name), controls.progress)
+                    controls.getOptionForImagename('statsIgnore', name), controls.progress,
+                    controls.getOptionForImagename('omitPyramids', name))
         else:
             writer.close(controls.getOptionForImagename('calcStats', name), 
-                controls.getOptionForImagename('statsIgnore', name), controls.progress)
+                controls.getOptionForImagename('statsIgnore', name), controls.progress,
+                controls.getOptionForImagename('omitPyramids', name))
 
 
 def updateProgress(controls, info, lastpercent):
