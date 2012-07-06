@@ -467,13 +467,15 @@ def closeOutputImages(writerdict, outfiles, controls):
         writer = writerdict[name]
         if isinstance(writer, list):
             for singleWriter in writer:
-                singleWriter.close(controls.getOptionForImagename('calcStats', name), 
-                    controls.getOptionForImagename('statsIgnore', name), controls.progress,
-                    controls.getOptionForImagename('omitPyramids', name))
+                singleWriter.close(calcStats=controls.getOptionForImagename('calcStats', name), 
+                    statsIgnore=controls.getOptionForImagename('statsIgnore', name), 
+                    progress=controls.progress,
+                    omitPyramids=controls.getOptionForImagename('omitPyramids', name))
         else:
-            writer.close(controls.getOptionForImagename('calcStats', name), 
-                controls.getOptionForImagename('statsIgnore', name), controls.progress,
-                controls.getOptionForImagename('omitPyramids', name))
+            writer.close(calcStats=controls.getOptionForImagename('calcStats', name), 
+                statsIgnore=controls.getOptionForImagename('statsIgnore', name), 
+                progress=controls.progress,
+                omitPyramids=controls.getOptionForImagename('omitPyramids', name))
 
 
 def updateProgress(controls, info, lastpercent):
