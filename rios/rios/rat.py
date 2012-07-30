@@ -46,7 +46,7 @@ def readColumnFromBand(gdalBand, colName):
             elif dtype == gdal.GFT_Real:
                 colArray = numpy.zeros(numRows,float)
             elif dtype == gdal.GFT_String:
-                # for string attributes, create a list
+                # for string attributes, create a list - convert later
                 colArray = []
             else:
                 msg = "Can't interpret data type of attribute"
@@ -64,6 +64,10 @@ def readColumnFromBand(gdalBand, colName):
                 else:
                     val = rat.GetValueAsString(row,col)
                     colArray.append(val)
+
+            if isinstance(colArray, list):
+                # convert to array - numpy can handle this now it can work out the lengths
+                colArray = numpy.array(colArray)
                 
             # exit loop
             break
