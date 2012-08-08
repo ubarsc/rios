@@ -136,14 +136,17 @@ class ReaderInfo(object):
         
     def getWindowSize(self):
         """
-        Returns the size of the current window
+        Returns the size of the current window. Returns a 
+        tuple (numCols, numRows)
+        
         """
         return (self.windowxsize, self.windowysize)
         
     def getOverlapSize(self):
         """
         Returns the size of the pixel overlap between
-        each window
+        each window. This is the number of pixels added as 
+        margin around each block
         """
         return self.overlap
         
@@ -157,7 +160,7 @@ class ReaderInfo(object):
     def getTransform(self):
         """
         Return the current transform between world
-        and pixel coords
+        and pixel coords. This is as defined by GDAL. 
         """
         return self.workingGrid.makeGeoTransform()
         
@@ -184,20 +187,28 @@ class ReaderInfo(object):
 
     def getBlockSize(self):
         """
-        Get the size of the current block
+        Get the size of the current block. Returns a tuple
+            (numCols, numRows)
+        for the current block. Mostly the same as the window size, 
+        except on the edge of the raster. 
         """
         return (self.blockwidth,self.blockheight)
 
     def setBlockBounds(self,blocktl,blockbr):
         """
-        Sets the coordinate boulds of the current block
+        Sets the coordinate bounds of the current block
         """
         self.blocktl = blocktl
         self.blockbr = blockbr
 
     def getBlockBounds(self):
         """
-        Gets the coordinate bounds of the current block
+        Gets the coordinate bounds of the current block. Returns
+        a tuple 
+            (blockTopLeft, blockBottomRight)
+        where each coord is a structure contain an x and y coord,
+        as in blockTopLeft.x or blockBottomRight.y
+        
         """
         return (self.blocktl,self.blockbr)
         
@@ -222,7 +233,16 @@ class ReaderInfo(object):
     
     def getPixColRow(self,x,y):
         """
-        Get the image Row and Column for the nominated block x and y
+        Get the (col, row) relative to the current image grid,
+        for the nominated pixel within the current block. The
+        given (x, y) are column/row numbers (starting at zero),
+        and the return is a tuple
+            (column, row)
+        where these are relative to the whole of the current
+        working grid. If working with a single raster, this is the same
+        as for that raster, but if working with multiple rasters, 
+        the working grid is the intersection or union of them. 
+         
         """
         col = self.xblock * self.windowxsize + x
         row = self.yblock * self.windowysize + y
@@ -230,7 +250,13 @@ class ReaderInfo(object):
     
     def getPixCoord(self,x,y):
         """
-        Get the image coordinate for the nominated block x and y
+        Get the image world coordinates for the top-left corner of a single
+        pixel within the current block. The given (x, y) are the column/row 
+        number within the current block, the return value is a tuple
+            (xCoord, yCoord)
+        of the top-left corner of that pixel, in the world coordinates of the
+        current working grid. 
+        
         """
         (col,row) = self.getPixColRow(x,y)
         coord = imageio.pix2wld(self.workingGrid.makeGeoTransform(),col,row)
@@ -281,9 +307,6 @@ class ReaderInfo(object):
         when that dataset was created. 
         The value is cast to the same data type as the 
         dataset.
-        Note: actually returns the no data value for
-        the first band by default. The assumption is that the dataset
-        was created using PyModeller hence the same for all bands.
         """
         from numpy import cast
         ds = self.getGDALDatasetFor(block)
