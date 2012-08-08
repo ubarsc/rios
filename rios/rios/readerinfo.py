@@ -7,6 +7,9 @@ read and info on the current block
 """
 
 import math
+
+import numpy
+
 from . import imageio
 from . import rat
 
@@ -211,6 +214,24 @@ class ReaderInfo(object):
         
         """
         return (self.blocktl,self.blockbr)
+    
+    def getBlockCoordArrays(self):
+        """
+        Return a tuple of the world coordinates for every pixel
+        in the current block. Each array has the same shape as the 
+        current block. Return value is a tuple
+            (xBlock, yBlock)
+        where the values in xBlock are the X coordinates of each pixel,
+        and similarly for yBlock. 
+        
+        """
+        (tl, br) = self.getBlockBounds()
+        (nCols, nRows) = self.getBlockSize()
+        (xRes, yRes) = self.getPixelSize()
+        (rowNdx, colNdx) = numpy.mgrid[0:nRows, 0:nCols]
+        xBlock = tl.x + xRes/2.0 + colNdx * xRes
+        yBlock = tl.y - yRes/2.0 - rowNdx * yRes
+        return (xBlock, yBlock)
         
     def setBlockCount(self,xblock,yblock):
         """
