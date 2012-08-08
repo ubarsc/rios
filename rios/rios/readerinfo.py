@@ -224,7 +224,7 @@ class ReaderInfo(object):
         where the values in xBlock are the X coordinates of the centre
         of each pixel, and similarly for yBlock. 
         
-        The coordinates returns are for the pixel centres. This is 
+        The coordinates returned are for the pixel centres. This is 
         slightly inconsistent with usual GDAL usage, but more likely to
         be what one wants. 
         
