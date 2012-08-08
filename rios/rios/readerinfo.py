@@ -329,7 +329,6 @@ class ReaderInfo(object):
         The value is cast to the same data type as the 
         dataset.
         """
-        from numpy import cast
         ds = self.getGDALDatasetFor(block)
         band = ds.GetRasterBand(band)
         novalue = band.GetNoDataValue()
@@ -338,7 +337,7 @@ class ReaderInfo(object):
         # of the dataset. Note this creates a numpy 0-d array
         if novalue is not None:
             numpytype = imageio.GDALTypeToNumpyType(band.DataType)
-            novalue = cast[numpytype](novalue)
+            novalue = numpy.cast[numpytype](novalue)
 
         return novalue
         
