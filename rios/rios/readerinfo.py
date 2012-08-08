@@ -221,8 +221,12 @@ class ReaderInfo(object):
         in the current block. Each array has the same shape as the 
         current block. Return value is a tuple
             (xBlock, yBlock)
-        where the values in xBlock are the X coordinates of each pixel,
-        and similarly for yBlock. 
+        where the values in xBlock are the X coordinates of the centre
+        of each pixel, and similarly for yBlock. 
+        
+        The coordinates returns are for the pixel centres. This is 
+        slightly inconsistent with usual GDAL usage, but more likely to
+        be what one wants. 
         
         """
         (tl, br) = self.getBlockBounds()
