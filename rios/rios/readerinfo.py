@@ -315,7 +315,7 @@ class ReaderInfo(object):
 
         # if there is a valid novalue, cast it to the type
         # of the dataset. Note this creates a numpy 0-d array
-        if not novalue is None:
+        if novalue is not None:
             numpytype = imageio.GDALTypeToNumpyType(band.DataType)
             novalue = cast[numpytype](novalue)
 
