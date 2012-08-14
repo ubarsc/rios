@@ -52,16 +52,18 @@ def readColumnFromBand(gdalBand, colName):
                 msg = "Can't interpret data type of attribute"
                 raise rioserrors.AttributeTableTypeError(msg)
             
-            for row in range(numRows):
         
-                # do it checking the type
-                if dtype == gdal.GFT_Integer:
+            # do it checking the type outside the loop for maximum speed
+            if dtype == gdal.GFT_Integer:
+                for row in range(numRows):
                     val = rat.GetValueAsInt(row,col)
                     colArray[row] = val
-                elif dtype == gdal.GFT_Real:
+            elif dtype == gdal.GFT_Real:
+                for row in range(numRows):
                     val = rat.GetValueAsDouble(row,col)
                     colArray[row] = val
-                else:
+            else:
+                for row in range(numRows):
                     val = rat.GetValueAsString(row,col)
                     colArray.append(val)
 
