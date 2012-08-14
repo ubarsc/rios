@@ -270,8 +270,8 @@ class InputCollection(object):
         
             # temp image file name - based on driver extension
             ext = ''
-            if "DMD_EXTENSION" in drivermeta:
-                ext = '.' + drivermeta["DMD_EXTENSION"]
+            if gdal.DMD_EXTENSION in drivermeta:
+                ext = '.' + drivermeta[gdal.DMD_EXTENSION]
 
         (fileh,temp_image) = tempfile.mkstemp(ext,dir=tempdir)
         os.close(fileh)

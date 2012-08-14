@@ -87,8 +87,8 @@ class Vector(object):
         self.driver = gdal.GetDriverByName(driver)
         drivermeta = self.driver.GetMetadata()
         ext = ''
-        if "DMD_EXTENSION" in drivermeta:
-            ext = '.' + drivermeta["DMD_EXTENSION"]
+        if gdal.DMD_EXTENSION in drivermeta:
+            ext = '.' + drivermeta[gdal.DMD_EXTENSION]
         # save the driver options
         self.driveroptions = driveroptions
 
