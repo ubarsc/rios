@@ -1,5 +1,5 @@
 """
-    This file is part of PyModeller
+    This file is part of RIOS
     Copyright (C) 2008  Sam Gillingham.
 
     This program is free software: you can redistribute it and/or modify
@@ -16,7 +16,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-#This module creates pyramid layers and calculates statistics for ERDAS Imagine files
+#This module creates pyramid layers and calculates statistics for orignally for
+# ERDAS Imagine files but should work with any other format that supports
+# pyramid layers and statistics
 
 
 import numpy
@@ -98,17 +100,18 @@ def addStatistics(ds,progress,ignore=None):
   
     for bandnum in range(ds.RasterCount):
         band = ds.GetRasterBand(bandnum + 1)
-    
-        if ignore is not None:
-            # tell QGIS that the ignore value was ignored
-            band.SetNoDataValue(ignore)
-      
-        # get GDAL to calculate statistics - force recalculation
-        (minval,maxval,meanval,stddevval) = band.GetStatistics(False,True)
 
         # fill in the metadata
         tmpmeta = band.GetMetadata()
     
+        if ignore is not None:
+            # tell QGIS that the ignore value was ignored
+            band.SetNoDataValue(ignore)
+            tmpmeta["STATISTICS_EXCLUDEDVALUES"] = str(ignore) # doesn't seem to do anything
+      
+        # get GDAL to calculate statistics - force recalculation
+        (minval,maxval,meanval,stddevval) = band.GetStatistics(False,True)
+
         percent = percent + percentstep
         progress.setProgress(percent)
     
@@ -122,14 +125,32 @@ def addStatistics(ds,progress,ignore=None):
             # if byte data use 256 bins and the whole range
             histmin = 0
             histmax = 255
+            histCalcMin = -0.5
+            histCalcMax = 255.5
             histnbins = 256
             tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
+        elif tmpmeta["LAYER_TYPE"] == 'thematic':
+            # all other thematic types a bin per value
+            histmin = 0
+            histmax = int(numpy.ceil(maxval))
+            histCalcMin = -0.5
+            histCalcMax = maxval + 0.5
+            histnbins = histmax + 1
+            tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
         else:
-            # other types use 255 bins and the range of the data
+            histrange = int(numpy.ceil(maxval) - numpy.floor(minval))
             histmin = minval
             histmax = maxval
-            histnbins = 255
-            tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
+            if histrange <= 256:
+                histnbins = histrange
+                tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
+                histCalcMin = histmin - 0.5
+                histCalcMax = histmax + 0.5
+            else:
+                histnbins = 256
+                tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
+                histCalcMin = histmin
+                histCalcMax = histmax
       
         userdata = ProgressUserData()
         userdata.progress = progress
@@ -137,16 +158,16 @@ def addStatistics(ds,progress,ignore=None):
         userdata.curroffset = percent
       
         # get histogram and force GDAL to recalulate it
-        hist = band.GetHistogram(histmin,histmax,histnbins,False,False,progressFunc,userdata)
+        hist = band.GetHistogram(histCalcMin,histCalcMax,histnbins,False,False,progressFunc,userdata)
 
         # do the mode - bin with the highest count
         modebin = numpy.argmax(hist)
         step = float(histmax - histmin) / histnbins
         modeval = modebin * step + histmin
-        if band.DataType == gdalconst.GDT_Byte:
-            tmpmeta["STATISTICS_MODE"] = str(int(round(modeval)))
-        else:
+        if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
             tmpmeta["STATISTICS_MODE"] = str(modeval)
+        else:
+            tmpmeta["STATISTICS_MODE"] = str(int(round(modeval)))
     
         tmpmeta["STATISTICS_HISTOMIN"] = str(histmin)
         tmpmeta["STATISTICS_HISTOMAX"] = str(histmax)
@@ -163,16 +184,32 @@ def addStatistics(ds,progress,ignore=None):
                 break
         medianbin += 1
         medianval = medianbin * step + histmin
-        if band.DataType == gdalconst.GDT_Byte:
-            tmpmeta["STATISTICS_MEDIAN"]  = str(int(round(medianval)))
-        else:
+        if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
             tmpmeta["STATISTICS_MEDIAN"]  = str(medianval)
+        else:
+            tmpmeta["STATISTICS_MEDIAN"]  = str(int(round(medianval)))
     
         # set the data
         band.SetMetadata(tmpmeta)
+
+        # if it is thematic and there is no colour table
+        # add one because Imagine fails in weird ways otherwise
+        # we make a random colour table to make it obvious
+        if tmpmeta["LAYER_TYPE"] == 'thematic' and band.GetColorTable() is None:
+            import random # this also seeds on the time
+            colorTable = gdal.ColorTable()
+            alpha = 255 
+            for i in range(histnbins):
+                c1 = int(random.random() * 255)
+                c2 = int(random.random() * 255)
+                c3 = int(random.random() * 255)
+                entry = (c1, c2, c3, alpha)
+                colorTable.SetColorEntry(i, entry)
+            band.SetColorTable(colorTable)
     
         percent = percent + percentstep
         progress.setProgress(percent)
+
         if progress.wasCancelled():
             raise ProcessCancelledError()
     

@@ -261,6 +261,9 @@ class ImageWriter(object):
         """
         if calcStats:
             from . import calcstats
+            from .cuiprogress import SilentProgress
+            if progress is None:
+                progress = SilentProgress()
             calcstats.addStatistics(self.ds, progress, statsIgnore)
             if not omitPyramids:
                 calcstats.addPyramid(self.ds, progress)
