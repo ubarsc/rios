@@ -119,6 +119,9 @@ def addStatistics(ds,progress,ignore=None):
         tmpmeta["STATISTICS_MAXIMUM"] = str(maxval)
         tmpmeta["STATISTICS_MEAN"]    = str(meanval)
         tmpmeta["STATISTICS_STDDEV"]  = str(stddevval)
+        # because we did at full res - these are the default anyway
+        tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
+        tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
 
         # create a histogram so we can do the rest
         if band.DataType == gdalconst.GDT_Byte:
