@@ -587,6 +587,8 @@ def separateVectors(infiles):
             # We only check the first filename in a list. If the user
             # mixed rasters and vectors in one list, things would go horribly wrong
             testFilename = fileValue[0]
+        else:
+            testFilename = None
 
         if opensAsRaster(testFilename):
             setattr(imagefiles, name, fileValue)
