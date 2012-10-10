@@ -49,10 +49,8 @@ def readColumnFromBand(gdalBand, colName):
             # and fill in the values
             if HAVE_TURBORAT:
                 # if turborat is available use that
-                print 'using turborat'
                 colArray = turborat.readColumn(rat, col)
             else:
-                print 'no turborat - will be slow'
                 # do it the slow way
                 dtype = rat.GetTypeOfCol(col)
                 if dtype == gdal.GFT_Integer:
@@ -184,13 +182,11 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None):
 
     if HAVE_TURBORAT:
         # use turborat to write values to RAT if available
-        print 'writing using turbo rat'
         if not isinstance(sequence, numpy.ndarray):
             # turborat.writeColumn needs an array
             sequence = numpy.array(sequence)
         turborat.writeColumn(attrTbl, colNum, sequence, rowsToAdd)
     else:
-        print 'not using turbo rat'
         defaultValues = {gdal.GFT_Integer:0, gdal.GFT_Real:0.0, gdal.GFT_String:''}
 
         # go thru and set each value into the RAT
