@@ -12,6 +12,13 @@ from osgeo import gdal
 import numpy
 from . import rioserrors
 
+# use turborat if available
+try:
+    from turbogdal import turborat
+    HAVE_TURBORAT = True
+except ImportError:
+    HAVE_TURBORAT = False
+
 if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
     # we just use basestring
@@ -40,36 +47,43 @@ def readColumnFromBand(gdalBand, colName):
         if rat.GetNameOfCol(col) == colName:
             # found it - create the output array
             # and fill in the values
-            dtype = rat.GetTypeOfCol(col)
-            if dtype == gdal.GFT_Integer:
-                colArray = numpy.zeros(numRows,int)
-            elif dtype == gdal.GFT_Real:
-                colArray = numpy.zeros(numRows,float)
-            elif dtype == gdal.GFT_String:
-                # for string attributes, create a list - convert later
-                colArray = []
+            if HAVE_TURBORAT:
+                # if turborat is available use that
+                print 'using turborat'
+                colArray = turborat.readColumn(rat, col)
             else:
-                msg = "Can't interpret data type of attribute"
-                raise rioserrors.AttributeTableTypeError(msg)
+                print 'no turborat - will be slow'
+                # do it the slow way
+                dtype = rat.GetTypeOfCol(col)
+                if dtype == gdal.GFT_Integer:
+                    colArray = numpy.zeros(numRows,int)
+                elif dtype == gdal.GFT_Real:
+                    colArray = numpy.zeros(numRows,float)
+                elif dtype == gdal.GFT_String:
+                    # for string attributes, create a list - convert later
+                    colArray = []
+                else:
+                    msg = "Can't interpret data type of attribute"
+                    raise rioserrors.AttributeTableTypeError(msg)
             
         
-            # do it checking the type outside the loop for maximum speed
-            if dtype == gdal.GFT_Integer:
-                for row in range(numRows):
-                    val = rat.GetValueAsInt(row,col)
-                    colArray[row] = val
-            elif dtype == gdal.GFT_Real:
-                for row in range(numRows):
-                    val = rat.GetValueAsDouble(row,col)
-                    colArray[row] = val
-            else:
-                for row in range(numRows):
-                    val = rat.GetValueAsString(row,col)
-                    colArray.append(val)
+                # do it checking the type outside the loop for maximum speed
+                if dtype == gdal.GFT_Integer:
+                    for row in range(numRows):
+                        val = rat.GetValueAsInt(row,col)
+                        colArray[row] = val
+                elif dtype == gdal.GFT_Real:
+                    for row in range(numRows):
+                        val = rat.GetValueAsDouble(row,col)
+                        colArray[row] = val
+                else:
+                    for row in range(numRows):
+                        val = rat.GetValueAsString(row,col)
+                        colArray.append(val)
 
-            if isinstance(colArray, list):
-                # convert to array - numpy can handle this now it can work out the lengths
-                colArray = numpy.array(colArray)
+                if isinstance(colArray, list):
+                    # convert to array - numpy can handle this now it can work out the lengths
+                    colArray = numpy.array(colArray)
                 
             # exit loop
             break
@@ -168,29 +182,38 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None):
     if gdalBand.DataType == gdal.GDT_Byte:
         rowsToAdd = 256
 
-    defaultValues = {gdal.GFT_Integer:0, gdal.GFT_Real:0.0, gdal.GFT_String:''}
+    if HAVE_TURBORAT:
+        # use turborat to write values to RAT if available
+        print 'writing using turbo rat'
+        if not isinstance(sequence, numpy.ndarray):
+            # turborat.writeColumn needs an array
+            sequence = numpy.array(sequence)
+        turborat.writeColumn(attrTbl, colNum, sequence, rowsToAdd)
+    else:
+        print 'not using turbo rat'
+        defaultValues = {gdal.GFT_Integer:0, gdal.GFT_Real:0.0, gdal.GFT_String:''}
 
-    # go thru and set each value into the RAT
-    for rowNum in range(rowsToAdd):
-        if rowNum >= len(sequence):
-            # they haven't given us enough values - fill in with default
-            val = defaultValues[colType]
-        else:
-            val = sequence[rowNum]
+        # go thru and set each value into the RAT
+        for rowNum in range(rowsToAdd):
+            if rowNum >= len(sequence):
+                # they haven't given us enough values - fill in with default
+                val = defaultValues[colType]
+            else:
+                val = sequence[rowNum]
 
-        if colType == gdal.GFT_Integer:
-            # appears that swig cannot convert numpy.int64
-            # to the int type required by SetValueAsInt
-            # so we need to cast. 
-            # This is a problem as readColumn returns numpy.int64 
-            # for integer columns. 
-            # Seems fine converting numpy.float64 to 
-            # float however for SetValueAsDouble.
-            attrTbl.SetValueAsInt(rowNum, colNum, int(val))
-        elif colType == gdal.GFT_Real:
-            attrTbl.SetValueAsDouble(rowNum, colNum, val)
-        else:
-            attrTbl.SetValueAsString(rowNum, colNum, val)
+            if colType == gdal.GFT_Integer:
+                # appears that swig cannot convert numpy.int64
+                # to the int type required by SetValueAsInt
+                # so we need to cast. 
+                # This is a problem as readColumn returns numpy.int64 
+                # for integer columns. 
+                # Seems fine converting numpy.float64 to 
+                # float however for SetValueAsDouble.
+                attrTbl.SetValueAsInt(rowNum, colNum, int(val))
+            elif colType == gdal.GFT_Real:
+                attrTbl.SetValueAsDouble(rowNum, colNum, val)
+            else:
+                attrTbl.SetValueAsString(rowNum, colNum, val)
 
     gdalBand.SetDefaultRAT(attrTbl)
 
