@@ -109,8 +109,19 @@ def addStatistics(ds,progress,ignore=None):
             band.SetNoDataValue(ignore)
             tmpmeta["STATISTICS_EXCLUDEDVALUES"] = str(ignore) # doesn't seem to do anything
       
-        # get GDAL to calculate statistics - force recalculation
-        (minval,maxval,meanval,stddevval) = band.GetStatistics(False,True)
+        # get GDAL to calculate statistics - force recalculation. Trap errors 
+        useExceptions = gdal.GetUseExceptions()
+        gdal.UseExceptions()
+        try:
+            (minval,maxval,meanval,stddevval) = band.GetStatistics(False,True)
+        except RuntimeError as e:
+            if str(e).endswith('Failed to compute statistics, no valid pixels found in sampling.'):
+                minval = ignore
+                maxval = ignore
+                meanval = ignore
+                stddevval = 0
+        if not useExceptions:
+            gdal.DontUseExceptions()
 
         percent = percent + percentstep
         progress.setProgress(percent)
