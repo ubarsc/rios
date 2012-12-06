@@ -49,6 +49,10 @@ DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
 INTERSECTION = imageio.INTERSECTION
 UNION = imageio.UNION
 
+if sys.version_info[0] > 2:
+    # hack for Python 3 which uses str instead of basestring
+    # we just use basestring
+    basestring = str
 
 class FilenameAssociations(object): 
     """
@@ -176,7 +180,7 @@ class ApplierControls(object):
         if imagename is None:
             setattr(self, option, value)
         else:
-            if not self.optionsByImage.has_key(option):
+            if not option in self.optionsByImage:
                 self.optionsByImage[option] = {}
             self.optionsByImage[option][imagename] = value
             
@@ -192,7 +196,7 @@ class ApplierControls(object):
         
         """
         value = getattr(self, option)
-        if self.optionsByImage.has_key(option):
+        if option in self.optionsByImage:
             if self.optionsByImage[option].has_key(imagename):
                 value = self.optionsByImage[option][imagename]
         return value
