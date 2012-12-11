@@ -158,12 +158,14 @@ def getColumnNames(imgFile, bandNumber=1):
 
     return getColumnNamesFromBand(gdalBand)
 
-def writeColumnToBand(gdalBand, colName, sequence, colType=None):
+def writeColumnToBand(gdalBand, colName, sequence, colType=None, 
+                    colUsage=gdal.GFU_Generic):
     """
     Given a GDAL band, Writes the data specified in sequence 
     (can be list, tuple or array etc)
     to the named column in the attribute table assocated with the
     gdalBand. colType must be one of gdal.GFT_Integer,gdal.GFT_Real,gdal.GFT_String.
+    can specify one of the gdal.GFU_* constants for colUsage - default is 'generic'
     GDAL dataset must have been created, or opened with GA_Update
     """
 
@@ -188,7 +190,7 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None):
     # because of the way the HFA driver works
     # not sure if we should check or not...
     attrTbl = gdal.RasterAttributeTable()
-    attrTbl.CreateColumn(colName, colType, gdal.GFU_Generic)
+    attrTbl.CreateColumn(colName, colType, colUsage)
     colNum = attrTbl.GetColumnCount() - 1
 
     rowsToAdd = len(sequence)
@@ -229,12 +231,14 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None):
 
     gdalBand.SetDefaultRAT(attrTbl)
 
-def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1):
+def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1, 
+        colUsage=gdal.GFU_Generic):
     """
     Given either an open gdal dataset, or a filename,
     writes the data specified in sequence (can be list, tuple or array etc)
     to the named column in the attribute table assocated with the
     file. colType must be one of gdal.GFT_Integer,gdal.GFT_Real,gdal.GFT_String.
+    can specify one of the gdal.GFU_* constants for colUsage - default is 'generic'
     """
     if isinstance(imgFile, basestring):
         ds = gdal.Open(str(imgFile), gdal.GA_Update)
@@ -243,7 +247,7 @@ def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1):
 
     gdalBand = ds.GetRasterBand(bandNumber) 
 
-    writeColumnToBand(gdalBand, colName, sequence, colType) 
+    writeColumnToBand(gdalBand, colName, sequence, colType, colUsage) 
 
 def getColorTable(imgFile, bandNumber=1):
     """
