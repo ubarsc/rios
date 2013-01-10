@@ -28,7 +28,7 @@ from . import rioserrors
 
 INTERSECTION=0
 UNION=1
-
+BOUNDS_FROM_REFERENCE = 2       # Bounds of working region are taken from given reference grid
 
     
 class Coord:
