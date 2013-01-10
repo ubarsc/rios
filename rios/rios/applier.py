@@ -48,6 +48,7 @@ DEFAULTDRIVERNAME = imagewriter.DEFAULTDRIVERNAME
 DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
 INTERSECTION = imageio.INTERSECTION
 UNION = imageio.UNION
+BOUNDS_FROM_REFERENCE = imageio.BOUNDS_FROM_REFERENCE
 
 if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
