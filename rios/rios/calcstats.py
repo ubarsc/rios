@@ -142,7 +142,7 @@ def addStatistics(ds,progress,ignore=None):
             histCalcMax = 255.5
             histnbins = 256
             tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
-        elif tmpmeta["LAYER_TYPE"] == 'thematic':
+        elif "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic':
             # all other thematic types a bin per value
             histmin = 0
             histmax = int(numpy.ceil(maxval))
@@ -208,7 +208,7 @@ def addStatistics(ds,progress,ignore=None):
         # if it is thematic and there is no colour table
         # add one because Imagine fails in weird ways otherwise
         # we make a random colour table to make it obvious
-        if tmpmeta["LAYER_TYPE"] == 'thematic' and band.GetColorTable() is None:
+        if "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic' and band.GetColorTable() is None:
             import random # this also seeds on the time
             colorTable = gdal.ColorTable()
             alpha = 255 
