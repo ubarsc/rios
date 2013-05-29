@@ -246,6 +246,8 @@ class ReaderInfo(object):
         """
         (tl, br) = self.getBlockBounds()
         (nCols, nRows) = self.getBlockSize()
+        nCols += 2*self.overlap
+        nRows += 2*self.overlap
         (xRes, yRes) = self.getPixelSize()
         (rowNdx, colNdx) = numpy.mgrid[0:nRows, 0:nCols]
         xBlock = tl.x + xRes/2.0 + colNdx * xRes
