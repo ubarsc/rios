@@ -250,8 +250,8 @@ class ReaderInfo(object):
         nRows += 2*self.overlap
         (xRes, yRes) = self.getPixelSize()
         (rowNdx, colNdx) = numpy.mgrid[0:nRows, 0:nCols]
-        xBlock = tl.x + xRes/2.0 + colNdx * xRes
-        yBlock = tl.y - yRes/2.0 - rowNdx * yRes
+        xBlock = tl.x - self.overlap*xRes + xRes/2.0 + colNdx * xRes
+        yBlock = tl.y + self.overlap*yRes - yRes/2.0 - rowNdx * yRes
         return (xBlock, yBlock)
         
     def setBlockCount(self,xblock,yblock):
