@@ -89,7 +89,10 @@ class Vector(object):
             gdalVersion = None
             if hasattr(gdal, '__version__'):
                 gdalVersion = gdal.__version__
-            if gdalVersion is None or gdalVersion < '1.9.0':
+            # This seems to be the only way to reliably deal with 
+            # GDAL 1.10.0 < 1.9.0 comparisons...
+            from distutils.version import LooseVersion
+            if gdalVersion is None or LooseVersion(gdalVersion) < LooseVersion('1.9.0'):
                 raise rioserrors.VectorGeometryTypeError("Can only rasterize polygon types "+
                     "with this version of gdal. Need gdal version >= 1.9.0")
 
