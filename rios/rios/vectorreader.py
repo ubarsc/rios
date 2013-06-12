@@ -22,6 +22,7 @@ ImageReader and ImageWriter classes.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
+import sys
 import tempfile
 import subprocess
 from .imagewriter import DEFAULTDRIVERNAME
@@ -192,6 +193,10 @@ class Vector(object):
         # sometimes warnings etc printed to stderr so we can't
         # rely on that for testing success. Use returncode instead.
         if proc.returncode != 0:
+            if sys.version_info[0] > 2:
+                # convert from bytes to string
+                stdoutStr = stdoutStr.decode()
+                stderrStr = stderrStr.decode()
             msg = "Trouble reprojecting vector\n\n"+stdoutStr+'\n'+stderrStr
             raise rioserrors.VectorProjectionError(msg)
         
