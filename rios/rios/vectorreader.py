@@ -99,6 +99,8 @@ class Vector(object):
         # apply the attribute filter if passed
         if filter is not None:
             self.layer.SetAttributeFilter(filter)     
+        # store it in case of reprojection
+        self.filter = filter
 
         # create a temporary file name based on raster
         # driver extension
@@ -206,6 +208,11 @@ class Vector(object):
         self.reprojectedFile = tmpVectorfile
         self.reprojectedDS = ogr.Open(tmpVectorfile)
         layer = self.reprojectedDS.GetLayer(self.layerid)
+
+        # apply the attribute filter if in original
+        if self.filter is not None:
+            layer.SetAttributeFilter(self.filter)
+
         return layer
 
 
