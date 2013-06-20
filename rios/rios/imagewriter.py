@@ -40,7 +40,8 @@ def setDefaultDriver():
     If RIOS_DFLT_DRIVER is set, then it should be a gdal short driver name
     If RIOS_DFLT_DRIVEROPTIONS is set, it should be a space-separated list
     of driver creation options, e.g. "COMPRESS=LZW TILED=YES", and should
-    be appropriate for the selected GDAL driver. 
+    be appropriate for the selected GDAL driver. This can also be 'None'
+    in which case an empty list of creation options is passed to the driver.
     
     If not otherwise supplied, the default is to use the HFA driver, with compression. 
         
@@ -50,7 +51,13 @@ def setDefaultDriver():
     DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE','IGNOREUTM=TRUE']
     creationOptionsStr = os.getenv('RIOS_DFLT_DRIVEROPTIONS')
     if creationOptionsStr is not None:
-        DEFAULTCREATIONOPTIONS = creationOptionsStr.split()
+        if creationOptionsStr == 'None':
+            # hack for KEA which needs no creation options
+            # and LoadLeveler which deletes any env variables
+            # set to an empty values
+            DEFAULTCREATIONOPTIONS = []
+        else:
+            DEFAULTCREATIONOPTIONS = creationOptionsStr.split()
 
 setDefaultDriver()
     
