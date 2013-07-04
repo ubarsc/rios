@@ -24,6 +24,7 @@ reference grid.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import math
 from . import imageio
 from osgeo import osr
 from osgeo import gdal
@@ -282,6 +283,16 @@ class PixelGridDefn(object):
         nrows = self.getNumPix(self.yMax, self.yMin, self.yRes)
         ncols = self.getNumPix(self.xMax, self.xMin, self.xRes)
         return (nrows, ncols)
+
+    @staticmethod
+    def roundAway(x, d=0):
+        """
+        Simulates Python 2 round behavour
+        From http://python3porting.com/differences.html#rounding-behavior
+        This is what we want as it rounds away from 0.
+        """
+        p = 10 ** d
+        return float(math.floor((x * p) + math.copysign(0.5, x)))/p
         
     @staticmethod
     def getNumPix(gridMax, gridMin, gridRes):
@@ -289,7 +300,7 @@ class PixelGridDefn(object):
         Works out how many pixels lie between the given min and max, 
         at the given resolution. This is for internal use only. 
         """
-        npix = int(round(gridMax - gridMin) / gridRes)
+        npix = int(PixelGridDefn.roundAway(gridMax - gridMin) / gridRes)
         return npix
     
     @staticmethod
@@ -302,7 +313,7 @@ class PixelGridDefn(object):
         """
         diff = val - valOnGrid
         numPix = diff / res
-        numWholePix = round(numPix)
+        numWholePix = PixelGridDefn.roundAway(numPix)
         snappedVal = valOnGrid + numWholePix * res
         return snappedVal
 
