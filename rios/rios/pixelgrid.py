@@ -285,14 +285,16 @@ class PixelGridDefn(object):
         return (nrows, ncols)
 
     @staticmethod
-    def roundAway(x, d=0):
+    def roundAway(x):
         """
         Simulates Python 2 round behavour
-        From http://python3porting.com/differences.html#rounding-behavior
         This is what we want as it rounds away from 0.
+        The decimal module seems to be the only way to do this properly
         """
-        p = 10 ** d
-        return float(math.floor((x * p) + math.copysign(0.5, x)))/p
+        import decimal
+        dec = decimal.Decimal(x).quantize(decimal.Decimal('1'), 
+                rounding=decimal.ROUND_HALF_UP)
+        return float(dec.to_integral_value())
         
     @staticmethod
     def getNumPix(gridMax, gridMin, gridRes):
