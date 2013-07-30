@@ -63,10 +63,18 @@ def readColumnFromBand(gdalBand, colName):
         if rat.GetNameOfCol(col) == colName:
             # found it - create the output array
             # and fill in the values
-            if HAVE_TURBORAT:
+
+            # use RFC40 function if available
+            if hasattr(rat, "ReadAsArray"):
+                print('RFC40 read')
+                colArray = rat.ReadAsArray(col)
+
+            elif HAVE_TURBORAT:
+                print('turborat read')
                 # if turborat is available use that
                 colArray = turborat.readColumn(rat, col)
             else:
+                print('slow read')
                 # do it the slow way
                 dtype = rat.GetTypeOfCol(col)
                 if dtype == gdal.GFT_Integer:
@@ -186,25 +194,57 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
         msg = "coltype must be a valid gdal column type"
         raise rioserrors.AttributeTableTypeError(msg)
 
-    # create the RAT - if the colunm already exists it gets over-written
-    # because of the way the HFA driver works
-    # not sure if we should check or not...
-    attrTbl = gdal.RasterAttributeTable()
-    attrTbl.CreateColumn(colName, colType, colUsage)
-    colNum = attrTbl.GetColumnCount() - 1
+    # things get a bit weird here as we need different
+    # behaviour depending on whether we have an RFC40
+    # RAT or not.
+    if hasattr(gdal.RasterAttributeTable, "WriteArray"):
+        # new behaviour
+        attrTbl = gdalBand.GetDefaultRAT()
+        isFileRAT = True
+
+        # but if it doesn't support dynamic writing
+        # we still ahve to call SetDefaultRAT
+        if not attrTbl.ChangesAreWrittenToFile():
+            isFileRAT = False
+
+    else:
+        # old behaviour
+        attrTbl = gdal.RasterAttributeTable()
+        isFileRAT = False
+
+    # thanks to RFC40 we need to ensure colname doesn't already exist
+    colExists = False
+    for n in range(attrTbl.GetColumnCount()):
+        if attrTbl.GetNameOfCol(n) == colName:
+            colExists = True
+            colNum = n
+            break
+    if not colExists:
+        # preserve usage
+        attrTbl.CreateColumn(colName, colType, colUsage)
+        colNum = attrTbl.GetColumnCount() - 1
 
     rowsToAdd = len(sequence)
     # Imagine has trouble if not 256 items for byte
     if gdalBand.DataType == gdal.GDT_Byte:
         rowsToAdd = 256
 
-    if HAVE_TURBORAT:
+    if hasattr(attrTbl, "WriteArray"):
+        # if GDAL > 1.10 has these functions
+        # thanks to RFC40
+        print('write rfc40')
+        attrTbl.SetRowCount(rowsToAdd)
+        attrTbl.WriteArray(sequence, colNum)
+
+    elif HAVE_TURBORAT:
+        print('write turborat')
         # use turborat to write values to RAT if available
         if not isinstance(sequence, numpy.ndarray):
             # turborat.writeColumn needs an array
             sequence = numpy.array(sequence)
         turborat.writeColumn(attrTbl, colNum, sequence, rowsToAdd)
     else:
+        print('write slow')
         defaultValues = {gdal.GFT_Integer:0, gdal.GFT_Real:0.0, gdal.GFT_String:''}
 
         # go thru and set each value into the RAT
@@ -229,7 +269,9 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
             else:
                 attrTbl.SetValueAsString(rowNum, colNum, val)
 
-    gdalBand.SetDefaultRAT(attrTbl)
+    if not isFileRAT:
+        # assume existing bands re-written    
+        gdalBand.SetDefaultRAT(attrTbl)
 
 def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1, 
         colUsage=gdal.GFU_Generic):
