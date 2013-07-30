@@ -66,15 +66,12 @@ def readColumnFromBand(gdalBand, colName):
 
             # use RFC40 function if available
             if hasattr(rat, "ReadAsArray"):
-                print('RFC40 read')
                 colArray = rat.ReadAsArray(col)
 
             elif HAVE_TURBORAT:
-                print('turborat read')
                 # if turborat is available use that
                 colArray = turborat.readColumn(rat, col)
             else:
-                print('slow read')
                 # do it the slow way
                 dtype = rat.GetTypeOfCol(col)
                 if dtype == gdal.GFT_Integer:
@@ -232,19 +229,16 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
     if hasattr(attrTbl, "WriteArray"):
         # if GDAL > 1.10 has these functions
         # thanks to RFC40
-        print('write rfc40')
         attrTbl.SetRowCount(rowsToAdd)
         attrTbl.WriteArray(sequence, colNum)
 
     elif HAVE_TURBORAT:
-        print('write turborat')
         # use turborat to write values to RAT if available
         if not isinstance(sequence, numpy.ndarray):
             # turborat.writeColumn needs an array
             sequence = numpy.array(sequence)
         turborat.writeColumn(attrTbl, colNum, sequence, rowsToAdd)
     else:
-        print('write slow')
         defaultValues = {gdal.GFT_Integer:0, gdal.GFT_Real:0.0, gdal.GFT_String:''}
 
         # go thru and set each value into the RAT
