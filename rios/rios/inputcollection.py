@@ -373,7 +373,7 @@ class InputCollection(object):
         Reamples all datasets that don't match the reference to the
         same as the reference.
         
-        footprint is imageio.INTERSECTION or imageio.UNION
+        footprint is imageio.INTERSECTION, imageio.UNION or imageio.BOUNDS_FROM_REFERENCE
         resamplemethod is a string containing a method supported by gdalwarp.
         
         """
