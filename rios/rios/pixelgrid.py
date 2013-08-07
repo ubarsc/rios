@@ -327,8 +327,8 @@ def findCommonRegion(gridList, refGrid, combine=imageio.INTERSECTION):
     in the given gridList. The output grid is in the same coordinate 
     system as the reference grid. 
     
-    The combine parameter controls whether UNION or INTERSECTION 
-    is performed. 
+    The combine parameter controls whether UNION, INTERSECTION 
+    or BOUNDS_FROM_REFERENCE is performed. 
     
     """
     newGrid = refGrid
