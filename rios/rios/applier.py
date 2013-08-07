@@ -239,7 +239,10 @@ class ApplierControls(object):
         self.windowysize = windowysize
         
     def setFootprintType(self, footprint):
-        "Set type of footprint, one of INTERSECTION or UNION from this module"
+        """
+        Set type of footprint, one of INTERSECTION, UNION or 
+        BOUNDS_FROM_REFERENCE from this module
+        """
         self.footprint = footprint
         
     def setReferenceImage(self, referenceImage):

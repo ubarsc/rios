@@ -102,7 +102,7 @@ class ImageReader(object):
         each iteration, if a dictionary a dictionary is
         returned at each iteration with the same keys.
         
-        footprint can be either INTERSECTION or UNION
+        footprint can be either INTERSECTION, UNION or BOUNDS_FROM_REFERENCE
         
         windowxsize and windowysize specify the size
         of the block to be read at each iteration
