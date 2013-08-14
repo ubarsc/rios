@@ -302,7 +302,7 @@ class PixelGridDefn(object):
         Works out how many pixels lie between the given min and max, 
         at the given resolution. This is for internal use only. 
         """
-        npix = int(PixelGridDefn.roundAway(gridMax - gridMin) / gridRes)
+        npix = int(PixelGridDefn.roundAway((gridMax - gridMin) / gridRes))
         return npix
     
     @staticmethod
