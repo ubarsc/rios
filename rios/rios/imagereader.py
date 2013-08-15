@@ -19,6 +19,7 @@ Contains the ImageReader class
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import sys
 import copy
 import numpy
@@ -33,10 +34,11 @@ if sys.version_info[0] > 2:
     # we just use basestring
     basestring = str
 
-DEFAULTFOOTPRINT = imageio.INTERSECTION
-DEFAULTWINDOWXSIZE = 200
-DEFAULTWINDOWYSIZE = 200
-DEFAULTOVERLAP = 0
+DEFAULTFOOTPRINT = int(os.getenv('RIOS_DFLT_FOOTPRINT', 
+                            default=imageio.INTERSECTION))
+DEFAULTWINDOWXSIZE = int(os.getenv('RIOS_DFLT_BLOCKXSIZE', default=200))
+DEFAULTWINDOWYSIZE = int(os.getenv('RIOS_DFLT_BLOCKYSIZE', default=200))
+DEFAULTOVERLAP = int(os.getenv('RIOS_DFLT_OVERLAP', default=0))
 DEFAULTLOGGINGSTREAM = sys.stdout
 
 class ImageIterator(object):
