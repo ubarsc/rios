@@ -180,7 +180,7 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
             colType = gdal.GFT_Integer
         elif isinstance(sequence[0],float) or isinstance(sequence[0],numpy.floating):
             colType = gdal.GFT_Real
-        elif isinstance(sequence[0],basestring):
+        elif isinstance(sequence[0],basestring) or isinstance(sequence[0],bytes):
             colType = gdal.GFT_String
         else:
             msg = "Can't infer type of column for sequence of %s" % type(sequence[0])
