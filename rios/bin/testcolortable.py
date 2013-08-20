@@ -7,7 +7,7 @@ put there.
 
 """
 # This file is part of RIOS - Raster I/O Simplification
-# Copyright (C) 2012  Sam Gillingha, Neil Flood
+# Copyright (C) 2012  Sam Gillingham, Neil Flood
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
