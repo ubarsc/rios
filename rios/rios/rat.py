@@ -306,7 +306,8 @@ def getColorTable(imgFile, bandNumber=1):
         raise rioserrors.AttributeTableColumnError("Image has no color table")
 
     count = colorTable.GetCount()
-    colorArray = numpy.zeros((count, 5), dtype=numpy.uint8)
+    # count could be any size so we have to go with int
+    colorArray = numpy.zeros((count, 5), dtype=numpy.int)
     for index in range(count):
         colorEntry = colorTable.GetColorEntry(index)
         arrayEntry = [index] + list(colorEntry)
