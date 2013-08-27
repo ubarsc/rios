@@ -40,6 +40,12 @@ if sys.version_info[0] > 2:
     # we just use basestring
     basestring = str
 
+def isColorColFromUsage(usage):
+    "Tells if usage is one of the color column types"
+    colorCol = (usage == gdal.GFU_Red or usage == gdal.GFU_Green or
+                usage == gdal.GFU_Blue or usage == gdal.GFU_Alpha)
+    return colorCol
+
 def readColumnFromBand(gdalBand, colName):
     """
     Given a GDAL Band, extract the Raster Attribute with the
@@ -103,6 +109,14 @@ def readColumnFromBand(gdalBand, colName):
                 if isinstance(colArray, list):
                     # convert to array - numpy can handle this now it can work out the lengths
                     colArray = numpy.array(colArray)
+
+            # one last little hack - if is a colour column, but type
+            # was float, multiply by 255. This is so that HFA etc that stores values
+            # between 0 and 1 is consistant with its color table and other formats
+            usage = rat.GetUsageOfCol(col)
+            if isColorColFromUsage(usage) and rat.GetTypeOfCol(col) == gdal.GFT_Real:
+                colArray = colArray * 255
+                colArray = colArray.astype(int)
                 
             # exit loop
             break
@@ -226,6 +240,19 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
     if gdalBand.DataType == gdal.GDT_Byte:
         rowsToAdd = 256
 
+    # another hack to hide float (0-1) and int (0-255)
+    # color table handling.
+    # we assume that the column has already been created
+    # of the right type appropriate for the format (maybe by calcstats)
+    # Note: this only works post RFC40 when we have an actual reference
+    # to the RAT rather than a new one so we can ask GetTypeOfCol
+    usage = attrTbl.GetUsageOfCol(colNum)
+    if (isColorColFromUsage(usage) and 
+            attrTbl.GetTypeOfCol(colNum) == gdal.GFT_Real and
+            colType == gdal.GFT_Integer):
+        sequence = numpy.array(sequence, dtype=numpy.float)
+        sequence = sequence / 255.0
+
     if hasattr(attrTbl, "WriteArray"):
         # if GDAL > 1.10 has these functions
         # thanks to RFC40
@@ -284,6 +311,40 @@ def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1,
     gdalBand = ds.GetRasterBand(bandNumber) 
 
     writeColumnToBand(gdalBand, colName, sequence, colType, colUsage) 
+
+def getUsageOfColumnFromBand(gdalBand, colName):
+    """
+    Given a gdalBand returns the usage of the named column
+    """
+    # get the RAT for this band
+    rat = gdalBand.GetDefaultRAT()
+
+    # get the size of the RAT  
+    numCols = rat.GetColumnCount()
+  
+    # loop thru the columns looking for the right one
+    for col in range(numCols):
+        if rat.GetNameOfCol(col) == colName:
+            return rat.GetUsageOfCol(col)
+    
+    msg = "Unable to find column named '%s'" % colName
+    raise rioserrors.AttributeTableColumnError(msg)
+
+def getUsageOfColumn(imgFile, colName, bandNumber=1):
+    """
+    Given either an open gdal dataset, or a filename,
+    returns the 'usage' of the column which can then be passed
+    to writeColumn to preserve usage when copying
+    """
+    if isinstance(imgFile, basestring):
+        ds = gdal.Open(str(imgFile), gdal.GA_Update)
+    elif isinstance(imgFile, gdal.Dataset):
+        ds = imgFile
+
+    gdalBand = ds.GetRasterBand(bandNumber) 
+
+    return getUsageOfColumnFromBand(gdalBand, colName)
+
 
 def getColorTable(imgFile, bandNumber=1):
     """
