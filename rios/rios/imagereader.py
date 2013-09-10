@@ -297,13 +297,16 @@ class ImageReader(object):
             # files removed.
             self.inputs.cleanup()
         
-    def prepare(self):
+    def prepare(self, workingGrid=None):
         """
         Prepare to read from images. These steps are not
         done in the constructor, but are done just before
         reading in case allowResample() is called which
         will resample the inputs.
         
+        The pixelGrid instance to use as the working grid can
+        be passed in case it is not to be derived from the images
+        to be read or is different from that passed to allowResample
         """
     
         # if resampled has happened then they should all match
@@ -311,8 +314,12 @@ class ImageReader(object):
             msg = 'Inputs do not match - must enable resampling'
             raise rioserrors.ResampleNeededError(msg)
         
-        # set the working grid based on the footprint
-        self.workingGrid = self.inputs.findWorkingRegion(self.footprint)
+        if workingGrid is None:
+            # set the working grid based on the footprint
+            self.workingGrid = self.inputs.findWorkingRegion(self.footprint)
+        else:
+            # user supplied
+            self.workingGrid = workingGrid
         
         # create a statscache if not passed to constructor.
         # Created once per dataset so stats
