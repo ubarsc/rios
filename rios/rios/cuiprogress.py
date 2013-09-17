@@ -1,5 +1,5 @@
 """
-Progress bar using CUI interface. Same interface as GUIProgressDialog
+Progress bars using CUI interface. 
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -18,8 +18,12 @@ Progress bar using CUI interface. Same interface as GUIProgressDialog
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
+from osgeo.gdal import TermProgress_nocb
 
 class CUIProgressBar(object):
+    """
+    Simple progress as a percentage pronted to the terminal
+    """
     def __init__(self):
         self.totalsteps = 100
 
@@ -27,9 +31,9 @@ class CUIProgressBar(object):
         self.totalsteps = steps
 
     def setProgress(self,progress):
-          if sys.stdout.isatty(): # don't write if a log file etc
-              progress = int(float(progress) / self.totalsteps * 100)
-              sys.stdout.write('%d%%\r' % progress)
+        if sys.stdout.isatty(): # don't write if a log file etc
+            progress = int(float(progress) / self.totalsteps * 100)
+            sys.stdout.write('%d%%\r' % progress)
 
     def reset(self):
         sys.stdout.write('\n')
@@ -52,6 +56,42 @@ class CUIProgressBar(object):
     def displayInfo(self,text):
         sys.stdout.write("Info: %s\n" % text)
 
+class GDALProgressBar(object):
+    """
+    Uses GDAL's TermProgress to print a progress bar to the terminal
+    """
+    def __init__(self):
+        self.totalsteps = 100
+
+    def setTotalSteps(self,steps):
+        self.totalsteps = steps
+
+    def setProgress(self,progress):
+        if sys.stdout.isatty(): # don't write if a log file etc
+            TermProgress_nocb(float(progress) / self.totalsteps)
+
+    def reset(self):
+        if sys.stdout.isatty(): # don't write if a log file etc
+            TermProgress_nocb(100.0)
+        sys.stdout.write('\n')
+
+    def setLabelText(self,text):
+        sys.stdout.write('\n%s\n' % text)
+
+    def wasCancelled(self):
+        return False
+
+    def displayException(self,trace):
+        sys.stdout.write(trace)
+
+    def displayWarning(self,text):
+        sys.stdout.write("Warning: %s\n" % text)
+
+    def displayError(self,text):
+        sys.stdout.write("Error: %s\n" % text)
+
+    def displayInfo(self,text):
+        sys.stdout.write("Info: %s\n" % text)
 
 class SilentProgress(object):
     """
