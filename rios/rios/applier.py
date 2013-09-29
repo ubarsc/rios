@@ -108,6 +108,7 @@ class ApplierControls(object):
         drivername      GDAL driver short name for output
         creationoptions GDAL creation options for output
         thematic        True/False for thematic outputs
+        layernames      List of layer names for outputs
         referenceImage  Image for reference projection and grid
         referencePixgrid pixelGrid for reference projection and grid
         loggingstream   file-like for logging of messages
@@ -154,6 +155,7 @@ class ApplierControls(object):
         self.calcStats = True
         self.omitPyramids = False
         self.thematic = False
+        self.layernames = None
         self.tempdir = '.'
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
         # Vector fields
@@ -308,6 +310,12 @@ class ApplierControls(object):
     def setThematic(self, thematicFlag, imagename=None):
         "Set boolean value of thematic flag (may not be supported by the GDAL driver)"
         self.setOptionForImagename('thematic', imagename, thematicFlag)
+
+    def setLayerNames(self, layerNames, imagename=None):
+        """
+        Set list of layernames to be given to the output file(s)
+        """
+        self.setOptionForImagename('layernames', imagename, layerNames)
         
     def setTempdir(self, tempdir):
         "Set directory to use for temporary files for resampling, etc. "
@@ -568,6 +576,10 @@ def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
                     writerdict[name].append(writer)
                     if controls.getOptionForImagename('thematic', name):
                         writer.setThematic()
+
+                    layernames = controls.getOptionForImagename('layernames', name)
+                    if layernames is not None:
+                        writer.setLayerNames(layernames)
             else:
                 # This name in the dictionary is just a single filename
                 writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
@@ -576,6 +588,10 @@ def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
                 writerdict[name] = writer
                 if controls.getOptionForImagename('thematic', name):
                     writer.setThematic()
+
+                layernames = controls.getOptionForImagename('layernames', name)
+                if layernames is not None:
+                    writer.setLayerNames(layernames)
         else:
             # The output writers exist, so select the correct one and write the block
             if isinstance(outfileName, list):
