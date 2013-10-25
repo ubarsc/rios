@@ -51,17 +51,22 @@ def run():
     
     meanVal3 = calcMeanWithRiosApplier(imgfile, vecfile)
     
+    ok = True
     if meanVal == meanVal2 and meanVal == meanVal3:
         riostestutils.report(TESTNAME, "Passed")
     elif meanVal != meanVal3:
         riostestutils.report(TESTNAME, "Failed. Applier and low-level disagree (%s != %s)"%(meanVal, meanVal3))
+        ok = False
     else:
         riostestutils.report(TESTNAME, "Failed. Mean values unequal (%s != %s)"%(meanVal, meanVal2))
+        ok = False
     
     # Cleanup
     os.remove(imgfile)
     for ext in ['shp', 'shx', 'dbf', 'prj']:
         os.remove(vecfile.replace('shp', ext))
+    
+    return ok
 
 
 def calcMeanWithRios(imgfile, vecfile):

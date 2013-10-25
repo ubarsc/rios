@@ -47,11 +47,13 @@ def run():
     
     calcAverage(ramp1, ramp2, outfile)
     
-    checkResult(outfile)
+    ok = checkResult(outfile)
     
     # Clean up
     for filename in [ramp1, ramp2, outfile]:
         os.remove(filename)
+    
+    return ok
 
 
 def calcAverage(file1, file2, avgfile):
@@ -97,9 +99,14 @@ def checkResult(avgfile):
     del ds
     
     # Check that they are the same
+    ok = True
     if avg.shape != riosavg.shape:
         riostestutils.report(TESTNAME, "Shape mis-match: %s != %s"%(avg.shape, riosavg.shape))
+        ok = False
     elif (riosavg-avg).any():
         riostestutils.report(TESTNAME, "Incorrect result. Average difference = %s"%(riosavg-avg).mean())
+        ok = False
     else:
         riostestutils.report(TESTNAME, "Passed")
+
+    return ok
