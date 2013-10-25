@@ -22,4 +22,7 @@ classes, respectively.
 
 """
 
+from distutils.version import LooseVersion
+
 RIOS_VERSION = '1.1.5'
+RIOS_VERSION_OBJ = LooseVersion(RIOS_VERSION)
