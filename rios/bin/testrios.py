@@ -23,19 +23,27 @@ of tests of some capabilities of RIOS.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import riostestutils
 
+failureCount = 0
+
 import testavg
-testavg.run()
+ok = testavg.run()
+if not ok: failureCount += 1
 
 import testresample
-testresample.run()
+ok = testresample.run()
+if not ok: failureCount += 1
 
 import testcolortable
-testcolortable.run()
+ok = testcolortable.run()
+if not ok: failureCount += 1
 
 import testvector
-testvector.run()
+ok = testvector.run()
+if not ok: failureCount += 1
 
-
+import testcoords
+ok = testcoords.run()
+if not ok: failureCount += 1
 
 # After all tests
-riostestutils.report("ALL TESTS", "Completed")
+riostestutils.report("ALL TESTS", "Completed, with %d failure(s)" % failureCount)

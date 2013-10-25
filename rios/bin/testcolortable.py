@@ -55,7 +55,11 @@ def run():
     n = len(clrTbl)
     if (clrTbl == clrTbl2[:n]).all():
         riostestutils.report(TESTNAME, 'Passed')
+        ok = True
     else:
         riostestutils.report(TESTNAME, 'Retrieved color table not equal to that written')
+        ok = False
 
     os.remove(filename)
+
+    return ok
