@@ -1,9 +1,10 @@
 How to create a distribution of RIOS. 
 
-1. Ensure that you have committed averything which needs to go in.
-2. Change the version number in the setup.py, and commit this. Version number
+1. Ensure that you have fetched and committed everything which needs to go in.
+2. Change the version number in the rios/__init__.py. Version number
    is of the form a.b.c, as discussed below. 
-3. Use "hg tag" to add a version nubmber tag, e.g.
+   DON'T FORGET TO COMMIT THIS, BEFORE THE NEXT STEP!!!!
+3. Use "hg tag" to add a version number tag, e.g.
     hg tag rios-1.1.1
 4. Create the distribution tarball, using
     python setup.py sdist. 

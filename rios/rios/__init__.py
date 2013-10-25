@@ -22,3 +22,4 @@ classes, respectively.
 
 """
 
+RIOS_VERSION = '1.1.5'
