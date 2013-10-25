@@ -8,8 +8,10 @@ with Python.
 import glob
 from distutils.core import setup
 
+import rios
+
 setup(name='rios',
-      version='1.1.5',
+      version=rios.RIOS_VERSION,
       description='Raster Input/Output Simplification',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
