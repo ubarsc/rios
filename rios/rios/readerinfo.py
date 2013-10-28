@@ -149,6 +149,10 @@ class ReaderInfo(object):
         Saves a match between the numpy block read
         and it's GDAL dataset. So we can look up the
         dataset later given a block.
+        
+        This routine is for internal use by RIOS. Its use in any other
+        context is not sensible. 
+        
         """
         self.blocklookup[id(block)] = (dataset,filename)
         
@@ -199,6 +203,10 @@ class ReaderInfo(object):
     def setBlockSize(self,blockwidth,blockheight):
         """
         Sets the size of the current block
+
+        This routine is for internal use by RIOS. Its use in any other
+        context is not sensible. 
+        
         """
         self.blockwidth = blockwidth
         self.blockheight = blockheight
@@ -215,6 +223,10 @@ class ReaderInfo(object):
     def setBlockBounds(self,blocktl,blockbr):
         """
         Sets the coordinate bounds of the current block
+
+        This routine is for internal use by RIOS. Its use in any other
+        context is not sensible. 
+        
         """
         self.blocktl = blocktl
         self.blockbr = blockbr
@@ -257,6 +269,10 @@ class ReaderInfo(object):
     def setBlockCount(self,xblock,yblock):
         """
         Sets the count of the current block
+
+        This routine is for internal use by RIOS. Its use in any other
+        context is not sensible. 
+        
         """
         self.xblock = xblock
         self.yblock = yblock
