@@ -306,11 +306,16 @@ class ReaderInfo(object):
         imgRow = imgRowCol.x
         imgCol = imgRowCol.y
         
-        blockStartRow = self.blocktl.y - self.overlap
-        blockStartCol = self.blocktl.x - self.overlap
+        blockStartRow = self.yblock * self.windowysize - self.overlap
+        blockStartCol = self.xblock * self.windowxsize - self.overlap
         
-        blockRow = imgRow - blockStartRow
-        blockCol = imgCol - blockStartCol
+        blockRow = int(imgRow - blockStartRow)
+        blockCol = int(imgCol - blockStartCol)
+        
+        if ((blockRow < 0 or blockRow > (self.windowysize + 2 * self.overlap)) or
+           (blockCol < 0 or blockCol > (self.windowxsize + 2 * self.overlap))):
+            blockRow = None
+            blockCol = None
         
         return (blockRow, blockCol)
     
