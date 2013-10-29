@@ -41,16 +41,16 @@ OLAP = 2
 MARGIN = OLAP * PIX
 OFFSET_2ND_IMAGE = 100 * PIX
 
-CORNERS_1FILE_NOOVERLAP = [(XSTART + j * STEP, YSTART - i * STEP) for i in range(3) for j in range(3)]
+TSTPT_X = XSTART + OFFSET_2ND_IMAGE + 10.5 * PIX
+TSTPT_Y = YSTART - OFFSET_2ND_IMAGE - 10.5 * PIX
+
+TSTPIX_1FILE_NOOVERLAP = [(110, 110)]
+TSTPIX_1FILE_OVERLAP2 = [(112, 112)]
+TSTPIX_2FILE_OVERLAP2 = [(12, 12)]
 CENTRES_1FILE_NOOVERLAP = [(XSTART + j * STEP + HALFPIX, YSTART - i * STEP - HALFPIX) 
-    for i in range(3) for j in range(3)]
-CORNERS_1FILE_OVERLAP2 = [(XSTART + j * STEP - MARGIN, YSTART - i * STEP + MARGIN) 
     for i in range(3) for j in range(3)]
 CENTRES_1FILE_OVERLAP2 = [(XSTART + j * STEP + HALFPIX - MARGIN, YSTART - i * STEP - HALFPIX + MARGIN) 
     for i in range(3) for j in range(3)]
-CORNERS_2FILE_OVERLAP2 = [(XSTART + OFFSET_2ND_IMAGE + j * STEP - MARGIN, 
-    YSTART - OFFSET_2ND_IMAGE - i * STEP + MARGIN) 
-    for i in range(2) for j in range(2)]
 CENTRES_2FILE_OVERLAP2 = [(XSTART + OFFSET_2ND_IMAGE+ j * STEP + HALFPIX - MARGIN, 
     YSTART - OFFSET_2ND_IMAGE- i * STEP - HALFPIX + MARGIN) 
     for i in range(2) for j in range(2)]
@@ -81,27 +81,27 @@ def run():
 
     # Simplest check. Can we get back the coordinates from a single input file.     
     infiles.img = ramp1
-    otherargs.cornersList = []
+    otherargs.tstPixList = []
     otherargs.centresList = []
     applier.apply(getCoords, infiles, outfiles, otherargs, controls=controls)
-    ok = checkCoords('1 file, overlap=0', otherargs, CORNERS_1FILE_NOOVERLAP, CENTRES_1FILE_NOOVERLAP)
+    ok = checkCoords('1 file, overlap=0', otherargs, TSTPIX_1FILE_NOOVERLAP, CENTRES_1FILE_NOOVERLAP)
     if not ok: allOK = False
 
     # Single input file, with an overlap set
-    otherargs.cornersList = []
+    otherargs.tstPixList = []
     otherargs.centresList = []
     controls.setOverlap(OLAP)
     applier.apply(getCoords, infiles, outfiles, otherargs, controls=controls)
-    ok = checkCoords('1 file, overlap=2', otherargs, CORNERS_1FILE_OVERLAP2, CENTRES_1FILE_OVERLAP2)
+    ok = checkCoords('1 file, overlap=2', otherargs, TSTPIX_1FILE_OVERLAP2, CENTRES_1FILE_OVERLAP2)
     if not ok: allOK = False
 
     # Two input files, with an overlap set
     infiles.img = [ramp1, ramp2]
-    otherargs.cornersList = []
+    otherargs.tstPixList = []
     otherargs.centresList = []
     controls.setOverlap(OLAP)
     applier.apply(getCoords, infiles, outfiles, otherargs, controls=controls)
-    ok = checkCoords('2 files, overlap=2', otherargs, CORNERS_2FILE_OVERLAP2, CENTRES_2FILE_OVERLAP2)
+    ok = checkCoords('2 files, overlap=2', otherargs, TSTPIX_2FILE_OVERLAP2, CENTRES_2FILE_OVERLAP2)
     if not ok: allOK = False
     
     # Clean up
@@ -116,27 +116,30 @@ def getCoords(info, inputs, outputs, otherargs):
     Accumulate some lists of the coordinates of the top-left corner pixel
     of each block, expressed in a variety of ways
     """
-    (x, y) = info.getPixCoord(0, 0)
-    otherargs.cornersList.append((x, y))
-    
     (x, y) = info.getBlockCoordArrays()
     otherargs.centresList.append((x[0,0], y[0,0]))
+    
+    (r, c) = info.getPixRowColBlock(TSTPT_X, TSTPT_Y)
+    if r is not None and c is not None:
+        otherargs.tstPixList.append((r, c))
 
 
-def checkCoords(testConditionStr, otherargs, cornersList, centresList):
+def checkCoords(testConditionStr, otherargs, tstPixList, centresList):
     """
     Check that the coordinate lists created in otherargs are the same as 
     the correct answers passed in to this routine. 
     """
-    ok = checkCoordList(otherargs.cornersList, cornersList)
+    ok = checkCoordList(otherargs.tstPixList, tstPixList)
     if not ok:
-        riostestutils.report(TESTNAME, '%s: Corner coordinates mis-match. %s, %s' % (testConditionStr,
-            otherargs.cornersList, cornersList))
+        riostestutils.report(TESTNAME, '%s: Single pixel row/col mis-match. %s, %s' % (testConditionStr,
+            otherargs.tstPixList, tstPixList))
     
     ok = checkCoordList(otherargs.centresList, centresList)
     if not ok:
         riostestutils.report(TESTNAME, '%s: Centre coordinates mis-match. %s, %s' % (testConditionStr,
             otherargs.centresList, centresList))
+    
+    return ok
 
 
 def checkCoordList(list1, list2):
