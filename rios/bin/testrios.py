@@ -21,6 +21,8 @@ of tests of some capabilities of RIOS.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import print_function
+
 import riostestutils
 
 failureCount = 0
@@ -46,4 +48,6 @@ ok = testcoords.run()
 if not ok: failureCount += 1
 
 # After all tests
+print()
+print()
 riostestutils.report("ALL TESTS", "Completed, with %d failure(s)" % failureCount)
