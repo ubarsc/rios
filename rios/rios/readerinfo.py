@@ -233,11 +233,19 @@ class ReaderInfo(object):
 
     def getBlockBounds(self):
         """
+        WARNING: This routine should now be considered obsolete. 
+        The only known uses for this are better served by using the 
+        newer functions getBlockCoordArrays() or getPixRowColBlock(). 
+        It will be removed in a later version of RIOS. 
+        
         Gets the coordinate bounds of the current block. Returns
         a tuple 
             (blockTopLeft, blockBottomRight)
         where each coord is a structure contain an x and y coord,
         as in blockTopLeft.x or blockBottomRight.y
+        
+        Note that this function will give incorrect/misleading results 
+        if used in conjunction with a block overlap. 
         
         """
         return (self.blocktl,self.blockbr)
@@ -300,6 +308,9 @@ class ReaderInfo(object):
         within the current block, the row and column numbers are
         both None (hence this should be checked). 
         
+        Return value is a tuple of 2 int values
+            (row, col)
+        
         """
         transform = self.workingGrid.makeGeoTransform()
         imgRowCol = imageio.wld2pix(transform, x, y)
@@ -321,6 +332,11 @@ class ReaderInfo(object):
     
     def getPixColRow(self,x,y):
         """
+        WARNING: This routine should now be considered obsolete. 
+        The only known uses for this are better served by using the 
+        newer functions getBlockCoordArrays() or getPixRowColBlock(). 
+        It will be removed in a later version of RIOS. 
+        
         Get the (col, row) relative to the current image grid,
         for the nominated pixel within the current block. The
         given (x, y) are column/row numbers (starting at zero),
@@ -330,6 +346,9 @@ class ReaderInfo(object):
         working grid. If working with a single raster, this is the same
         as for that raster, but if working with multiple rasters, 
         the working grid is the intersection or union of them. 
+        
+        Note that this function will give incorrect/misleading results
+        if used in conjunction with a block overlap. 
          
         """
         col = self.xblock * self.windowxsize + x
@@ -338,6 +357,11 @@ class ReaderInfo(object):
     
     def getPixCoord(self,x,y):
         """
+        WARNING: This routine should now be considered obsolete. 
+        The only known uses for this are better served by using the 
+        newer functions getBlockCoordArrays() or getPixRowColBlock(). 
+        It will be removed in a later version of RIOS. 
+        
         Get the image world coordinates for the top-left corner of a single
         pixel within the current block. The given (x, y) are the column/row 
         number within the current block, the return value is a tuple
@@ -345,6 +369,9 @@ class ReaderInfo(object):
         of the top-left corner of that pixel, in the world coordinates of the
         current working grid. 
         
+        Note that this function will give incorrect/misleading results
+        if used in conjunction with a block overlap. 
+         
         """
         (col,row) = self.getPixColRow(x,y)
         coord = imageio.pix2wld(self.workingGrid.makeGeoTransform(),col,row)
