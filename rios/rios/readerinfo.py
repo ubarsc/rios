@@ -289,6 +289,31 @@ class ReaderInfo(object):
         """
         return (self.workingGrid.xRes,self.workingGrid.yRes)
     
+    def getPixRowColBlock(self, x, y):
+        """
+        Return the row/column numbers, within the current block,
+        for the pixel which contains the given (x, y) coordinate.
+        The coordinates of (x, y) are in the world coordinate
+        system of the reference grid. The row/col numbers are 
+        suitable to use as array indices in the array(s) for the 
+        current block. If the nominated pixel is not contained
+        within the current block, the row and column numbers are
+        both None (hence this should be checked). 
+        
+        """
+        transform = self.workingGrid.makeGeoTransform()
+        imgRowCol = imageio.wld2pix(transform, x, y)
+        imgRow = imgRowCol.x
+        imgCol = imgRowCol.y
+        
+        blockStartRow = self.blocktl.y - self.overlap
+        blockStartCol = self.blocktl.x - self.overlap
+        
+        blockRow = imgRow - blockStartRow
+        blockCol = imgCol - blockStartCol
+        
+        return (blockRow, blockCol)
+    
     def getPixColRow(self,x,y):
         """
         Get the (col, row) relative to the current image grid,
