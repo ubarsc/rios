@@ -16,11 +16,11 @@ Test the calculation of statistics by rios.calcstats.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import os
 
 import numpy
 from osgeo import gdal
+import scipy.stats
 from rios import calcstats, cuiprogress
 
 import riostestutils
@@ -52,6 +52,7 @@ def run():
     fileMin = float(band.GetMetadataItem('STATISTICS_MINIMUM'))
     fileMax = float(band.GetMetadataItem('STATISTICS_MAXIMUM'))
     fileMedian = float(band.GetMetadataItem('STATISTICS_MEDIAN'))
+    fileMode = float(band.GetMetadataItem('STATISTICS_MODE'))
     del ds
     
     # Work out the statistics directly from the data array, using numpy
@@ -64,6 +65,8 @@ def run():
     minVal = nonNullArr.min()
     maxVal = nonNullArr.max()
     median = numpy.median(nonNullArr)
+    # Get the first mode, since (in theory) there can be more than one
+    mode = scipy.stats.mode(nonNullArr)[0]
     
     ok = True
     msgList = []
@@ -78,6 +81,8 @@ def run():
         msgList.append("Error in max: %s != %s" % (fileMax, maxVal))
     if not equalTol(median, fileMedian, tolerance):
         msgList.append("Error in median: %s != %s" % (fileMedian, median))
+    if not equalTol(mode, fileMode, tolerance):
+        msgList.append("Error in mode: %s != %s" % (fileMode, mode))
     
     if len(msgList) > 0:
         ok = False
