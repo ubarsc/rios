@@ -175,7 +175,7 @@ def addStatistics(ds,progress,ignore=None):
 
         # do the mode - bin with the highest count
         modebin = numpy.argmax(hist)
-        step = float(histmax - histmin) / histnbins
+        step = float(histmax - histmin) / (histnbins - 1)
         modeval = modebin * step + histmin
         if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
             tmpmeta["STATISTICS_MODE"] = str(modeval)
@@ -195,7 +195,7 @@ def addStatistics(ds,progress,ignore=None):
             total += val
             if total >= middlenum:
                 break
-        medianbin += 1
+            medianbin += 1
         medianval = medianbin * step + histmin
         if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
             tmpmeta["STATISTICS_MEDIAN"]  = str(medianval)
