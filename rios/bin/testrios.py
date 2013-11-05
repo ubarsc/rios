@@ -47,6 +47,10 @@ import testcoords
 ok = testcoords.run()
 if not ok: failureCount += 1
 
+import teststats
+ok = teststats.run()
+if not ok: failureCount += 1
+
 # After all tests
 print()
 print()
