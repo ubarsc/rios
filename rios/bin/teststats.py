@@ -65,8 +65,7 @@ def run():
     minVal = nonNullArr.min()
     maxVal = nonNullArr.max()
     median = numpy.median(nonNullArr)
-    # Get the first mode, since (in theory) there can be more than one
-    mode = scipy.stats.mode(nonNullArr)[0]
+    mode = scipy.stats.mode(nonNullArr, axis=None)[0][0]
     
     ok = True
     msgList = []
