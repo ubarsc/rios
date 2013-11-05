@@ -108,6 +108,10 @@ def run():
     for filename in [ramp1, ramp2]:
         os.remove(filename)
     
+    if allOK:
+        riostestutils.report(TESTNAME, "Passed")
+
+    
     return allOK
 
 
