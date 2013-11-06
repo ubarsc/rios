@@ -33,29 +33,52 @@ def run():
     """
     riostestutils.reportStart(TESTNAME)
     
-    # Create a sample image, and calculate statistics on it
     nullVal = 0
-    imgfile = 'ramp.img'
-    riostestutils.genRampImageFile(imgfile)
-    ds = gdal.Open(imgfile, gdal.GA_Update)
-    calcstats.calcStats(ds, progress=cuiprogress.SilentProgress(), 
-        ignore=nullVal)
-    del ds
     
-    # Read back the data as a numpy array
-    ds = gdal.Open(imgfile)
-    band = ds.GetRasterBand(1)
-    rampArr = band.ReadAsArray()
+    dataTypesList = [
+        (gdal.GDT_Byte, numpy.uint8, 'uint8'),
+        (gdal.GDT_UInt16, numpy.uint16, 'uint16'),
+        (gdal.GDT_Float32, numpy.float32, 'float32')
+    ]
+    for (fileDtype, arrDtype, dtypeName) in dataTypesList:
+        imgfile = 'test.img'
+        ds = riostestutils.createTestFile(imgfile)
+        rampArr = riostestutils.genRampArray()
+        (nRows, nCols) = rampArr.shape
+        # Set half of it to null
+        rampArr[:, :nCols//2] = nullVal
+        band = ds.GetRasterBand(1)
+        band.WriteArray(rampArr)
+        del ds
+
+        # Calculate  the stats on the file
+        ds = gdal.Open(imgfile, gdal.GA_Update)
+        calcstats.calcStats(ds, progress=cuiprogress.SilentProgress(), 
+            ignore=nullVal)
+        del ds
     
-    stats1 = getStatsFromBand(band)
-    stats2 = getStatsFromArray(rampArr, nullVal)
-    ok = compareStats(stats1, stats2)
+        # Read back the data as a numpy array
+        ds = gdal.Open(imgfile)
+        band = ds.GetRasterBand(1)
+        rampArr = band.ReadAsArray()
     
-    del ds
-    
+        # Get stats from file, and from array, and compare
+        stats1 = getStatsFromBand(band)
+        stats2 = getStatsFromArray(rampArr, nullVal)
+        ok = compareStats(stats1, stats2, dtypeName)
+        del ds
+
     if os.path.exists(imgfile):
         os.remove(imgfile)
     
+    if ok:
+        riostestutils.report(TESTNAME, "Passed")
+    else:
+        riostestutils.report(TESTNAME, 
+            ("Note that the mode and median tests will fail in GDAL < 2.0, "+
+                "unless the GDAL fixes suggested in tickets "+
+                "http://trac.osgeo.org/gdal/ticket/4750 and " +
+                "http://trac.osgeo.org/gdal/ticket/5289 are applied"))
     return ok
 
 
@@ -100,6 +123,7 @@ def equalTol(a, b, tol):
     diff = abs(a - b)
     return (diff < tol)
 
+
 class Stats(object):
     def __init__(self, mean, stddev, minval, maxval, median, mode):
         self.mean = mean
@@ -108,9 +132,13 @@ class Stats(object):
         self.maxval = maxval
         self.median = median
         self.mode = mode
+    
+    def __str__(self):
+        return ' '.join(['%s:%s'%(n, getattr(self, n))
+            for n in ['mean', 'stddev', 'minval', 'maxval', 'median', 'mode']])
 
 
-def compareStats(stats1, stats2):
+def compareStats(stats1, stats2, dtypeName):
     """
     Compare two Stats instances, and report differences. Also
     return True if all OK. 
@@ -118,7 +146,7 @@ def compareStats(stats1, stats2):
     ok = True
     msgList = []
     tolerance = 0.000000001
-    for statsName in ['mean', 'median', 'minval', 'maxval', 'median', 'mode']:
+    for statsName in ['mean', 'stddev', 'minval', 'maxval', 'median', 'mode']:
         value1 = getattr(stats1, statsName)
         value2 = getattr(stats2, statsName)
         if not equalTol(value1, value2, tolerance):
@@ -126,10 +154,10 @@ def compareStats(stats1, stats2):
     
     if len(msgList) > 0:
         ok = False
-        riostestutils.report(TESTNAME, '\n'.join(msgList))
-    else:
-        riostestutils.report(TESTNAME, "Passed")
+        riostestutils.report(TESTNAME, 
+            'Datatype=%s\n%s'%(dtypeName, '\n'.join(msgList)))
     return ok
+
 
 if __name__ == "__main__":
     run()
