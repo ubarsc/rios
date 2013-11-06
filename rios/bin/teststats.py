@@ -46,53 +46,50 @@ def run():
     ds = gdal.Open(imgfile)
     band = ds.GetRasterBand(1)
     rampArr = band.ReadAsArray()
-    # Read the stats from the file
-    fileMean = float(band.GetMetadataItem('STATISTICS_MEAN'))
-    fileStddev = float(band.GetMetadataItem('STATISTICS_STDDEV'))
-    fileMin = float(band.GetMetadataItem('STATISTICS_MINIMUM'))
-    fileMax = float(band.GetMetadataItem('STATISTICS_MAXIMUM'))
-    fileMedian = float(band.GetMetadataItem('STATISTICS_MEDIAN'))
-    fileMode = float(band.GetMetadataItem('STATISTICS_MODE'))
+    
+    stats1 = getStatsFromBand(band)
+    stats2 = getStatsFromArray(rampArr, nullVal)
+    ok = compareStats(stats1, stats2)
+    
     del ds
-    
-    # Work out the statistics directly from the data array, using numpy
-    nonNullMask = (rampArr != nullVal)
-    nonNullArr = rampArr[nonNullMask].astype(numpy.float64)
-    
-    # Work out what the correct answers should be
-    mean = nonNullArr.mean()
-    stddev = nonNullArr.std()
-    minVal = nonNullArr.min()
-    maxVal = nonNullArr.max()
-    median = numpy.median(nonNullArr)
-    mode = scipy.stats.mode(nonNullArr, axis=None)[0][0]
-    
-    ok = True
-    msgList = []
-    tolerance = 0.000000001
-    if not equalTol(mean, fileMean, tolerance):
-        msgList.append("Error in mean: %s != %s" % (fileMean, mean))
-    if not equalTol(stddev, fileStddev, tolerance):
-        msgList.append("Error in stddev: %s != %s" % (fileStddev, stddev))
-    if not equalTol(minVal, fileMin, tolerance):
-        msgList.append("Error in min: %s != %s" % (fileMin, minVal))
-    if not equalTol(maxVal, fileMax, tolerance):
-        msgList.append("Error in max: %s != %s" % (fileMax, maxVal))
-    if not equalTol(median, fileMedian, tolerance):
-        msgList.append("Error in median: %s != %s" % (fileMedian, median))
-    if not equalTol(mode, fileMode, tolerance):
-        msgList.append("Error in mode: %s != %s" % (fileMode, mode))
-    
-    if len(msgList) > 0:
-        ok = False
-        riostestutils.report(TESTNAME, '\n'.join(msgList))
-    else:
-        riostestutils.report(TESTNAME, "Passed")
     
     if os.path.exists(imgfile):
         os.remove(imgfile)
     
     return ok
+
+
+def getStatsFromBand(band):
+    """
+    Get statistics from given band object, return Stats instance
+    """
+    mean = float(band.GetMetadataItem('STATISTICS_MEAN'))
+    stddev = float(band.GetMetadataItem('STATISTICS_STDDEV'))
+    minval = float(band.GetMetadataItem('STATISTICS_MINIMUM'))
+    maxval = float(band.GetMetadataItem('STATISTICS_MAXIMUM'))
+    median = float(band.GetMetadataItem('STATISTICS_MEDIAN'))
+    mode = float(band.GetMetadataItem('STATISTICS_MODE'))
+    statsObj = Stats(mean, stddev, minval, maxval, median, mode)
+    return statsObj
+
+
+def getStatsFromArray(arr, nullVal):
+    """
+    Work out the statistics directly from the image array. 
+    Return a Stats instance
+    """
+    nonNullMask = (arr != nullVal)
+    nonNullArr = arr[nonNullMask].astype(numpy.float64)
+    
+    # Work out what the correct answers should be
+    mean = nonNullArr.mean()
+    stddev = nonNullArr.std()
+    minval = nonNullArr.min()
+    maxval = nonNullArr.max()
+    median = numpy.median(nonNullArr)
+    mode = scipy.stats.mode(nonNullArr, axis=None)[0][0]
+    return Stats(mean, stddev, minval, maxval, median, mode)
+
 
 def equalTol(a, b, tol):
     """
@@ -102,6 +99,37 @@ def equalTol(a, b, tol):
     """
     diff = abs(a - b)
     return (diff < tol)
+
+class Stats(object):
+    def __init__(self, mean, stddev, minval, maxval, median, mode):
+        self.mean = mean
+        self.stddev = stddev
+        self.minval = minval
+        self.maxval = maxval
+        self.median = median
+        self.mode = mode
+
+
+def compareStats(stats1, stats2):
+    """
+    Compare two Stats instances, and report differences. Also
+    return True if all OK. 
+    """
+    ok = True
+    msgList = []
+    tolerance = 0.000000001
+    for statsName in ['mean', 'median', 'minval', 'maxval', 'median', 'mode']:
+        value1 = getattr(stats1, statsName)
+        value2 = getattr(stats2, statsName)
+        if not equalTol(value1, value2, tolerance):
+            msgList.append("Error in %s: %s != %s" % (statsName, value1, value2))
+    
+    if len(msgList) > 0:
+        ok = False
+        riostestutils.report(TESTNAME, '\n'.join(msgList))
+    else:
+        riostestutils.report(TESTNAME, "Passed")
+    return ok
 
 if __name__ == "__main__":
     run()
