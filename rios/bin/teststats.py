@@ -35,15 +35,28 @@ def run():
     
     nullVal = 0
     
+    # We repeat the basic test for a number of different GDAL datatypes, with different
+    # ranges of data. Each element of the following list is a tuple of
+    #    (gdalDataType, numpyDataType, scalefactor)
+    # for which the test is run. The original data being scaled is in 
+    # the range 25-100 (after clobbering half the array as nulls, to ensure that
+    # the nulls are enough to make a difference). 
     dataTypesList = [
-        (gdal.GDT_Byte, numpy.uint8, 'uint8'),
-        (gdal.GDT_UInt16, numpy.uint16, 'uint16'),
-        (gdal.GDT_Float32, numpy.float32, 'float32')
+        (gdal.GDT_Byte, numpy.uint8, 1),
+        (gdal.GDT_UInt16, numpy.uint16, 1),
+        (gdal.GDT_Int16, numpy.int16, 300),
+        (gdal.GDT_UInt16, numpy.uint16, 300),
+        (gdal.GDT_Int32, numpy.int32, 30000),
+        (gdal.GDT_UInt32, numpy.uint32, 30000),
+        (gdal.GDT_Float32, numpy.float32, 1), 
+        (gdal.GDT_Float32, numpy.float32, 100), 
+        (gdal.GDT_Float32, numpy.float32, 0.01) 
     ]
-    for (fileDtype, arrDtype, dtypeName) in dataTypesList:
+    # Loop over all tuples in the list
+    for (fileDtype, arrDtype, scalefactor) in dataTypesList:
         imgfile = 'test.img'
-        ds = riostestutils.createTestFile(imgfile)
-        rampArr = riostestutils.genRampArray()
+        ds = riostestutils.createTestFile(imgfile, dtype=fileDtype)
+        rampArr = riostestutils.genRampArray().astype(arrDtype) * scalefactor
         (nRows, nCols) = rampArr.shape
         # Set half of it to null
         rampArr[:, :nCols//2] = nullVal
@@ -65,7 +78,12 @@ def run():
         # Get stats from file, and from array, and compare
         stats1 = getStatsFromBand(band)
         stats2 = getStatsFromArray(rampArr, nullVal)
-        ok = compareStats(stats1, stats2, dtypeName)
+        iterationName = "%s scale=%s"%(gdal.GetDataTypeName(fileDtype), scalefactor)
+        # This tolerance is already pretty big, in order to accomodate the approximate
+        # calculation of the mode and median. If anyone tries to make it larger,
+        # they should be able to justify it, very strongly. 
+        tolerance = 0.1 * scalefactor
+        ok = compareStats(stats1, stats2, iterationName, tolerance)
         del ds
 
     if os.path.exists(imgfile):
@@ -134,23 +152,23 @@ class Stats(object):
         self.mode = mode
     
     def __str__(self):
-        return ' '.join(['%s:%s'%(n, getattr(self, n))
+        return ' '.join(['%s:%s'%(n, repr(getattr(self, n)))
             for n in ['mean', 'stddev', 'minval', 'maxval', 'median', 'mode']])
 
 
-def compareStats(stats1, stats2, dtypeName):
+def compareStats(stats1, stats2, dtypeName, tolerance):
     """
     Compare two Stats instances, and report differences. Also
     return True if all OK. 
     """
     ok = True
     msgList = []
-    tolerance = 0.000000001
     for statsName in ['mean', 'stddev', 'minval', 'maxval', 'median', 'mode']:
         value1 = getattr(stats1, statsName)
         value2 = getattr(stats2, statsName)
         if not equalTol(value1, value2, tolerance):
-            msgList.append("Error in %s: %s != %s" % (statsName, value1, value2))
+            msgList.append("Error in %s: %s (from file) != %s (from array)" % 
+                (statsName, repr(value1), repr(value2)))
     
     if len(msgList) > 0:
         ok = False
