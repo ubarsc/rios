@@ -87,7 +87,8 @@ def addPyramid(ds,progress):
     # make sure it goes to 100%
     progress.setProgress(100)
 
-
+gdalLargeIntTypes = set([gdal.GDT_Int16, gdal.GDT_UInt16, gdal.GDT_Int32, gdal.GDT_UInt32])
+gdalFloatTypes = set([gdal.GDT_Float32, gdal.GDT_Float64])
 def addStatistics(ds,progress,ignore=None):
     """
     Calculates statistics and adds the to the image
@@ -133,7 +134,7 @@ def addStatistics(ds,progress,ignore=None):
         tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
         tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
 
-        # create a histogram so we can do the rest
+        # create a histogram so we can do the mode and median
         if band.DataType == gdalconst.GDT_Byte:
             # if byte data use 256 bins and the whole range
             histmin = 0
@@ -150,10 +151,9 @@ def addStatistics(ds,progress,ignore=None):
             histCalcMax = maxval + 0.5
             histnbins = histmax + 1
             tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
-        else:
+        elif band.DataType in gdalLargeIntTypes:
             histrange = int(numpy.ceil(maxval) - numpy.floor(minval)) + 1
-            histmin = minval
-            histmax = maxval
+            (histmin, histmax) = (minval, maxval)
             if histrange <= 256:
                 histnbins = histrange
                 tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
@@ -164,18 +164,29 @@ def addStatistics(ds,progress,ignore=None):
                 tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
                 histCalcMin = histmin
                 histCalcMax = histmax
+        elif band.DataType in gdalFloatTypes:
+            histnbins = 256
+            (histmin, histmax) = (minval, maxval)
+            tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
+            histCalcMin = minval
+            histCalcMax = maxval
+        # Note that the complex number data types are not handled, as I am not sure
+        # what a histogram or a median would mean for such types. 
       
         userdata = ProgressUserData()
         userdata.progress = progress
         userdata.nbands = ds.RasterCount * 2
         userdata.curroffset = percent
       
-        # get histogram and force GDAL to recalulate it
+        # get histogram and force GDAL to recalculate it
         hist = band.GetHistogram(histCalcMin,histCalcMax,histnbins,False,False,progressFunc,userdata)
+
+        # This step size must match what GetHistogram() actually uses for its bin size,
+        # see doco for GetHistogram() for details. 
+        step = float(histCalcMax - histCalcMin) / histnbins
 
         # do the mode - bin with the highest count
         modebin = numpy.argmax(hist)
-        step = float(histmax - histmin) / (histnbins - 1)
         modeval = modebin * step + histmin
         if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
             tmpmeta["STATISTICS_MODE"] = repr(modeval)
