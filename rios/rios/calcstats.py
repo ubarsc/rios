@@ -1,7 +1,8 @@
 """
-This module creates pyramid layers and calculates statistics for orignally for
- ERDAS Imagine files but should work with any other format that supports
- pyramid layers and statistics
+This module creates pyramid layers and calculates statistics for image
+files. Much of it was orignally for ERDAS Imagine files but should work 
+with any other format that supports pyramid layers and statistics
+
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -47,7 +48,11 @@ class ProgressUserData:
 
 def addPyramid(ds,progress):
     """
-    Adds Pyramid layers to the dataset
+    Adds Pyramid layers to the dataset. Adds levels until
+    the raster dimension of the overview layer is < minoverviewdim,
+    up to a maximum level of 512. 
+    Uses gdal.Dataset.BuildOverviews() to do the work. 
+    
     """
     progress.setLabelText("Computing Pyramid Layers...")
     progress.setProgress(0)
@@ -91,7 +96,17 @@ gdalLargeIntTypes = set([gdal.GDT_Int16, gdal.GDT_UInt16, gdal.GDT_Int32, gdal.G
 gdalFloatTypes = set([gdal.GDT_Float32, gdal.GDT_Float64])
 def addStatistics(ds,progress,ignore=None):
     """
-    Calculates statistics and adds the to the image
+    Calculates statistics and adds them to the image
+    
+    Uses gdal.Band.GetStatistics() for mean, stddev, min and max,
+    and gdal.Band.GetHistogram() to do histogram calculation. 
+    The median and mode are estimated using the histogram, and so 
+    for larger datatypes, they will be approximate only. 
+    
+    For thematic layers, the histogram is calculated with as many bins 
+    as required, for athematic integer and float types, a maximum
+    of 256 bins is used. 
+    
     """
     progress.setLabelText("Computing Statistics...")
     progress.setProgress(0)
@@ -249,7 +264,9 @@ def addStatistics(ds,progress,ignore=None):
     
 def calcStats(ds,progress=None,ignore=None):
     """
-    Does both the stats and pyramid layers
+    Does both the stats and pyramid layers. Calls addStatistics()
+    and addPyramid() functions. See their docstrings for details. 
+    
     """
     if progress is None:
         progress = cuiprogress.CUIProgressBar()
