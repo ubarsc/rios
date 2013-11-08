@@ -79,11 +79,12 @@ def run():
         stats1 = getStatsFromBand(band)
         stats2 = getStatsFromArray(rampArr, nullVal)
         iterationName = "%s scale=%s"%(gdal.GetDataTypeName(fileDtype), scalefactor)
-        # This tolerance is already pretty big, in order to accomodate the approximate
-        # calculation of the mode and median. If anyone tries to make it larger,
-        # they should be able to justify it, very strongly. 
-        tolerance = 0.1 * scalefactor
-        ok = compareStats(stats1, stats2, iterationName, tolerance)
+        # This relative tolerance is used for comparing the median and mode, 
+        # because those are approximate only, and the likely error depends on the 
+        # size of the numbers in question (thus it depends on the scalefactor). 
+        # Please do not make it any larger unless you have a really solid reason. 
+        relativeTolerance = 0.1 * scalefactor
+        ok = compareStats(stats1, stats2, iterationName, relativeTolerance)
         del ds
 
     if os.path.exists(imgfile):
@@ -156,17 +157,22 @@ class Stats(object):
             for n in ['mean', 'stddev', 'minval', 'maxval', 'median', 'mode']])
 
 
-def compareStats(stats1, stats2, dtypeName, tolerance):
+def compareStats(stats1, stats2, dtypeName, relativeTolerance):
     """
     Compare two Stats instances, and report differences. Also
     return True if all OK. 
     """
     ok = True
     msgList = []
+    absoluteTolerance = 0.000001
     for statsName in ['mean', 'stddev', 'minval', 'maxval', 'median', 'mode']:
         value1 = getattr(stats1, statsName)
         value2 = getattr(stats2, statsName)
-        if not equalTol(value1, value2, tolerance):
+        
+        tol = absoluteTolerance
+        if statsName in ['median', 'mode']:
+            tol = relativeTolerance
+        if not equalTol(value1, value2, tol):
             msgList.append("Error in %s: %s (from file) != %s (from array)" % 
                 (statsName, repr(value1), repr(value2)))
     
