@@ -106,7 +106,7 @@ def addStatistics(ds,progress,ignore=None):
         if ignore is not None:
             # tell QGIS that the ignore value was ignored
             band.SetNoDataValue(ignore)
-            tmpmeta["STATISTICS_EXCLUDEDVALUES"] = str(ignore) # doesn't seem to do anything
+            tmpmeta["STATISTICS_EXCLUDEDVALUES"] = repr(ignore) # doesn't seem to do anything
       
         # get GDAL to calculate statistics - force recalculation. Trap errors 
         useExceptions = gdal.GetUseExceptions()
@@ -125,10 +125,10 @@ def addStatistics(ds,progress,ignore=None):
         percent = percent + percentstep
         progress.setProgress(percent)
     
-        tmpmeta["STATISTICS_MINIMUM"] = str(minval)
-        tmpmeta["STATISTICS_MAXIMUM"] = str(maxval)
-        tmpmeta["STATISTICS_MEAN"]    = str(meanval)
-        tmpmeta["STATISTICS_STDDEV"]  = str(stddevval)
+        tmpmeta["STATISTICS_MINIMUM"] = repr(minval)
+        tmpmeta["STATISTICS_MAXIMUM"] = repr(maxval)
+        tmpmeta["STATISTICS_MEAN"]    = repr(meanval)
+        tmpmeta["STATISTICS_STDDEV"]  = repr(stddevval)
         # because we did at full res - these are the default anyway
         tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
         tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
@@ -178,14 +178,14 @@ def addStatistics(ds,progress,ignore=None):
         step = float(histmax - histmin) / (histnbins - 1)
         modeval = modebin * step + histmin
         if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
-            tmpmeta["STATISTICS_MODE"] = str(modeval)
+            tmpmeta["STATISTICS_MODE"] = repr(modeval)
         else:
-            tmpmeta["STATISTICS_MODE"] = str(int(round(modeval)))
+            tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
     
-        tmpmeta["STATISTICS_HISTOMIN"] = str(histmin)
-        tmpmeta["STATISTICS_HISTOMAX"] = str(histmax)
-        tmpmeta["STATISTICS_HISTONUMBINS"] = str(histnbins)
-        tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(str,hist))
+        tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
+        tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
+        tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
+        tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist))
 
         # estimate the median - bin with the middle number
         middlenum = sum(hist) / 2
@@ -198,9 +198,9 @@ def addStatistics(ds,progress,ignore=None):
             medianbin += 1
         medianval = medianbin * step + histmin
         if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
-            tmpmeta["STATISTICS_MEDIAN"]  = str(medianval)
+            tmpmeta["STATISTICS_MEDIAN"]  = repr(medianval)
         else:
-            tmpmeta["STATISTICS_MEDIAN"]  = str(int(round(medianval)))
+            tmpmeta["STATISTICS_MEDIAN"]  = repr(int(round(medianval)))
     
         # set the data
         band.SetMetadata(tmpmeta)
