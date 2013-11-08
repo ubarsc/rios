@@ -139,6 +139,7 @@ def addStatistics(ds,progress,ignore=None):
             # if byte data use 256 bins and the whole range
             histmin = 0
             histmax = 255
+            histstep = 1.0
             histCalcMin = -0.5
             histCalcMax = 255.5
             histnbins = 256
@@ -147,6 +148,7 @@ def addStatistics(ds,progress,ignore=None):
             # all other thematic types a bin per value
             histmin = 0
             histmax = int(numpy.ceil(maxval))
+            histstep = 1.0
             histCalcMin = -0.5
             histCalcMax = maxval + 0.5
             histnbins = histmax + 1
@@ -156,6 +158,7 @@ def addStatistics(ds,progress,ignore=None):
             (histmin, histmax) = (minval, maxval)
             if histrange <= 256:
                 histnbins = histrange
+                histstep = 1.0
                 tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
                 histCalcMin = histmin - 0.5
                 histCalcMax = histmax + 0.5
@@ -164,12 +167,14 @@ def addStatistics(ds,progress,ignore=None):
                 tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
                 histCalcMin = histmin
                 histCalcMax = histmax
+                histstep = float(histCalcMax - histCalcMin) / histnbins
         elif band.DataType in gdalFloatTypes:
             histnbins = 256
             (histmin, histmax) = (minval, maxval)
             tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
             histCalcMin = minval
             histCalcMax = maxval
+            histstep = float(histCalcMax - histCalcMin) / histnbins
         # Note that the complex number data types are not handled, as I am not sure
         # what a histogram or a median would mean for such types. 
       
@@ -181,13 +186,15 @@ def addStatistics(ds,progress,ignore=None):
         # get histogram and force GDAL to recalculate it
         hist = band.GetHistogram(histCalcMin,histCalcMax,histnbins,False,False,progressFunc,userdata)
 
-        # This step size must match what GetHistogram() actually uses for its bin size,
-        # see doco for GetHistogram() for details. 
-        step = float(histCalcMax - histCalcMin) / histnbins
+        # Note that we have explicitly set histstep in each datatype case 
+        # above. In principle, this can be calculated, as it is done in the 
+        # float case, but for some of the others we need it to be exactly
+        # equal to 1, so we set it explicitly there, to avoid rounding
+        # error problems. 
 
         # do the mode - bin with the highest count
         modebin = numpy.argmax(hist)
-        modeval = modebin * step + histmin
+        modeval = modebin * histstep + histmin
         if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
             tmpmeta["STATISTICS_MODE"] = repr(modeval)
         else:
@@ -207,7 +214,7 @@ def addStatistics(ds,progress,ignore=None):
             if total >= middlenum:
                 break
             medianbin += 1
-        medianval = medianbin * step + histmin
+        medianval = medianbin * histstep + histmin
         if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
             tmpmeta["STATISTICS_MEDIAN"]  = repr(medianval)
         else:
