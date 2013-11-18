@@ -303,17 +303,15 @@ class InputCollection(object):
         cmdList.append('-t_srs')
         cmdList.append(dest_prf)
         
-        # extent
+        # extent. Note the use of repr() to avoid loss of precision. 
         cmdList.append('-te')
-        cmdList.append('%f' % workingRegion.xMin)
-        cmdList.append('%f' % workingRegion.yMin)
-        cmdList.append('%f' % workingRegion.xMax)
-        cmdList.append('%f' % workingRegion.yMax)
+        for x in [workingRegion.xMin, workingRegion.yMin, workingRegion.xMax, workingRegion.yMax]:
+            cmdList.append(repr(x))
         
-        # resolution 
+        # resolution. Note the use of repr() to avoid loss of precision. 
         cmdList.append('-tr')
-        cmdList.append('%f' % workingRegion.xRes)
-        cmdList.append('%f' % workingRegion.yRes)
+        for x in [workingRegion.xRes, workingRegion.yRes]:
+            cmdList.append(repr(x))
         
         # output format
         cmdList.append('-of')
