@@ -222,7 +222,12 @@ class ApplierControls(object):
         
     def setOutputDriverName(self, drivername, imagename=None):
         """
-        Set the output driver name to the given GDAL shortname
+        Set the output driver name to the given GDAL shortname.
+        
+        Note that the GDAL creation options have defaults suitable only 
+        for the default driver, so if one sets the output driver, then 
+        the creation options should be reviewed too. 
+        
         """
         self.setOptionForImagename('drivername', imagename, drivername)
         
@@ -277,6 +282,10 @@ class ApplierControls(object):
         """
         Set a list of GDAL creation options (should match with the driver). 
         Each list element is a string of the form "NAME=VALUE". 
+        
+        Defaults are suitable for the default driver, and need to be changed
+        if that is changed. 
+        
         """
         self.setOptionForImagename('creationoptions', imagename, creationoptions)
         
