@@ -77,3 +77,6 @@ class VectorRasterizationError(RiosError):
 
 class VectorLayerError(RiosError):
     "Unable to find the specified layer"
+
+class WrongControlsObject(RiosError):
+    "The wrong type of control object has been passed to apply"
