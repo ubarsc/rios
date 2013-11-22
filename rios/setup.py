@@ -16,7 +16,8 @@ setup(name='rios',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
       scripts=glob.glob('bin/*.py'),
-      packages=['rios'],
+      packages=['rios', 'rios/parallel', 'rios/parallel/multiprocessing', 
+                        'rios/parallel/mpi'],
       license='LICENSE.txt', 
       url='https://bitbucket.org/chchrsc/rios'
      )
