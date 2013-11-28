@@ -281,3 +281,83 @@ class ImageFileStats(object):
 
     def __str__(self):
         return '\n'.join([str(s) for s in self.statsList])
+
+
+class VectorFileInfo(object):
+    """
+    Hold useful general information about a vector file. This object
+    can be indexed with the layer index, and each element is
+    an instance of VectorLayerInfo. 
+    
+    """
+    def __init__(self, filename):
+        ds = ogr.Open(filename)
+        if ds is None:
+            raise rioserrors.VectorLayerError("Unable to open vector dataset '%s'"%filename)
+        layerCount = ds.GetLayerCount()
+        self.layerInfo = [VectorLayerInfo(ds, i) for i in range(layerCount)]
+    
+    def __getitem__(self, i):
+        return self.layerInfo[i]
+    
+    def __str__(self):
+        return '\n'.join(['Layer:%s\n%s'%(i, str(self.layerInfo[i])) 
+                for i in range(len(self.layerInfo))])
+
+
+geometryTypeStringDict = {
+    1:'Point',
+    2:'Line',
+    3:'Polygon'
+}
+class VectorLayerInfo(object):
+    """
+    Hold useful general information about a single vector layer. 
+    
+    Object contains the following fields
+        featureCount        Number of features in the layer
+        xMin                Minimum X coordinate
+        xMax                Maximum X coordinate
+        yMin                Minimum Y coordinate
+        yMax                Maximum Y coordinate
+        geomType            OGR geometry type code (integer)
+        geomTypeStr         Human-readable geometry type name (string)
+        fieldCount          Number of fields (i.e. columns) in attribute table
+        fieldNames          List of names of attribute table fields
+        fieldTypes          List of the type code numbers of each attribute table field
+        fieldTypeNames      List of the string names of the field types
+        spatialRef          osr.SpatialReference object of layer projection
+    
+    """
+    def __init__(self, ds, i):
+        lyr = ds.GetLayer(i)
+        if lyr is None:
+            raise rioserrors.VectorLayerError("Unable to open layer %s in dataset '%s'"%(i, ds.GetName()))
+        
+        self.featureCount = lyr.GetFeatureCount()
+        extent = lyr.GetExtent()
+        self.xMin = extent[0]
+        self.xMax = extent[1]
+        self.yMin = extent[2]
+        self.yMax = extent[3]
+        
+        self.geomType = lyr.GetGeomType()
+        if self.geomType in geometryTypeStringDict:
+            self.geomTypeStr = geometryTypeStringDict[self.geomType]
+        
+        lyrDefn = lyr.GetLayerDefn()
+        self.fieldCount = lyrDefn.GetFieldCount()
+        fieldDefnList = [lyrDefn.GetFieldDefn(i) for i in range(self.fieldCount)]
+        self.fieldNames = [fd.GetName() for fd in fieldDefnList]
+        self.fieldTypes = [fd.GetType() for fd in fieldDefnList]
+        self.fieldTypeNames = [fd.GetTypeName() for fd in fieldDefnList]
+        
+        self.spatialRef = lyr.GetSpatialRef()
+
+    def __str__(self):
+        valueList = []
+        for valName in ['featureCount', 'xMin', 'xMax', 'yMin', 'yMax', 'geomType', 
+                'geomTypeStr', 'fieldCount', 'fieldNames', 'fieldTypes', 'fieldTypeNames',
+                'spatialRef']:
+            valueList.append("  %s: %s" % (valName, getattr(self, valName)))
+        return '\n'.join(valueList)
