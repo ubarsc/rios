@@ -227,24 +227,32 @@ class ImageLayerStats(object):
     """
     def __init__(self, bandObj):
         metadata = bandObj.GetMetadata()
-        self.mean = eval(metadata['STATISTICS_MEAN'])
-        self.stddev = eval(metadata['STATISTICS_STDDEV'])
-        self.max = eval(metadata['STATISTICS_MAXIMUM'])
-        self.min = eval(metadata['STATISTICS_MINIMUM'])
-        self.median = eval(metadata['STATISTICS_MEDIAN'])
-        self.mode = eval(metadata['STATISTICS_MODE'])
+        self.mean = self.__getItem(metadata, 'STATISTICS_MEAN')
+        self.stddev = self.__getItem(metadata, 'STATISTICS_STDDEV')
+        self.max = self.__getItem(metadata, 'STATISTICS_MAXIMUM')
+        self.min = self.__getItem(metadata, 'STATISTICS_MINIMUM')
+        self.median = self.__getItem(metadata, 'STATISTICS_MEDIAN')
+        self.mode = self.__getItem(metadata, 'STATISTICS_MODE')
         
-        self.histoMin = eval(metadata['STATISTICS_HISTOMIN'])
-        self.histoMax = eval(metadata['STATISTICS_HISTOMAX'])
-        self.histoNumBins = eval(metadata['STATISTICS_HISTONUMBINS'])
+        self.histoMin = self.__getItem(metadata, 'STATISTICS_HISTOMIN')
+        self.histoMax = self.__getItem(metadata, 'STATISTICS_HISTOMAX')
+        self.histoNumBins = self.__getItem(metadata, 'STATISTICS_HISTONUMBINS')
 
-        histoString = metadata['STATISTICS_HISTOBINVALUES']
-        if histoString is not None:
+        if 'STATISTICS_HISTOBINVALUES' in metadata:
+            histoString = metadata['STATISTICS_HISTOBINVALUES']
             histoStringList = [c for c in histoString.split('|') if len(c) > 0]
             counts = [eval(c) for c in histoStringList]
             self.histoCounts = numpy.array(counts)
         else:
             self.histoCounts = None
+    
+    @staticmethod
+    def __getItem(metadata, key):
+        "Return eval(item) by key, or None if not present"
+        item = None
+        if key in metadata:
+            item = eval(metadata[key])
+        return item
     
     def __str__(self):
         "Readable string representation of stats"
@@ -254,8 +262,8 @@ class ImageLayerStats(object):
 
 class ImageFileStats(object):
     """
-    Hold the stats or all layers in an image file. Can be indexed with the
-    layer index, and each element is an instance of ImageLayerStats. 
+    Hold the stats for all layers in an image file. This object can be indexed 
+    with the layer index, and each element is an instance of ImageLayerStats. 
     
     """
     def __init__(self, filename):
