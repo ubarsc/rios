@@ -60,7 +60,7 @@ class ImageInfo(object):
         dataTypeName    Data type for the first band (as a human-readable string)
         nodataval       Value used as the no-data indicator (per band)
     
-    The omitPerBand argument on the constructor is proved in order to speed up the 
+    The omitPerBand argument on the constructor is provided in order to speed up the 
     access of very large VRT stacks. The information which is normally extracted 
     from each band will, in that case, trigger a gdal.Open() for each band, which 
     can be quite slow. So, if none of that information is actually required, then 
@@ -207,6 +207,8 @@ class ImageLayerStats(object):
     Hold the stats for a single image layer. These are as retrieved
     from the given image file, and are not calculated again. If they
     are not present in the file, they will be None. 
+    Typically this class is not used separately, but only instantiated 
+    as a part of the ImageFileStats class. 
     
     The object contains the following fields
         mean        Mean value over all non-null pixels
