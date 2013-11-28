@@ -30,6 +30,9 @@ class ImageOpenError(FileOpenError):
 class ParameterError(RiosError):
     "Incorrect parameters passed to function"
 
+class GDALLayerNumberError(RiosError):
+    "A GDAL layer number was given, but was out of range"
+
 class ResampleNeededError(RiosError):
     "Images do not match - resample needs to be turned on"
     
