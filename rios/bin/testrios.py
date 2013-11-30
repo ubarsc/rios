@@ -51,6 +51,17 @@ import teststats
 ok = teststats.run()
 if not ok: failureCount += 1
 
+import testavgmulti
+ok = testavgmulti.run()
+if not ok: failureCount += 1
+
+try:
+    import testavgmpi
+    ok = testavgmpi.run()
+    if not ok: failureCount += 1
+except ImportError:
+    print("Skipped MPI test due to failed import")
+
 # After all tests
 print()
 print()
