@@ -26,7 +26,7 @@ import os
 
 from rios import applier
 
-import riostestutils
+from . import riostestutils
 
 TESTNAME = "TESTCOORDS"
 

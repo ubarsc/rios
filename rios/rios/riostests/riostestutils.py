@@ -156,3 +156,49 @@ def reportStart(testName):
     """
     print("\n####################")
     print("Starting test:", testName)
+
+def testAll():
+    """
+    Runs all the tests - called from testrios.py
+    """
+    failureCount = 0
+
+    from . import testavg
+    ok = testavg.run()
+    if not ok: failureCount += 1
+
+    from . import testresample
+    ok = testresample.run()
+    if not ok: failureCount += 1
+
+    from . import testcolortable
+    ok = testcolortable.run()
+    if not ok: failureCount += 1
+
+    from . import testvector
+    ok = testvector.run()
+    if not ok: failureCount += 1
+
+    from . import testcoords
+    ok = testcoords.run()
+    if not ok: failureCount += 1
+
+    from . import teststats
+    ok = teststats.run()
+    if not ok: failureCount += 1
+
+    from . import testavgmulti
+    ok = testavgmulti.run()
+    if not ok: failureCount += 1
+
+    try:
+        from . import testavgmpi
+        ok = testavgmpi.run()
+        if not ok: failureCount += 1
+    except ImportError:
+        print("Skipped MPI test due to failed import - mpi4py needed")
+
+    # After all tests
+    print()
+    print()
+    report("ALL TESTS", "Completed, with %d failure(s)" % failureCount)

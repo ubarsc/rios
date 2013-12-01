@@ -1,12 +1,17 @@
 """
-Does a broad, general test of the applier functionality. 
+Does a broad, general test of the parallel.multiprocessing.mpi functionality. 
+
+Uses 2 prcesses since we can be reasonably sure that the users computer will
+at least have 2 cores.
+
+Note: This module has to re-spawn itself using mpirun so standby for something 
+very boggly.
 
 Generates a pair of images, and then applies a function to calculate
 the average of them. Checks the resulting output against a known 
 correct answer. 
 
-Prints a message stderr if something wrong.  
-
+Steals heavily from testavg
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -23,15 +28,26 @@ Prints a message stderr if something wrong.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import print_function
 import os
-
+import sys
+import subprocess
 import numpy
 from osgeo import gdal
-from rios import applier
+from rios.parallel.mpi import applier
 
-import riostestutils
+TESTNAME = "TESTAVGMPI"
 
-TESTNAME = "TESTAVG"
+TEST_NCPUS = 2
+MPIRUN = 'mpirun'
+
+try:
+    # this doesn't work when this file
+    # is being executed (via mpirun) rather than imported
+    # so add a workaround
+    from . import riostestutils
+except SystemError:
+    import riostestutils
 
 def run():
     """
@@ -44,27 +60,46 @@ def run():
     riostestutils.genRampImageFile(ramp1)
     riostestutils.genRampImageFile(ramp2, reverse=True)
     outfile = 'rampavg.img'
-    
-    calcAverage(ramp1, ramp2, outfile)
-    
-    ok = checkResult(outfile)
+
+    # execute this module as a script
+    # the __name__ == "__main__" clause will get
+    # executed as each process is spawned
+    args = [MPIRUN, '-n', str(TEST_NCPUS), 'python', __file__,
+            ramp1, ramp2, outfile]
+    try:
+        retCode = subprocess.call(args)
+        
+        if retCode != 0:
+            print("Received error code %d from mpirun" % retCode)
+            print("Failed to execute mpirun")
+            ok = False
+
+        else:
+            ok = checkResult(outfile)
+    except FileNotFoundError as e:
+        print(e)
+        ok = False
     
     # Clean up
     for filename in [ramp1, ramp2, outfile]:
-        os.remove(filename)
+        if os.path.exists(filename):
+            os.remove(filename)
     
     return ok
-
 
 def calcAverage(file1, file2, avgfile):
     """
     Use RIOS to calculate the average of two files.
+
+    called from the '__name__ == "__main__"' clause below
+    when this is executed from mpirun.
+    Will be called TEST_NCPUS times - one per spawned process
     """
     infiles = applier.FilenameAssociations()
     outfiles = applier.FilenameAssociations()
     infiles.img = [file1, file2]
     outfiles.avg = avgfile
-    
+
     applier.apply(doAvg, infiles, outfiles)
 
 
@@ -110,3 +145,14 @@ def checkResult(avgfile):
         riostestutils.report(TESTNAME, "Passed")
 
     return ok
+
+if __name__ == "__main__":
+    # assume we are being called from mpirun
+    # interpret the command line args and call
+    # calcAverage()
+    file1 = sys.argv[1]
+    file2 = sys.argv[2]
+    outfile = sys.argv[3]
+    calcAverage(file1, file2, outfile)
+
+

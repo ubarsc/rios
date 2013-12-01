@@ -29,7 +29,7 @@ from rios import applier
 from rios import imagereader
 from rios import vectorreader
 
-import riostestutils
+from . import riostestutils
 
 TESTNAME = "TESTVECTOR"
 
