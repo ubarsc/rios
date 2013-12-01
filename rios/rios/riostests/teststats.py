@@ -23,7 +23,7 @@ from osgeo import gdal
 import scipy.stats
 from rios import calcstats, cuiprogress
 
-import riostestutils
+from . import riostestutils
 
 TESTNAME = 'TESTSTATS'
 

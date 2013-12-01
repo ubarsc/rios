@@ -21,48 +21,8 @@ of tests of some capabilities of RIOS.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from __future__ import print_function
 
-import riostestutils
+from rios.riostests import riostestutils
 
-failureCount = 0
+riostestutils.testAll()
 
-import testavg
-ok = testavg.run()
-if not ok: failureCount += 1
-
-import testresample
-ok = testresample.run()
-if not ok: failureCount += 1
-
-import testcolortable
-ok = testcolortable.run()
-if not ok: failureCount += 1
-
-import testvector
-ok = testvector.run()
-if not ok: failureCount += 1
-
-import testcoords
-ok = testcoords.run()
-if not ok: failureCount += 1
-
-import teststats
-ok = teststats.run()
-if not ok: failureCount += 1
-
-import testavgmulti
-ok = testavgmulti.run()
-if not ok: failureCount += 1
-
-try:
-    import testavgmpi
-    ok = testavgmpi.run()
-    if not ok: failureCount += 1
-except ImportError:
-    print("Skipped MPI test due to failed import")
-
-# After all tests
-print()
-print()
-riostestutils.report("ALL TESTS", "Completed, with %d failure(s)" % failureCount)

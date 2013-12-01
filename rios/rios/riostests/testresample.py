@@ -1,14 +1,7 @@
 """
-Does a broad, general test of the parallel.multiprocessing.applier functionality. 
-
-Uses 2 prcesses since we can be reasonably sure that the users computer will
-at least have 2 cores.
-
-Generates a pair of images, and then applies a function to calculate
-the average of them. Checks the resulting output against a known 
-correct answer. 
-
-Steals heavily from testavg
+A simple test with resampling required. Two input images
+are generated on a slightly different grid, and then rios averages
+the two, allowing a resample. 
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -29,23 +22,27 @@ import os
 
 import numpy
 from osgeo import gdal
-from rios.parallel.multiprocessing import applier
+from rios import applier
+from rios import cuiprogress
 
-TESTNAME = "TESTAVGMULTI"
-TEST_NCPUS = 2
+from . import riostestutils
 
-import riostestutils
+TESTNAME = "TESTRESAMPLE"
 
 def run():
     """
     Run the test
     """
     riostestutils.reportStart(TESTNAME)
-    
+
     ramp1 = 'ramp1.img'
     ramp2 = 'ramp2.img'
     riostestutils.genRampImageFile(ramp1)
-    riostestutils.genRampImageFile(ramp2, reverse=True)
+    # Now generate a similar file, but with a small offset. This corresponds 
+    # to shifting the image 1 pixel across and 2 pixels down, although not precisely
+    xLeft = riostestutils.DEFAULT_XLEFT + 9
+    yTop = riostestutils.DEFAULT_YTOP - 19
+    riostestutils.genRampImageFile(ramp2, xLeft=xLeft, yTop=yTop)
     outfile = 'rampavg.img'
     
     calcAverage(ramp1, ramp2, outfile)
@@ -61,15 +58,17 @@ def run():
 
 def calcAverage(file1, file2, avgfile):
     """
-    Use RIOS to calculate the average of two files.
+    Use RIOS to calculate the average of two files. Allows
+    nearest-neighbour resampling of the second file. 
     """
     infiles = applier.FilenameAssociations()
     outfiles = applier.FilenameAssociations()
     infiles.img = [file1, file2]
     outfiles.avg = avgfile
-
     controls = applier.ApplierControls()
-    controls.setNProcesses(TEST_NCPUS)
+    controls.setReferenceImage(file1)
+    controls.setResampleMethod('near')
+    controls.setProgress(cuiprogress.CUIProgressBar())
     
     applier.apply(doAvg, infiles, outfiles, controls=controls)
 
@@ -94,7 +93,10 @@ def checkResult(avgfile):
     """
     # Work out the correct answer
     ramp1 = riostestutils.genRampArray()
-    ramp2 = riostestutils.genRampArray()[:, ::-1]
+    # Do a nearest-neighbour resample of the second array
+    ramp2 = ramp1[:-2, :-1]
+    # Get the corresponding part of the first array
+    ramp1 = ramp1[2:, 1:]
     tot = (ramp1.astype(numpy.float32) + ramp2)
     avg = (tot / 2.0).astype(numpy.uint8)
     
@@ -116,5 +118,3 @@ def checkResult(avgfile):
         riostestutils.report(TESTNAME, "Passed")
 
     return ok
-
-

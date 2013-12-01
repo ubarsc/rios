@@ -26,7 +26,7 @@ import numpy
 
 from rios import rat
 
-import riostestutils
+from . import riostestutils
 
 TESTNAME = "TESTCOLORTABLE"
 
