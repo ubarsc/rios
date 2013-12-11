@@ -229,16 +229,16 @@ class ImageLayerStats(object):
     """
     def __init__(self, bandObj):
         metadata = bandObj.GetMetadata()
-        self.mean = self.__getItem(metadata, 'STATISTICS_MEAN')
-        self.stddev = self.__getItem(metadata, 'STATISTICS_STDDEV')
-        self.max = self.__getItem(metadata, 'STATISTICS_MAXIMUM')
-        self.min = self.__getItem(metadata, 'STATISTICS_MINIMUM')
-        self.median = self.__getItem(metadata, 'STATISTICS_MEDIAN')
-        self.mode = self.__getItem(metadata, 'STATISTICS_MODE')
+        self.mean = self.__getMetadataItem(metadata, 'STATISTICS_MEAN')
+        self.stddev = self.__getMetadataItem(metadata, 'STATISTICS_STDDEV')
+        self.max = self.__getMetadataItem(metadata, 'STATISTICS_MAXIMUM')
+        self.min = self.__getMetadataItem(metadata, 'STATISTICS_MINIMUM')
+        self.median = self.__getMetadataItem(metadata, 'STATISTICS_MEDIAN')
+        self.mode = self.__getMetadataItem(metadata, 'STATISTICS_MODE')
         
-        self.histoMin = self.__getItem(metadata, 'STATISTICS_HISTOMIN')
-        self.histoMax = self.__getItem(metadata, 'STATISTICS_HISTOMAX')
-        self.histoNumBins = self.__getItem(metadata, 'STATISTICS_HISTONUMBINS')
+        self.histoMin = self.__getMetadataItem(metadata, 'STATISTICS_HISTOMIN')
+        self.histoMax = self.__getMetadataItem(metadata, 'STATISTICS_HISTOMAX')
+        self.histoNumBins = self.__getMetadataItem(metadata, 'STATISTICS_HISTONUMBINS')
 
         if 'STATISTICS_HISTOBINVALUES' in metadata:
             histoString = metadata['STATISTICS_HISTOBINVALUES']
@@ -249,7 +249,7 @@ class ImageLayerStats(object):
             self.histoCounts = None
     
     @staticmethod
-    def __getItem(metadata, key):
+    def __getMetadataItem(metadata, key):
         "Return eval(item) by key, or None if not present"
         item = None
         if key in metadata:
