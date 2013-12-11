@@ -278,6 +278,9 @@ class ImageFileStats(object):
     
     def __getitem__(self, i):
         return self.statsList[i]
+    
+    def __len__(self):
+        return len(self.statsList)
 
     def __str__(self):
         return '\n'.join([str(s) for s in self.statsList])
