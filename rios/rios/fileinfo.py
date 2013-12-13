@@ -217,6 +217,8 @@ class ImageLayerStats(object):
         stddev      Standard deviation over all non-null pixels
         median      Median value over all non-null pixels
         mode        Mode over all non-null pixels
+        skipfactorx The statistics skip factor in the X direction
+        skipfactory The statistics skip factor in the Y direction
         
     There are many ways to report a histogram. 
     The following attributes report it the way GDAL does. 
