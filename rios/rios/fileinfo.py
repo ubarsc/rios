@@ -235,6 +235,8 @@ class ImageLayerStats(object):
         self.min = self.__getMetadataItem(metadata, 'STATISTICS_MINIMUM')
         self.median = self.__getMetadataItem(metadata, 'STATISTICS_MEDIAN')
         self.mode = self.__getMetadataItem(metadata, 'STATISTICS_MODE')
+        self.skipfactorx = self.__getMetadataItem(metadata, 'STATISTICS_SKIPFACTORX')
+        self.skipfactory = self.__getMetadataItem(metadata, 'STATISTICS_SKIPFACTORY')
         
         self.histoMin = self.__getMetadataItem(metadata, 'STATISTICS_HISTOMIN')
         self.histoMax = self.__getMetadataItem(metadata, 'STATISTICS_HISTOMAX')
