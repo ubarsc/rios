@@ -127,6 +127,7 @@ class ApplierControls(object):
         burnattribute   Name of vector attribute used to supply burnvalue
         vectorlayer     Number (or name) of vector layer
         vectordatatype  Numpy datatype to use for raster created from vector
+        vectornull      Rasterised vector is initialised to this value, before burning
         
     
     Default values are provided for all attributes, and can then be over-ridden
@@ -160,6 +161,7 @@ class ApplierControls(object):
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
         # Vector fields
         self.burnvalue = 1
+        self.vectornull = 0
         self.burnattribute = None
         self.filtersql = None
         self.alltouched = False
@@ -352,6 +354,17 @@ class ApplierControls(object):
         vector input. Default is to use burnvalue instead of burnattribute. 
         """
         self.setOptionForImagename('burnattribute', vectorname, burnattribute)
+    
+    def setVectorNull(self, vectornull, vectorname=None):
+        """
+        Set the vector null value. This is used to initialise the
+        rasterised vector, before burning in the burn value. This is of most
+        importance when burning values from a vector attribute column, as 
+        this should be a distinct value from any of the values in the column. 
+        If this is not so, then polygons can end up blending with the background,
+        resulting in incorrect answers. 
+        """
+        self.setOptionForImagename('vectornull', vectorname, vectornull)
     
     def setFilterSQL(self, filtersql, vectorname=None):
         """
@@ -705,6 +718,7 @@ def makeVectorObjects(vectorfiles, controls):
         burnattribute = controls.getOptionForImagename('burnattribute', name)
         filtersql = controls.getOptionForImagename('filtersql', name)
         tempdir = controls.tempdir
+        vectornull = controls.getOptionsForImagename('vectornull', name)
         
         fileValue = getattr(vectorfiles, name)
         if isinstance(fileValue, list):
@@ -712,12 +726,13 @@ def makeVectorObjects(vectorfiles, controls):
             for filename in fileValue:
                 vec = vectorreader.Vector(filename, burnvalue=burnvalue, datatype=vectordatatype,
                     attribute=burnattribute, filter=filtersql, inputlayer=vectorlayer,
-                    alltouched=alltouched, tempdir=tempdir)
+                    alltouched=alltouched, tempdir=tempdir, nullval=vectornull)
                 veclist.append(vec)
             vectordict[name] = veclist
         elif isinstance(fileValue, basestring):
             vectordict[name] = vectorreader.Vector(fileValue, burnvalue=burnvalue, 
                 datatype=vectordatatype, attribute=burnattribute, filter=filtersql, 
-                inputlayer=vectorlayer, alltouched=alltouched, tempdir=tempdir)
+                inputlayer=vectorlayer, alltouched=alltouched, tempdir=tempdir, 
+                nullval=vectornull)
 
     return vectordict
