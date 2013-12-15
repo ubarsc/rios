@@ -278,6 +278,10 @@ class VectorReader(object):
                     raise rioserrors.ImageOpenError("Unable to create temporary file %s" % vector.temp_image)
                 outds.SetGeoTransform(info.getTransform())
                 outds.SetProjection(projection)
+                # Fill raster with vector null value
+                for i in range(numLayers):
+                    band = outds.GetRasterBand(i+1)
+                    band.Fill(vector.nullval)
 
                 progress.setLabelText("Rasterizing...")
                 err = gdal.RasterizeLayer(outds, [1], veclayer, burn_values=[vector.burnvalue], 
