@@ -718,7 +718,7 @@ def makeVectorObjects(vectorfiles, controls):
         burnattribute = controls.getOptionForImagename('burnattribute', name)
         filtersql = controls.getOptionForImagename('filtersql', name)
         tempdir = controls.tempdir
-        vectornull = controls.getOptionsForImagename('vectornull', name)
+        vectornull = controls.getOptionForImagename('vectornull', name)
         
         fileValue = getattr(vectorfiles, name)
         if isinstance(fileValue, list):
