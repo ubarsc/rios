@@ -202,7 +202,7 @@ class ApplierControls(object):
         """
         value = getattr(self, option)
         if option in self.optionsByImage:
-            if self.optionsByImage[option].has_key(imagename):
+            if imagename in self.optionsByImage[option]:
                 value = self.optionsByImage[option][imagename]
         return value
         
