@@ -105,7 +105,7 @@ class ImageInfo(object):
                 self.nodataval.append(bandObj.GetNoDataValue())
         
         gdalMeta = ds.GetRasterBand(1).GetMetadata()
-        if gdalMeta.has_key('LAYER_TYPE'):
+        if 'LAYER_TYPE' in gdalMeta:
             self.layerType = gdalMeta['LAYER_TYPE']
         else:
             self.layerType = None
