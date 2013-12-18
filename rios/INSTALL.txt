@@ -22,7 +22,22 @@ RIOS Installation steps, for Linux and similar.
 
 Environment Variables
 ---------------------
+    All of these environment variables can be left un-set, as they all have sensible
+    default values in the code. These are used to over-ride these defaults globally. 
+    All values can also be over-ridden on a per-application basis, using the 
+    applier controls object. 
+    
     If you wish to use a default GDAL driver other than HFA, then set
     the environment variables, which are then given to GDAL
          RIOS_DFLT_DRIVER="short name of GDAL driver"
          RIOS_DFLT_DRIVEROPTIONS="list of driver options (space-separated)"
+    
+    To change the default behaviour when determining the footprint across multiple 
+    input images
+         RIOS_DFLT_FOOTPRINT=integer. default footprint setting, corresponding
+                to values defined in imageio.py: INTERSECTION, UNION, BOUNDS_FROM_REFERENCE
+    
+    To change the default behaviour of RIOS's block-by-block processing. 
+         RIOS_DFLT_BLOCKXSIZE=integer. Default value for X block size, in pixels. 
+         RIOS_DFLT_BLOCKYSIZE=integer. Default value for Y block size, in pixels. 
+         RIOS_DFLT_OVERLAP=integer. Default value for the margin around each block. 
