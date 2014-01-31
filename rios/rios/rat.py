@@ -177,6 +177,22 @@ def getColumnNames(imgFile, bandNumber=1):
 
     return getColumnNamesFromBand(gdalBand)
 
+
+def inferColumnType(sequence):
+    """
+    Infer from the type of the first element in the sequence
+    """
+    if isinstance(sequence[0],int) or isinstance(sequence[0],numpy.integer):
+        colType = gdal.GFT_Integer
+    elif isinstance(sequence[0],float) or isinstance(sequence[0],numpy.floating):
+        colType = gdal.GFT_Real
+    elif isinstance(sequence[0],basestring) or isinstance(sequence[0],bytes):
+        colType = gdal.GFT_String
+    else:
+        colType = None
+    return colType
+
+
 def writeColumnToBand(gdalBand, colName, sequence, colType=None, 
                     colUsage=gdal.GFU_Generic):
     """
@@ -189,16 +205,10 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
     """
 
     if colType is None:
-        # infer from the type of the first element in the sequence
-        if isinstance(sequence[0],int) or isinstance(sequence[0],numpy.integer):
-            colType = gdal.GFT_Integer
-        elif isinstance(sequence[0],float) or isinstance(sequence[0],numpy.floating):
-            colType = gdal.GFT_Real
-        elif isinstance(sequence[0],basestring) or isinstance(sequence[0],bytes):
-            colType = gdal.GFT_String
-        else:
-            msg = "Can't infer type of column for sequence of %s" % type(sequence[0])
-            raise rioserrors.AttributeTableTypeError(msg)
+        colType = inferColumnType(sequence)
+    if colType is None:
+        msg = "Can't infer type of column for sequence of %s" % type(sequence[0])
+        raise rioserrors.AttributeTableTypeError(msg)
 
     # check it is acually a valid type
     elif colType not in (gdal.GFT_Integer,gdal.GFT_Real,gdal.GFT_String):
