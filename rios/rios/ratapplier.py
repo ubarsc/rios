@@ -416,11 +416,6 @@ class RatBlockAssociation(object):
                     elif haveTurboGDAL:
                         turborat.writeColumn(gdalRat, columnNdx, dataBlock, len(dataBlock),
                             self.Z__outputRowCount)
-                        # If we don't have RFC40, then we have to do this to flush to disk
-                        #self.Z__gdalHandles.band.SetDefaultRAT(gdalRat)
-                        # Now discard the gdalRat object and recreate it, so that we free 
-                        # the memory used for the rows we just wrote.
-                        #self.Z__gdalHandles.gdalRat = self.Z__gdalHandles.band.GetDefaultRAT()
                 # There may be a problem with HFA Byte arrays, if we don't end up writing 256 rows....
             else:
                 gdalBand = self.Z__gdalHandles.band
