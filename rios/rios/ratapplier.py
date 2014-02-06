@@ -96,7 +96,6 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     rowCount = controls.rowCount
     # Kludge
     allGdalHandles.gdalHandlesDict[outRats.outimg].gdalRat.SetRowCount(rowCount)
-    print('rat rowcount:', allGdalHandles.gdalHandlesDict[outRats.outimg].gdalRat.GetRowCount())
     if rowCount is None:
         rowCount = allGdalHandles.getRowCount()
 
