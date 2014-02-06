@@ -368,3 +368,169 @@ class VectorLayerInfo(object):
                 'spatialRef']:
             valueList.append("  %s: %s" % (valName, getattr(self, valName)))
         return '\n'.join(valueList)
+
+
+class ColumnStats(object):
+    """
+    Summary statistics for a single column of a raster attribute table
+    
+    Attributes are:
+        count
+        mean
+        stddev
+        min
+        max
+        mode            Not yet implemented
+        median          Not yet implemented
+    
+    Unless otherwise requested, the statistics are weighted by the Histogram column, so
+    that they represent spatial statistics, e.g. the mean would correspond to the mean
+    over all pixels, rather than the mean over all rows, and the count is effectively
+    the number of pixels, rather than the number of rows. This can be disabled by
+    setting histogramweighted=False when calling the constructor. 
+    
+    Unless otherwise requested, rows which correspond to the image null value are not
+    included in stats calculation. This can be reversed by setting includeImageNull=True
+    on the constructor, although normally the histogram does not include counts for the 
+    null value either, so this only really makes sense when using histogramweighted=False. 
+    (N.B. that last point assumes the presence of the GDAL patches for 
+    tickets #4750 and #5289. )
+        
+    """
+    def __init__(self, band, columnName, includeImageNull=False, histogramweighted=True):
+        gdalRat = band.GetDefaultRAT()
+        columnNdx = self.__findColumnNdx(gdalRat, columnName)
+        if columnNdx == -1:
+            raise rioserrors.AttributeTableColumnError("Cannot find RAT column '%s'"%columnName)
+        
+        if gdalRat.GetTypeOfCol(columnNdx) == gdal.GFT_String:
+            # The values in the column are strings, so do nothing. This essentially
+            # creates an empty object, hence the RatStats class checks this and
+            # does not make use of it. 
+            return
+
+        histoColumnNdx = gdalRat.GetColOfUsage(gdal.GFU_PixelCount)
+        # Kludge, if GDAL is missing HFA patch for ticket #5359
+        if histoColumnNdx == -1:
+            histoColumnNdx = self.__findColumnNdx(gdalRat, "Histogram")
+
+        # Check if we have the features available in GDAL RFC40  
+        # See http://trac.osgeo.org/gdal/wiki/rfc40_enhanced_rat_support
+        haveRFC40 = hasattr(gdalRat, 'ReadAsArray')
+        numRows = gdalRat.GetRowCount()
+        if not haveRFC40:
+            blocklen = numRows
+        else:
+            blocklen = 1000
+        numBlocks = int(numpy.ceil(float(numRows) / blocklen))
+        
+        # Initialise sums and counters
+        sumX = ssqX = count = 0
+        self.min = self.max = None
+        
+        # Loop over all blocks of data
+        for i in range(numBlocks):
+            startrow = i * blocklen
+            endrow = min(startrow + blocklen, numRows-1)
+            if haveRFC40:
+                datablock = gdalRat.ReadAsArray(columnNdx, start=startrow, length=(endrow-startrow+1))
+                histoblock = gdalRat.ReadAsArray(histoColumnNdx, start=startrow, length=(endrow-startrow+1))
+            else:
+                # Without RFC40, we have no choice but to read the whole column
+                datablock = rat.readColumnFromBand(band, columnName)
+                histoColumnName = gdalRat.GetNameOfCol(histoColumnNdx)
+                histoblock = rat.readColumnFromBand(band, histoColumnName)
+        
+            if not includeImageNull:
+                pixelvals = numpy.arange(startrow, endrow+1, dtype=numpy.uint32)
+                nonNullMask = (pixelvals != band.GetNoDataValue())
+                datablock = datablock[nonNullMask]
+                histoblock = histoblock[nonNullMask]
+                del nonNullMask, pixelvals
+
+            # Do sum calculations on float64 array, to avoid integer wrap-arounds and overflows. 
+            # Note that this still implies a loss of precision, but this is a known feature
+            # of doing incremental mean/stddev calculations. 
+            dataAsFloat = datablock.astype(numpy.float64)
+            
+            # If requested, weight the values by their histogram counts
+            weights = numpy.ones(len(datablock), dtype=numpy.uint8)
+            if histogramweighted:
+                weights = histoblock
+                
+            sumX += (dataAsFloat * weights).sum()
+            ssqX += ((dataAsFloat**2) * weights).sum()
+            count += weights.sum()
+            
+            # Min and max values
+            blockMin = datablock[weights>0].min()
+            blockMax = datablock[weights>0].max()
+            if self.min is None or blockMin < self.min:
+                self.min = blockMin
+            if self.max is None or blockMax > self.max:
+                self.max = blockMax
+        
+        self.count = count
+        
+        # Finish mean and stddev
+        self.mean = None
+        if count > 0:
+            self.mean = sumX / count
+        self.stddev = None
+        if count > 0:
+            # Use the naive formula, even though we know that it is prone to loss of precision. 
+            # Should we instead be using a 2-pass method? 
+            self.stddev = numpy.sqrt(ssqX / count - self.mean**2)
+            
+        self.median = None
+        self.mode = None
+    
+    @staticmethod
+    def __findColumnNdx(gdalRat, columnName):
+        """
+        Utility routine to find the column index for the given column name, in 
+        the given gdalRat
+        """
+        columnNdx = -1
+        for i in range(gdalRat.GetColumnCount()):
+            if gdalRat.GetNameOfCol(i) == columnName:
+                columnNdx = i
+        return columnNdx
+    
+    
+    def __str__(self):
+        "Readable string representation of stats"
+        fmt = "Mean: %s, Stddev: %s, Min: %s, Max: %s, Median: %s, Mode: %s"
+        return (fmt % (self.mean, self.stddev, self.min, self.max, self.median, self.mode))
+            
+
+class RatStats(object):
+    """
+    Calculate statistics on columns in a Raster Attribute Table
+
+    Normal usage is via the RatStats class, e.g.
+        columnsOfInterest = ['col1', 'col4']
+        ratStatsObj = ratstats.RatStats('file.img', columnlist=columnsOfInterest)
+
+        print ratStatsObj.col1.mean, ratStatsObj.col4.mean
+
+    Contains an attribute for each named column. Each attribute is 
+    a ColumnStats object, containing all relevant global stats 
+    for that column. See docstring for that class for details. 
+
+    """
+    def __init__(self, filename, columnlist=None, layernum=1, includeImageNull=False, histogramweighted=True):
+        """
+        Default columnlist is all columns in the table. 
+    
+        """
+        ds = gdal.Open(filename)
+        band = ds.GetRasterBand(layernum)
+        
+        if columnlist is None:
+            columnlist = rat.getColumnNamesFromBand(band)
+        
+        for columnName in columnlist:
+            stats = ColumnStats(band, columnName, includeImageNull, histogramweighted)
+            if hasattr(stats, 'mean'):
+                setattr(self, columnName, stats)
