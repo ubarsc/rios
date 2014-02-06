@@ -187,6 +187,10 @@ def testAll():
     ok = teststats.run()
     if not ok: failureCount += 1
 
+    from . import testratstats
+    ok = testratstats.run()
+    if not ok: failureCount += 1
+
     from . import testavgmulti
     ok = testavgmulti.run()
     if not ok: failureCount += 1
