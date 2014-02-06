@@ -94,8 +94,6 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     allGdalHandles = GdalHandlesCollection(inRats, outRats)
     allGdalHandles.checkConsistency()
     rowCount = controls.rowCount
-    # Kludge
-    allGdalHandles.gdalHandlesDict[outRats.outimg].gdalRat.SetRowCount(rowCount)
     if rowCount is None:
         rowCount = allGdalHandles.getRowCount()
 
