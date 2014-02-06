@@ -113,10 +113,6 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
 
     numBlocks = int(numpy.ceil(float(rowCount) / controls.blockLen))
     
-    from rsc.utils import procstatus
-    minMemUsage = procstatus.getMemUsage()
-    maxMemUsage = minMemUsage
-    
     # Loop over all blocks in the RAT(s)
     for i in range(numBlocks):
         state.setBlock(i, controls.blockLen)
@@ -136,16 +132,12 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         inBlocks.clearCache()
         outBlocks.clearCache()
         
-        maxMemusage = max(maxMemUsage, procstatus.getMemUsage())
-    
     if haveTurboGDAL:
         # We need to SetDefaultRAT() on every output RAT
         for ratHandleName in outRats.getRatList():
             ratHandle = getattr(outRats, ratHandleName)
             gdalHandles = allGdalHandles.gdalHandlesDict[ratHandle]
             gdalHandles.band.SetDefaultRAT(gdalHandles.gdalRat)
-    
-    print("Mem:", minMemUsage, maxMemUsage)
     
 
 class RatHandle(object):
