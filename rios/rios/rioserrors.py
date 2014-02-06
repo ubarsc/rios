@@ -83,3 +83,9 @@ class VectorLayerError(RiosError):
 
 class WrongControlsObject(RiosError):
     "The wrong type of control object has been passed to apply"
+
+class RatBlockLengthError(RiosError):
+    "Error with RAT block length, in ratapplier"
+
+class RatMismatchError(RiosError):
+    "Inconsistent RATs on inputs to ratapplier"
