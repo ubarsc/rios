@@ -421,7 +421,7 @@ class ColumnStats(object):
         if not haveRFC40:
             blocklen = numRows
         else:
-            blocklen = 1000
+            blocklen = 10000
         numBlocks = int(numpy.ceil(float(numRows) / blocklen))
         
         # Initialise sums and counters
@@ -431,7 +431,7 @@ class ColumnStats(object):
         # Loop over all blocks of data
         for i in range(numBlocks):
             startrow = i * blocklen
-            endrow = min(startrow + blocklen, numRows-1)
+            endrow = min(startrow + blocklen - 1, numRows-1)
             if haveRFC40:
                 datablock = gdalRat.ReadAsArray(columnNdx, start=startrow, length=(endrow-startrow+1))
                 histoblock = gdalRat.ReadAsArray(histoColumnNdx, start=startrow, length=(endrow-startrow+1))
@@ -441,9 +441,10 @@ class ColumnStats(object):
                 histoColumnName = gdalRat.GetNameOfCol(histoColumnNdx)
                 histoblock = rat.readColumnFromBand(band, histoColumnName)
         
-            if not includeImageNull:
+            imgNullVal = band.GetNoDataValue()
+            if not includeImageNull and imgNullVal is not None:
                 pixelvals = numpy.arange(startrow, endrow+1, dtype=numpy.uint32)
-                nonNullMask = (pixelvals != band.GetNoDataValue())
+                nonNullMask = (pixelvals != imgNullVal)
                 datablock = datablock[nonNullMask]
                 histoblock = histoblock[nonNullMask]
                 del nonNullMask, pixelvals
@@ -452,16 +453,16 @@ class ColumnStats(object):
             # Note that this still implies a loss of precision, but this is a known feature
             # of doing incremental mean/stddev calculations. 
             dataAsFloat = datablock.astype(numpy.float64)
-            
+
             # If requested, weight the values by their histogram counts
             weights = numpy.ones(len(datablock), dtype=numpy.uint8)
             if histogramweighted:
                 weights = histoblock
-                
+
             sumX += (dataAsFloat * weights).sum()
             ssqX += ((dataAsFloat**2) * weights).sum()
             count += weights.sum()
-            
+
             # Min and max values
             blockMin = datablock[weights>0].min()
             blockMax = datablock[weights>0].max()
