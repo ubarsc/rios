@@ -363,9 +363,7 @@ class RatBlockAssociation(object):
         """
         Clear the current cache of data blocks
         """
-        keyList = self.Z__cache.keys()
-        for key in keyList:
-            del self.Z__cache[key]
+        object.__setattr__(self, 'Z__cache', {})
     
     def writeCache(self):
         """
