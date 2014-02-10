@@ -501,7 +501,7 @@ class ColumnStats(object):
     
     def __str__(self):
         "Readable string representation of stats"
-        fmt = "Count: %s Mean: %s, Stddev: %s, Min: %s, Max: %s, Median: %s, Mode: %s"
+        fmt = "Count: %s, Mean: %s, Stddev: %s, Min: %s, Max: %s, Median: %s, Mode: %s"
         return (fmt % (self.count, self.mean, self.stddev, self.min, self.max, self.median, self.mode))
             
 
