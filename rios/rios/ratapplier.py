@@ -54,17 +54,6 @@ from . import rioserrors
 # Test whether we have access to the GDAL RFC40 facilities
 haveRFC40 = hasattr(gdal.RasterAttributeTable, 'ReadAsArray')
 
-# If we don't have RFC40, try to import turbogdal.turborat
-haveTurboGDAL = False
-if not haveRFC40:
-    try:
-        from turbogdal import turborat
-        haveTurboGDAL = True
-    except ImportError:
-        pass
-# No real point in using this, so locked out, for now at least
-haveTurboGDAL = False
-
 
 def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     """
@@ -99,7 +88,7 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
 
     # If we can't read partial blocks, then set the block length to 
     # rowCount, i.e. there will be only one block. 
-    if not (haveRFC40 or haveTurboGDAL):
+    if not haveRFC40:
         controls.setBlockLength(rowCount)
 
     # The current state of processing, i.e. where are we up to as 
@@ -130,13 +119,6 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         inBlocks.clearCache()
         outBlocks.clearCache()
         
-    if haveTurboGDAL:
-        # We need to SetDefaultRAT() on every output RAT
-        for ratHandleName in outRats.getRatList():
-            ratHandle = getattr(outRats, ratHandleName)
-            gdalHandles = allGdalHandles.gdalHandlesDict[ratHandle]
-            gdalHandles.band.SetDefaultRAT(gdalHandles.gdalRat)
-    
 
 class RatHandle(object):
     """
@@ -329,12 +311,6 @@ class RatBlockAssociation(object):
             if haveRFC40:
                 dataBlock = gdalRat.ReadAsArray(colNdx, start=self.Z__state.startrow, 
                     length=self.Z__state.blockLen)
-            elif haveTurboGDAL:
-                dataBlock = turborat.readColumn(gdalRat, colNdx, 
-                    self.Z__state.startrow, self.Z__state.blockLen)
-                # Now discard the gdalRat object and re-create it, so that we free
-                # the memory which was used for these rows. Should be a better way...
-                self.Z__gdalHandles.gdalRat = self.Z__gdalHandles.band.GetDefaultRAT()
             else:
                 gdalBand = self.Z__gdalHandles.band
                 dataBlock = rat.readColumnFromBand(gdalBand, columnName)
@@ -384,7 +360,7 @@ class RatBlockAssociation(object):
                     len(dataBlock), rowsToWrite)
                 raise rioserrors.RatBlockLengthError(msg)
 
-            if haveRFC40 or haveTurboGDAL:
+            if haveRFC40:
                 # Check if the column needs to be created
                 if columnName not in self.Z__gdalHandles.columnNdxByName:
                     columnType = rat.inferColumnType(dataBlock)
@@ -400,11 +376,7 @@ class RatBlockAssociation(object):
                     if gdalRat.GetRowCount() < self.Z__outputRowCount+rowsToWrite:
                         gdalRat.SetRowCount(self.Z__outputRowCount+rowsToWrite)
                         
-                    if haveRFC40:
-                        gdalRat.WriteArray(dataBlock, columnNdx, self.Z__outputRowCount)
-                    elif haveTurboGDAL:
-                        turborat.writeColumn(gdalRat, columnNdx, dataBlock, len(dataBlock),
-                            self.Z__outputRowCount)
+                    gdalRat.WriteArray(dataBlock, columnNdx, self.Z__outputRowCount)
                 # There may be a problem with HFA Byte arrays, if we don't end up writing 256 rows....
             else:
                 gdalBand = self.Z__gdalHandles.band
