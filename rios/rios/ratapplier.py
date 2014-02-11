@@ -397,6 +397,10 @@ class RatBlockAssociation(object):
                 # Write the block of data into the RAT column
                 columnNdx = self.Z__gdalHandles.columnNdxByName[columnName]
                 if len(dataBlock) > 0:
+                    if gdalRat.GetRowCount() < self.Z__outputRowCount+rowsToWrite:
+                        print(gdalRat.GetRowCount(), self.Z__outputRowCount, rowsToWrite)
+                        gdalRat.SetRowCount(self.Z__outputRowCount+rowsToWrite)
+                        
                     if haveRFC40:
                         gdalRat.WriteArray(dataBlock, columnNdx, self.Z__outputRowCount)
                     elif haveTurboGDAL:
