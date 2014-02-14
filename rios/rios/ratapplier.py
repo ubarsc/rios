@@ -52,6 +52,11 @@ from . import rioserrors
 # Test whether we have access to the GDAL RFC40 facilities
 haveRFC40 = hasattr(gdal.RasterAttributeTable, 'ReadAsArray')
 
+# Some constants relating to how we control the length of the output RAT (RCM = Row Count Method)
+RCM_EQUALS_INPUT = 0
+RCM_FIXED        = 1
+RCM_INCREMENT    = 2
+
 
 def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     """
@@ -95,6 +100,9 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     
     inBlocks = BlockCollection(inRats, state, allGdalHandles)
     outBlocks = BlockCollection(outRats, state, allGdalHandles)
+    
+    # A list of the names for those RATs which are output
+    outputRatHandleNameList = list(outRats.__dict__.keys())
 
     numBlocks = int(numpy.ceil(float(rowCount) / controls.blockLen))
     
@@ -111,11 +119,14 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         userFunc(*functionArgs)
         
         # Now write the output blocks
-        outBlocks.writeCache()
+        outBlocks.writeCache(outputRatHandleNameList, controls, state)
         
         # Clear block caches
         inBlocks.clearCache()
         outBlocks.clearCache()
+    
+    outBlocks.finaliseRowCount(outputRatHandleNameList)
+    
         
 
 class RatHandle(object):
@@ -191,6 +202,9 @@ class RatApplierControls(object):
     def __init__(self):
         self.blockLen = 100000
         self.rowCount = None
+        self.outRowCountMethod = RCM_EQUALS_INPUT
+        self.fixedOutRowCount = None
+        self.rowCountIncrementSize = None
     
     def setBlockLength(self, blockLen):
         "Change the number of rows used per block"
@@ -203,6 +217,38 @@ class RatApplierControls(object):
         so the number of rows is otherwise undefined. 
         """
         self.rowCount = rowCount
+    
+    def outputRowCountHandling(self, method=RCM_EQUALS_INPUT, totalsize=None, incrementsize=None):
+        """
+        Determine how the row count of the output RAT(s) is handled. The method
+        argument can be one of the following constants:
+            RCM_EQUALS_INPUT        Output RAT(s) have same number of rows as input RAT(s)
+            RCM_FIXED               Output row count is set to a fixed size
+            RCM_INCREMENT           Output row count is incremented as required
+            
+        
+        The totalsize and incrementsize arguments, if given, should be int.
+        
+        totalsize is used to set the output row count when the method is RCM_FIXED. 
+        It is required, if the method is RCM_FIXED. 
+        
+        incrementsize is used to determine how much the row count is
+        incremented by, if the method is RCM_INCREMENT. If not given,
+        it defaults to the length of the block being written. 
+        
+        The most common case if the default (i.e. RCM_EQUALS_INPUT). If the
+        output RAT row count will be different from the input, and the count can 
+        be known in advance, then you should use RCM_FIXED to set that size. Only 
+        if the output RAT row count cannot be determined in advance should 
+        you use RCM_INCREMENT. 
+        
+        For some raster formats, using RCM_INCREMENT will result in wasted
+        space, depending on the incrementsize used. Caution is recommended. 
+        
+        """
+        self.outRowCountMethod = method
+        self.fixedOutRowCount = totalsize
+        self.rowCountIncrementSize = incrementsize
 
 
 class BlockCollection(object):
@@ -226,13 +272,27 @@ class BlockCollection(object):
             ratBlockAssoc = getattr(self, ratHandleName)
             ratBlockAssoc.clearCache()
             
-    def writeCache(self):
+    def writeCache(self, outputRatHandleNameList, controls, state):
         """
         Write all cached data blocks
         """
-        for ratHandleName in self.__dict__:
+        for ratHandleName in outputRatHandleNameList:
             ratBlockAssoc = getattr(self, ratHandleName)
-            ratBlockAssoc.writeCache()
+            ratBlockAssoc.writeCache(controls, state)
+    
+    def finaliseRowCount(self, outputRatHandleNameList):
+        """
+        Called after the block loop completes, to reset the row count of
+        each output RAT, in case it had been over-allocated. 
+        
+        In some raster formats, this will not reclaim space, but we still would
+        like the row count to be correct. 
+        
+        """
+        for ratHandleName in outputRatHandleNameList:
+            ratBlockAssoc = getattr(self, ratHandleName)
+            ratBlockAssoc.finaliseRowCount()
+        
             
 
 class RatBlockAssociation(object):
@@ -339,7 +399,7 @@ class RatBlockAssociation(object):
         """
         object.__setattr__(self, 'Z__cache', {})
     
-    def writeCache(self):
+    def writeCache(self, controls, state):
         """
         Write all cached data blocks. Creates the columns if they do not already exist. 
         """
@@ -372,7 +432,8 @@ class RatBlockAssociation(object):
                 columnNdx = self.Z__gdalHandles.columnNdxByName[columnName]
                 if len(dataBlock) > 0:
                     if gdalRat.GetRowCount() < self.Z__outputRowCount+rowsToWrite:
-                        gdalRat.SetRowCount(self.Z__outputRowCount+rowsToWrite)
+                        newOutputRowCount = self.guessNewRowCount(rowsToWrite, controls, state)
+                        gdalRat.SetRowCount(newOutputRowCount)
                         
                     gdalRat.WriteArray(dataBlock, columnNdx, self.Z__outputRowCount)
                 # There may be a problem with HFA Byte arrays, if we don't end up writing 256 rows....
@@ -382,6 +443,34 @@ class RatBlockAssociation(object):
         
         # Increment Z__outputRowCount, without triggering __setattr__. 
         object.__setattr__(self, 'Z__outputRowCount', self.Z__outputRowCount + rowsToWrite)
+    
+    def guessNewRowCount(self, rowsToWrite, controls, state):
+        """
+        When we are writing to a new RAT, and we find that we need to write more
+        rows than it currently has, we guess what we should set the row count to
+        be, depending on how the controls have told us to do this. 
+        """
+        if controls.outRowCountMethod == RCM_EQUALS_INPUT:
+            newRowCount = state.rowCount
+        elif controls.outRowCountMethod == RCM_FIXED:
+            newRowCount = controls.fixedOutRowCount
+        elif controls.outRowCountMethod == RCM_INCREMENT:
+            if controls.rowCountIncrementSize is None:
+                increment = rowsToWrite
+            else:
+                increment = max(rowsToWrite, controls.rowCountIncrementSize)
+            newRowCount = self.Z__outputRowCount + increment
+        return newRowCount
+    
+    def finaliseRowCount(self):
+        """
+        If the row count for this RAT has been over-allocated, reset it back
+        to the actual number of rows we wrote. 
+        """
+        gdalRat = self.Z__gdalHandles.gdalRat
+        trueRowCount = self.Z__outputRowCount
+        if gdalRat.GetRowCount() != trueRowCount:
+            gdalRat.SetRowCount(trueRowCount)
 
 
 class GdalHandles(object):
