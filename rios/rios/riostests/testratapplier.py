@@ -56,8 +56,8 @@ def run():
     ok = testNewRat(imgfile4)
     if not ok: allOK = False
     
-    #for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4]:
-    #    os.remove(tmpfile)
+    for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4]:
+        os.remove(tmpfile)
     return allOK
     
     
