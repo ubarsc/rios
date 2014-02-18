@@ -162,7 +162,7 @@ class ImageInfo(object):
                     (layerNumber, self.rasterCount))
         return layerName
     
-    def getCorners(self, outWKT=None, outEPSG=None):
+    def getCorners(self, outWKT=None, outEPSG=None, outPROJ=None):
         """
         Return the coordinates of the image corners, possibly reprojected. 
         
@@ -183,6 +183,9 @@ class ImageInfo(object):
         elif outEPSG is not None:
             outSR = osr.SpatialReference()
             outSR.ImportFromEPSG(int(outEPSG))
+        elif outPROJ is not None:
+            outSR = osr.SpatialReference()
+            outSR.ImportFromProj4(outPROJ)
         else:
             outSR = None
         
