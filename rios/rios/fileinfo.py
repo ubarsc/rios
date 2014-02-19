@@ -162,7 +162,7 @@ class ImageInfo(object):
                     (layerNumber, self.rasterCount))
         return layerName
     
-    def getCorners(self, outWKT=None, outEPSG=None, outPROJ=None):
+    def getCorners(self, outWKT=None, outEPSG=None, outPROJ4=None):
         """
         Return the coordinates of the image corners, possibly reprojected. 
         
@@ -173,9 +173,10 @@ class ImageInfo(object):
         These are returned as
             (ul_x, ul_y, ur_x, ur_y, lr_x, lr_y, ll_x, ll_y)
             
-        The output projection can be given as either a WKT string, or an 
-        EPSG number. If neither is given, then bounds are not reprojected, 
-        but will be in the same coordinate system as the image corners. 
+        The output projection can be given as either a WKT string, an 
+        EPSG number, or a PROJ4 string. If none of those is given, then 
+        bounds are not reprojected, but will be in the same coordinate 
+        system as the image corners. 
         
         """
         if outWKT is not None:
@@ -183,9 +184,9 @@ class ImageInfo(object):
         elif outEPSG is not None:
             outSR = osr.SpatialReference()
             outSR.ImportFromEPSG(int(outEPSG))
-        elif outPROJ is not None:
+        elif outPROJ4 is not None:
             outSR = osr.SpatialReference()
-            outSR.ImportFromProj4(outPROJ)
+            outSR.ImportFromProj4(outPROJ4)
         else:
             outSR = None
         
