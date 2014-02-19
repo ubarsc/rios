@@ -28,6 +28,7 @@ from osgeo import ogr
 from osgeo import osr
 
 from . import rioserrors
+from . import rat
 
 # List of datatype names corresponding to GDAL datatype numbers. 
 # The index of this list corresponds to the gdal datatype number. Not sure if this 
