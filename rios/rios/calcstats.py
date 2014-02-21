@@ -218,7 +218,7 @@ def addStatistics(ds,progress,ignore=None):
         tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
         tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
         tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
-        tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist))
+        tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist)) + '|'
 
         # estimate the median - bin with the middle number
         middlenum = sum(hist) / 2
