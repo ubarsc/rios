@@ -139,7 +139,9 @@ class Vector(object):
 
         """
         if os.path.exists(self.temp_image):
-            os.remove(self.temp_image)
+            drvr = gdal.IdentifyDriver(self.temp_image)
+            drvr.Delete(self.temp_image)
+
         del self.layer
         self.layer = None
         del self.ds
