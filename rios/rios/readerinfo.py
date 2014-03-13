@@ -314,8 +314,8 @@ class ReaderInfo(object):
         """
         transform = self.workingGrid.makeGeoTransform()
         imgRowCol = imageio.wld2pix(transform, x, y)
-        imgRow = imgRowCol.x
-        imgCol = imgRowCol.y
+        imgRow = imgRowCol.y
+        imgCol = imgRowCol.x
         
         blockStartRow = self.yblock * self.windowysize - self.overlap
         blockStartCol = self.xblock * self.windowxsize - self.overlap
