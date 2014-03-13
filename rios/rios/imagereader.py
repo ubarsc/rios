@@ -539,13 +539,13 @@ class ImageReader(object):
         
         # Restrict this to what is available in the file
         xoff_margin_file = max(xoff_margin, imgLeftBound)
-        xoff_margin_file = min(xoff_margin_file, imgRightBound-1)
+        xoff_margin_file = min(xoff_margin_file, imgRightBound)
         xright_margin_file = xoff_margin + xSize_margin
         xright_margin_file = min(xright_margin_file, imgRightBound)
         xSize_margin_file = xright_margin_file - xoff_margin_file
 
         yoff_margin_file = max(yoff_margin, imgTopBound)
-        yoff_margin_file = min(yoff_margin_file, imgBottomBound-1)
+        yoff_margin_file = min(yoff_margin_file, imgBottomBound)
         ySize_margin_file = min(ySize_margin, imgBottomBound - yoff_margin_file)
         ybottom_margin_file = yoff_margin + ySize_margin
         ybottom_margin_file = min(ybottom_margin_file, imgBottomBound)
