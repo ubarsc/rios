@@ -72,10 +72,23 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         inRats.vegclass = RatHandle('vegclass.kea')
         outRats.vegclass = RatHandle('vegclass.kea')
         
-        ratapplier.apply(myFun, inRats, outRats)
+        ratapplier.apply(myFunc, inRats, outRats)
         
     def myFunc(info, inputs, outputs):
         outputs.vegclass.colSum = inputs.vegclass.col1 + inputs.vegclass.col2
+    
+    The otherargs argument can be any object, and is typically an instance
+    of OtherArguments. It will be passed in to each call of the user function, 
+    unchanged between calls, so that other values can be passed in, and 
+    calculated quantities passed back. The values stored on this object are not
+    directly associated with rows of the RAT, and must be managed entirely by
+    the user. If it is not required, it need not be passed. 
+    
+    The controls object is an instance of the RatApplierControls class, and 
+    is only required if the default control settings are to be changed. 
+    
+    The info object which is passed to the user function is an instance of 
+    the RatApplierState class. 
         
     """
     # Get a default controls object if we have not been given one
@@ -250,6 +263,16 @@ class RatApplierControls(object):
         self.fixedOutRowCount = totalsize
         self.rowCountIncrementSize = incrementsize
 
+
+class OtherArguments(object):
+    """
+    Simple empty class which can be used to pass arbitrary arguments in and 
+    out of the apply() function, to the user function. Anything stored on
+    this object persists between iterations over blocks. 
+    
+    """
+    pass
+    
 
 class BlockCollection(object):
     """
