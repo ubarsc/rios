@@ -274,6 +274,12 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
         if not isinstance(sequence, numpy.ndarray):
             # turborat.writeColumn needs an array
             sequence = numpy.array(sequence)
+            
+        # If the dtype of the array is some unicode type, then convert to simple string type,
+        # as turborat does not cope with the unicode variant. 
+        if 'U' in str(sequence.dtype):
+            sequence = sequence.astype(numpy.character)
+            
         turborat.writeColumn(attrTbl, colNum, sequence, rowsToAdd)
     else:
         defaultValues = {gdal.GFT_Integer:0, gdal.GFT_Real:0.0, gdal.GFT_String:''}
@@ -296,7 +302,7 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
                 # float however for SetValueAsDouble.
                 attrTbl.SetValueAsInt(rowNum, colNum, int(val))
             elif colType == gdal.GFT_Real:
-                attrTbl.SetValueAsDouble(rowNum, colNum, val)
+                attrTbl.SetValueAsDouble(rowNum, colNum, float(val))
             else:
                 attrTbl.SetValueAsString(rowNum, colNum, val)
 
