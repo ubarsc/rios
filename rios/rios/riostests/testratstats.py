@@ -24,7 +24,7 @@ from rios import calcstats
 from rios import fileinfo
 from rios import rat
 from rios import cuiprogress
-import riostestutils
+from . import riostestutils
 
 TESTNAME = 'TESTRATSTATS'
 
