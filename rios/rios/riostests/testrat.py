@@ -19,6 +19,7 @@
 Test the rios.rat functionality
 """
 import os
+import sys
 import numpy
 
 from rios import rat
@@ -45,9 +46,11 @@ def run():
     columnList = [
         ("Int32", numpy.int32),
         ("Float32", numpy.float32),
-        ("String", numpy.dtype('|S10')),
         ("Unicode", numpy.dtype('U10'))
     ]
+    # Only test old string type for python 2
+    if sys.version_info.major < 3:
+        columnList.append(("String", numpy.dtype('S10')))
     
     allOk = True
     for (colName, arrayDtype) in columnList:
@@ -63,7 +66,10 @@ def run():
     
     if os.path.exists(imgfile):
         os.remove(imgfile)
-    
+
+    if allOK:
+        riostestutils.report(TESTNAME, "Passed")
+
     return allOk
 
 
