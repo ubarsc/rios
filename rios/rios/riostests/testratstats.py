@@ -33,6 +33,8 @@ def run():
     Run a test of RAT statistics calculation
     """
     riostestutils.reportStart(TESTNAME)
+    
+    allOK = True
 
     imgfile = 'test.img'
     nRows = 100
@@ -75,15 +77,24 @@ def run():
     if not equalTol(ratStats.Value.mean, trueMean, tolerance):
         riostestutils.report(TESTNAME, "Mismatched means: %s, %s" % 
             (repr(ratStats.Value.mean), repr(trueMean)))
+        allOK = False
     if not equalTol(ratStats.Value.stddev, trueStddev, tolerance):
         riostestutils.report(TESTNAME, "Mismatched stddevs: %s, %s" % 
             (repr(ratStats.Value.stddev), repr(trueStddev)))
+        allOK = False
     if not equalTol(ratStats.Value.min, trueMin, tolerance):
         riostestutils.report(TESTNAME, "Mismatched mins: %s, %s" % 
             (repr(ratStats.Value.min), repr(trueMin)))
+        allOK = False
     if not equalTol(ratStats.Value.max, trueMax, tolerance):
         riostestutils.report(TESTNAME, "Mismatched maxes: %s, %s" % 
             (repr(ratStats.Value.max), repr(trueMax)))
+        allOK = False
+
+    if allOK:
+        riostestutils.report(TESTNAME, "Passed")
+    
+    return allOK
 
 
 def equalTol(a, b, tol):
