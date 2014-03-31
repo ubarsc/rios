@@ -58,6 +58,10 @@ def run():
     
     for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4]:
         os.remove(tmpfile)
+
+    if allOK:
+        riostestutils.report(TESTNAME, "Passed")
+
     return allOK
     
     
@@ -76,7 +80,7 @@ def testOutputSameFile(imgfile):
     
     col = rat.readColumn(imgfile, 'Value')
     colSqrd = rat.readColumn(imgfile, 'sqrd')
-    ok = False
+    ok = True
     if (col**2 != colSqrd).any():
         riostestutils.report(TESTNAME, "sqrd incorrect, in sameFile output")
         ok = False
