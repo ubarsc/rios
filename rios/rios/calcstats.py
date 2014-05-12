@@ -221,6 +221,8 @@ def addStatistics(ds,progress,ignore=None):
         # get histogram and force GDAL to recalculate it
         hist = band.GetHistogram(histCalcMin, histCalcMax, histnbins, False, 
                         False, progressFunc, userdata)
+        # comes back as a list for some reason
+        hist = numpy.array(hist)
 
         # Note that we have explicitly set histstep in each datatype case 
         # above. In principle, this can be calculated, as it is done in the 
@@ -255,14 +257,9 @@ def addStatistics(ds,progress,ignore=None):
             tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist)) + '|'
 
         # estimate the median - bin with the middle number
-        middlenum = sum(hist) / 2
-        medianbin = 0
-        total = 0
-        for val in hist:
-            total += val
-            if total >= middlenum:
-                break
-            medianbin += 1
+        middlenum = hist.sum() / 2
+        gtmiddle = hist.cumsum() >= middlenum
+        medianbin = gtmiddle.nonzero()[0][0]
         medianval = medianbin * histstep + histmin
         if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
             tmpmeta["STATISTICS_MEDIAN"]  = repr(medianval)
