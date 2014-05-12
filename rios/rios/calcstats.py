@@ -23,9 +23,11 @@ with any other format that supports pyramid layers and statistics
 
 import numpy
 from osgeo import gdal
-from osgeo import gdalconst
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError
+
+# Test whether we have access to the GDAL RFC40 facilities
+haveRFC40 = hasattr(gdal.RasterAttributeTable, 'ReadAsArray')
 
 # we don't want to build unnecessarily small overview layers  
 # we stop when the smallest dimension in the overview is less 
@@ -92,6 +94,24 @@ def addPyramid(ds,progress):
     # make sure it goes to 100%
     progress.setProgress(100)
 
+def findOrCreateColumn(rat, usage, name, dtype):
+    """
+    Returns the index of an existing column matched
+    on usage. Creates it if not already existing using 
+    the supplied name and dtype
+    Returns a tupe with index and a boolean specifying if 
+    it is a new column or not
+    """
+    ncols = rat.GetColumnCount()
+    for col in range(ncols):
+        if rat.GetUsageOfCol(col) == usage:
+            return col, False
+
+    # got here so can't exist
+    rat.CreateColumn(name, dtype, usage)
+    # new one will be last col
+    return ncols, True
+
 gdalLargeIntTypes = set([gdal.GDT_Int16, gdal.GDT_UInt16, gdal.GDT_Int32, gdal.GDT_UInt32])
 gdalFloatTypes = set([gdal.GDT_Float32, gdal.GDT_Float64])
 def addStatistics(ds,progress,ignore=None):
@@ -150,7 +170,7 @@ def addStatistics(ds,progress,ignore=None):
         tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
 
         # create a histogram so we can do the mode and median
-        if band.DataType == gdalconst.GDT_Byte:
+        if band.DataType == gdal.GDT_Byte:
             # if byte data use 256 bins and the whole range
             histmin = 0
             histmax = 255
@@ -199,7 +219,8 @@ def addStatistics(ds,progress,ignore=None):
         userdata.curroffset = percent
       
         # get histogram and force GDAL to recalculate it
-        hist = band.GetHistogram(histCalcMin,histCalcMax,histnbins,False,False,progressFunc,userdata)
+        hist = band.GetHistogram(histCalcMin, histCalcMax, histnbins, False, 
+                        False, progressFunc, userdata)
 
         # Note that we have explicitly set histstep in each datatype case 
         # above. In principle, this can be calculated, as it is done in the 
@@ -210,7 +231,7 @@ def addStatistics(ds,progress,ignore=None):
         # do the mode - bin with the highest count
         modebin = numpy.argmax(hist)
         modeval = modebin * histstep + histmin
-        if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
+        if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
             tmpmeta["STATISTICS_MODE"] = repr(modeval)
         else:
             tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
@@ -218,7 +239,20 @@ def addStatistics(ds,progress,ignore=None):
         tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
         tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
         tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
-        tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist)) + '|'
+
+        # we may use this rat reference for the colours below also
+        # may be None if format does not support RATs
+        rat = band.GetDefaultRAT()
+
+        if haveRFC40 and rat is not None:
+            histIndx, histNew = findOrCreateColumn(rat, gdal.GFU_PixelCount, 
+                                    "Histogram", gdal.GFT_Real)
+            # write the hist in a single go
+            rat.SetRowCount(histnbins)
+            rat.WriteArray(hist, histIndx)
+        else:
+            # old method
+            tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist)) + '|'
 
         # estimate the median - bin with the middle number
         middlenum = sum(hist) / 2
@@ -230,7 +264,7 @@ def addStatistics(ds,progress,ignore=None):
                 break
             medianbin += 1
         medianval = medianbin * histstep + histmin
-        if band.DataType == gdalconst.GDT_Float32 or band.DataType == gdalconst.GDT_Float64:
+        if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
             tmpmeta["STATISTICS_MEDIAN"]  = repr(medianval)
         else:
             tmpmeta["STATISTICS_MEDIAN"]  = repr(int(round(medianval)))
@@ -241,18 +275,41 @@ def addStatistics(ds,progress,ignore=None):
         # if it is thematic and there is no colour table
         # add one because Imagine fails in weird ways otherwise
         # we make a random colour table to make it obvious
-        if "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic' and band.GetColorTable() is None:
-            import random # this also seeds on the time
-            colorTable = gdal.ColorTable()
-            alpha = 255 
-            for i in range(histnbins):
-                c1 = int(random.random() * 255)
-                c2 = int(random.random() * 255)
-                c3 = int(random.random() * 255)
-                entry = (c1, c2, c3, alpha)
-                colorTable.SetColorEntry(i, entry)
-            band.SetColorTable(colorTable)
-    
+        if "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic':
+            # old way
+            if (not haveRFC40 or rat is None) and band.GetColorTable() is None:
+                import random # this also seeds on the time
+                colorTable = gdal.ColorTable()
+                alpha = 255 
+                for i in range(histnbins):
+                    c1 = int(random.random() * 255)
+                    c2 = int(random.random() * 255)
+                    c3 = int(random.random() * 255)
+                    entry = (c1, c2, c3, alpha)
+                    colorTable.SetColorEntry(i, entry)
+                band.SetColorTable(colorTable)
+            elif haveRFC40 and rat is not None:
+                # check all the columns
+                redIdx, redNew = findOrCreateColumn(rat, gdal.GFU_Red, "Red", gdal.GFT_Integer)
+                greenIdx, greenNew = findOrCreateColumn(rat, gdal.GFU_Green, "Green", gdal.GFT_Integer)
+                blueIdx, blueNew = findOrCreateColumn(rat, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
+                alphaIdx, alphaNew = findOrCreateColumn(rat, gdal.GFU_Alpha, "Alpha", gdal.GFT_Integer)
+                # were any of these not already existing?
+                if redNew or greenNew or blueNew or alphaNew:
+                    data = numpy.random.randint(0, 256, histnbins)
+                    rat.WriteArray(data, redIdx)
+                    data = numpy.random.randint(0, 256, histnbins)
+                    rat.WriteArray(data, greenIdx)
+                    data = numpy.random.randint(0, 256, histnbins)
+                    rat.WriteArray(data, blueIdx)
+                    data = numpy.empty(histnbins, dtype=numpy.int)
+                    data.fill(255)
+                    rat.WriteArray(data, alphaIdx)
+
+        if haveRFC40 and rat is not None and not rat.ChangesAreWrittenToFile():
+            # For drivers that require the in memory thing
+            band.SetDefaultRAT(rat)
+
         percent = percent + percentstep
         progress.setProgress(percent)
 
