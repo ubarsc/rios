@@ -101,6 +101,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             vecreader = vectorreader.VectorReader(vectordict, progress=controls.progress)
         
         handleInputResampling(imagefiles, controls, reader)
+        reader.prepare(controls.workingGrid)
 
         writerdict = {}
         
