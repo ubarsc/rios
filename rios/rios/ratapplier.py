@@ -12,7 +12,7 @@ of its use.
 
 In order to work through the RAT(s) block by block, we rely on having
 available routines to read/write only a part of the RAT. This is available
-with GDAL 2.0 or later. If this is not available, we fudge the same thing 
+with GDAL 1.11 or later. If this is not available, we fudge the same thing 
 by reading/writing whole columns, i.e. the block size is the full length 
 of the RAT. This last case is not efficient with memory, but at least 
 provides the same functionality. 
