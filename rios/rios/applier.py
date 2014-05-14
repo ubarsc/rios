@@ -104,17 +104,14 @@ class ApplierControls(object):
         windowxsize     X size of rios block (pixels)
         windowysize     Y size of rios block (pixels)
         overlap         Number of pixels in margin for block overlaps
-        footprint       applier.INTERSECTION or applier.UNION. Ignored if workingGrid supplied.
+        footprint       applier.INTERSECTION or applier.UNION or applier.BOUNDS_FROM_REFERENCE
         drivername      GDAL driver short name for output
         creationoptions GDAL creation options for output
         thematic        True/False for thematic outputs
         layernames      List of layer names for outputs
         referenceImage  Image for reference projection and grid that inputs
                         will be resampled to.
-        referencePixgrid pixelGrid for reference projection and grid that
-                        inputs will be resampled to.
-        workingGrid     pixelGrid instance that defines the grid and extent
-                        of the processing.
+        referencePixgrid pixelGrid for reference projection and grid
         loggingstream   file-like for logging of messages
         progress        progress object
         statsIgnore     global stats ignore value for output (i.e. null value)
@@ -153,7 +150,6 @@ class ApplierControls(object):
         self.footprint = DEFAULTFOOTPRINT
         self.referenceImage = None
         self.referencePixgrid = None
-        self.workingGrid = None
         self.progress = cuiprogress.SilentProgress()
         self.creationoptions = DEFAULTCREATIONOPTIONS
         self.statscache = None
@@ -279,29 +275,6 @@ class ApplierControls(object):
         """
         self.referencePixgrid = referencePixgrid
 
-    def setWorkingGridImage(self, workingGridImage):
-        """
-        Set the name of the image to use for the working grid
-        The working grid is the grid and extent of the imagery
-        to be processed. Normally this is calculated by using
-        the setting of the footprints field but can be overridden here
-
-        """
-        from . import pixelgrid
-
-        pixGrid = pixelgrid.pixelGridFromFile(workingGridImage)
-        self.workingGrid = pixGrid
-
-    def setWorkingPixGrid(self, workingPixGrid):
-        """
-        Set the working pixel grid
-        The working grid is the grid and extent of the imagery
-        to be processed. Normally this is calculated by using
-        the setting of the footprints field but can be overridden here
-
-        """
-        self.workingGrid = workingPixGrid
-        
     def setProgress(self, progress):
         """
         Set the progress display object. Default is no progress
@@ -507,8 +480,6 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             vecreader = vectorreader.VectorReader(vectordict, progress=controls.progress)
         
         handleInputResampling(imagefiles, controls, reader)
-
-        reader.prepare(controls.workingGrid)
 
         writerdict = {}
         inputBlocks = BlockAssociations()
