@@ -29,6 +29,11 @@ from rios.applier import FilenameAssociations, BlockAssociations, OtherInputs
 from rios.applier import closeOutputImages, updateProgress, handleInputResampling
 from rios.applier import writeOutputBlocks, separateVectors, opensAsRaster
 from rios.applier import opensAsVector, makeVectorObjects, ApplierControls
+# need these constants
+from rios import imageio
+INTERSECTION = imageio.INTERSECTION
+UNION = imageio.UNION
+BOUNDS_FROM_REFERENCE = imageio.BOUNDS_FROM_REFERENCE
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     """
