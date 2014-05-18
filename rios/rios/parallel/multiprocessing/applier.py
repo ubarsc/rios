@@ -32,6 +32,12 @@ from rios.applier import opensAsVector, makeVectorObjects
 # give it a different name so we can derive our own with the same name
 from rios.applier import ApplierControls as BasicControls
 
+# need these constants
+from rios import imageio
+INTERSECTION = imageio.INTERSECTION
+UNION = imageio.UNION
+BOUNDS_FROM_REFERENCE = imageio.BOUNDS_FROM_REFERENCE
+
 DEFAULT_NPROCESSES = int(os.getenv('RIOS_DFLT_NPROCESSES', default=2))
 
 class ApplierControls(BasicControls):
