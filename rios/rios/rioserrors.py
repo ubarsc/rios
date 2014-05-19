@@ -89,3 +89,6 @@ class RatBlockLengthError(RiosError):
 
 class RatMismatchError(RiosError):
     "Inconsistent RATs on inputs to ratapplier"
+
+class IntersectionError(RiosError):
+    "Images don't have a common area"

@@ -26,6 +26,7 @@ reference grid.
 
 import math
 from . import imageio
+from . import rioserrors
 from osgeo import osr
 from osgeo import gdal
 
@@ -140,6 +141,10 @@ class PixelGridDefn(object):
         xMax = min(self.xMax, other.xMax)
         yMin = max(self.yMin, other.yMin)
         yMax = min(self.yMax, other.yMax)
+
+        if xMin >= xMax or yMin >= yMax:
+            msg = "Images don't intersect"
+            raise rioserrors.IntersectionError(msg)
         
         newPixelGrid = PixelGridDefn(xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, 
             xRes=self.xRes, yRes=self.yRes, projection=self.projection)
