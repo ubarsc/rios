@@ -97,8 +97,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         
     otherArgs is an object of extra arguments to be passed to the 
     userFunction, each with a sensible name on the object. These 
-    can be either input or output arguments, entirely at the discretion
-    of userFunction(). 
+    can be only input arguments with this version of applier.
         
     The userFunction has the following call sequence
         userFunction(info, inputs, outputs)
