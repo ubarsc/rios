@@ -6,6 +6,7 @@ Good idea to use 'install --prefix=/opt/xxxxx' so not installed
 with Python.
 """
 from distutils.core import setup
+import glob
 
 import rios
 
@@ -14,7 +15,7 @@ setup(name='rios',
       description='Raster Input/Output Simplification',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
-      scripts=['bin/testrios.py'],
+      scripts=glob.glob("bin/*.py"),
       packages=['rios', 'rios/parallel', 'rios/parallel/multiprocessing', 
                         'rios/parallel/mpi', 'rios/riostests'],
       license='LICENSE.txt', 
