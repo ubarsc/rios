@@ -249,13 +249,21 @@ class ImageLayerStats(object):
         self.histoMax = self.__getMetadataItem(metadata, 'STATISTICS_HISTOMAX')
         self.histoNumBins = self.__getMetadataItem(metadata, 'STATISTICS_HISTONUMBINS')
 
-        if 'STATISTICS_HISTOBINVALUES' in metadata:
+        self.histoCounts = None
+        # check the histo info - from RAT if available
+        # and we are using RFC40
+        rat = bandObj.GetDefaultRAT()
+        if rat is not None and hasattr(rat, "ReadAsArray"):
+            for col in range(rat.GetColumnCount()):
+                if rat.GetUsageOfCol(col) == gdal.GFU_PixelCount:
+                    self.histoCounts = rat.ReadAsArray(col)
+                    break
+
+        if self.histoCounts is None and 'STATISTICS_HISTOBINVALUES' in metadata:
             histoString = metadata['STATISTICS_HISTOBINVALUES']
             histoStringList = [c for c in histoString.split('|') if len(c) > 0]
             counts = [eval(c) for c in histoStringList]
             self.histoCounts = numpy.array(counts)
-        else:
-            self.histoCounts = None
     
     @staticmethod
     def __getMetadataItem(metadata, key):
