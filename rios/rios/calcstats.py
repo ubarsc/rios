@@ -246,7 +246,8 @@ def addStatistics(ds,progress,ignore=None):
         # may be None if format does not support RATs
         rat = band.GetDefaultRAT()
 
-        if haveRFC40 and rat is not None:
+        driverName = ds.GetDriver().GetDescription()
+        if haveRFC40 and rat is not None and driverName != "HFA":
             histIndx, histNew = findOrCreateColumn(rat, gdal.GFU_PixelCount, 
                                     "Histogram", gdal.GFT_Real)
             # write the hist in a single go
@@ -274,7 +275,7 @@ def addStatistics(ds,progress,ignore=None):
         # we make a random colour table to make it obvious
         if "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic':
             # old way
-            if (not haveRFC40 or rat is None) and band.GetColorTable() is None:
+            if (not haveRFC40 or rat is None or driverName == "HFA") and band.GetColorTable() is None:
                 import random # this also seeds on the time
                 colorTable = gdal.ColorTable()
                 alpha = 255 
@@ -303,7 +304,7 @@ def addStatistics(ds,progress,ignore=None):
                     data.fill(255)
                     rat.WriteArray(data, alphaIdx)
 
-        if haveRFC40 and rat is not None and not rat.ChangesAreWrittenToFile():
+        if haveRFC40 and rat is not None and driverName != "HFA" and not rat.ChangesAreWrittenToFile():
             # For drivers that require the in memory thing
             band.SetDefaultRAT(rat)
 
