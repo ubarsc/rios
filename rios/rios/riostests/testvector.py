@@ -94,7 +94,7 @@ def calcMeanWithRios(imgfile, vecfile):
         mask = (vecblock < 0)
         vals = block[mask]
         count += len(vals)
-        total += vals.sum()
+        total += vals.astype(numpy.float32).sum()
     
     
     if count > 0:
@@ -134,7 +134,7 @@ def meanWithinVec(info, inputs, outputs, otherargs):
     mask = (inputs.vec < 0)
     vals = inputs.img[mask]
     otherargs.count += len(vals)
-    otherargs.total += vals.sum()
+    otherargs.total += vals.astype(numpy.float32).sum()
 
     
 def calcMeanWithNumpy():
