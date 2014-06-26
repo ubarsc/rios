@@ -221,56 +221,62 @@ def addStatistics(ds,progress,ignore=None):
         # get histogram and force GDAL to recalculate it
         hist = band.GetHistogram(histCalcMin, histCalcMax, histnbins, False, 
                         False, progressFunc, userdata)
-        # comes back as a list for some reason
-        hist = numpy.array(hist)
-
-        # Note that we have explicitly set histstep in each datatype case 
-        # above. In principle, this can be calculated, as it is done in the 
-        # float case, but for some of the others we need it to be exactly
-        # equal to 1, so we set it explicitly there, to avoid rounding
-        # error problems. 
-
-        # do the mode - bin with the highest count
-        modebin = numpy.argmax(hist)
-        modeval = modebin * histstep + histmin
-        if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
-            tmpmeta["STATISTICS_MODE"] = repr(modeval)
-        else:
-            tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
-    
-        tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
-        tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
-        tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
-
+        
+        # Check if GDAL's histogram code overflowed. This is not a fool-proof test,
+        # as some overflows will not result in negative counts. 
+        histogramOverflow = (min(hist) < 0)
+        
         # we may use this rat reference for the colours below also
         # may be None if format does not support RATs
         rat = band.GetDefaultRAT()
 
-        if haveRFC40 and rat is not None:
-            histIndx, histNew = findOrCreateColumn(rat, gdal.GFU_PixelCount, 
-                                    "Histogram", gdal.GFT_Real)
-            # write the hist in a single go
-            rat.SetRowCount(histnbins)
-            rat.WriteArray(hist, histIndx)
+        if not histogramOverflow:
+            # comes back as a list for some reason
+            hist = numpy.array(hist)
 
-            # The HFA driver still honours the STATISTICS_HISTOBINVALUES
-            # metadata item. If we are recalculating the histogram the old
-            # values will be copied across with the metadata so clobber it
-            if "STATISTICS_HISTOBINVALUES" in tmpmeta:
-                del tmpmeta["STATISTICS_HISTOBINVALUES"]
-        else:
-            # old method
-            tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist)) + '|'
+            # Note that we have explicitly set histstep in each datatype case 
+            # above. In principle, this can be calculated, as it is done in the 
+            # float case, but for some of the others we need it to be exactly
+            # equal to 1, so we set it explicitly there, to avoid rounding
+            # error problems. 
 
-        # estimate the median - bin with the middle number
-        middlenum = hist.sum() / 2
-        gtmiddle = hist.cumsum() >= middlenum
-        medianbin = gtmiddle.nonzero()[0][0]
-        medianval = medianbin * histstep + histmin
-        if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
-            tmpmeta["STATISTICS_MEDIAN"]  = repr(medianval)
-        else:
-            tmpmeta["STATISTICS_MEDIAN"]  = repr(int(round(medianval)))
+            # do the mode - bin with the highest count
+            modebin = numpy.argmax(hist)
+            modeval = modebin * histstep + histmin
+            if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
+                tmpmeta["STATISTICS_MODE"] = repr(modeval)
+            else:
+                tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
+
+            tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
+            tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
+            tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
+
+            if haveRFC40 and rat is not None:
+                histIndx, histNew = findOrCreateColumn(rat, gdal.GFU_PixelCount, 
+                                        "Histogram", gdal.GFT_Real)
+                # write the hist in a single go
+                rat.SetRowCount(histnbins)
+                rat.WriteArray(hist, histIndx)
+
+                # The HFA driver still honours the STATISTICS_HISTOBINVALUES
+                # metadata item. If we are recalculating the histogram the old
+                # values will be copied across with the metadata so clobber it
+                if "STATISTICS_HISTOBINVALUES" in tmpmeta:
+                    del tmpmeta["STATISTICS_HISTOBINVALUES"]
+            else:
+                # old method
+                tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist)) + '|'
+
+            # estimate the median - bin with the middle number
+            middlenum = hist.sum() / 2
+            gtmiddle = hist.cumsum() >= middlenum
+            medianbin = gtmiddle.nonzero()[0][0]
+            medianval = medianbin * histstep + histmin
+            if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
+                tmpmeta["STATISTICS_MEDIAN"]  = repr(medianval)
+            else:
+                tmpmeta["STATISTICS_MEDIAN"]  = repr(int(round(medianval)))
     
         # set the data
         band.SetMetadata(tmpmeta)
