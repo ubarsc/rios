@@ -52,43 +52,55 @@ def run():
         (gdal.GDT_Float32, numpy.float32, 100), 
         (gdal.GDT_Float32, numpy.float32, 0.01) 
     ]
-    # Loop over all tuples in the list
-    for (fileDtype, arrDtype, scalefactor) in dataTypesList:
-        imgfile = 'test.img'
-        ds = riostestutils.createTestFile(imgfile, dtype=fileDtype)
-        rampArr = riostestutils.genRampArray().astype(arrDtype) * scalefactor
-        (nRows, nCols) = rampArr.shape
-        # Set half of it to null
-        rampArr[:, :nCols//2] = nullVal
-        band = ds.GetRasterBand(1)
-        band.WriteArray(rampArr)
-        del ds
-
-        # Calculate  the stats on the file
-        ds = gdal.Open(imgfile, gdal.GA_Update)
-        calcstats.calcStats(ds, progress=cuiprogress.SilentProgress(), 
-            ignore=nullVal)
-        del ds
     
-        # Read back the data as a numpy array
-        ds = gdal.Open(imgfile)
-        band = ds.GetRasterBand(1)
-        rampArr = band.ReadAsArray()
+    # We repeat these tests on a number of different drivers, if they are available,
+    # as some stats-related things may work fine on some drivers but not on others. 
+    driverTestList = [
+        ('HFA', ['COMPRESS=YES']),
+        ('GTiff', ['COMPRESS=LZW', 'TILED=YES', 'INTERLEAVE=BAND']),
+        ('KEA', [])
+    ]
     
-        # Get stats from file, and from array, and compare
-        stats1 = getStatsFromBand(band)
-        stats2 = getStatsFromArray(rampArr, nullVal)
-        iterationName = "%s scale=%s"%(gdal.GetDataTypeName(fileDtype), scalefactor)
-        # This relative tolerance is used for comparing the median and mode, 
-        # because those are approximate only, and the likely error depends on the 
-        # size of the numbers in question (thus it depends on the scalefactor). 
-        # Please do not make it any larger unless you have a really solid reason. 
-        relativeTolerance = 0.1 * scalefactor
-        ok = compareStats(stats1, stats2, iterationName, relativeTolerance)
-        del ds
+    # Loop over all drivers
+    for (driverName, creationOptions) in driverTestList:
+        # Loop over all datatype tuples in the list
+        for (fileDtype, arrDtype, scalefactor) in dataTypesList:
+            imgfile = 'test.img'
+            ds = riostestutils.createTestFile(imgfile, dtype=fileDtype, driverName=driverName, 
+                    creationOptions=creationOptions)
+            rampArr = riostestutils.genRampArray().astype(arrDtype) * scalefactor
+            (nRows, nCols) = rampArr.shape
+            # Set half of it to null
+            rampArr[:, :nCols//2] = nullVal
+            band = ds.GetRasterBand(1)
+            band.WriteArray(rampArr)
+            del ds
 
-    if os.path.exists(imgfile):
-        os.remove(imgfile)
+            # Calculate  the stats on the file
+            ds = gdal.Open(imgfile, gdal.GA_Update)
+            calcstats.calcStats(ds, progress=cuiprogress.SilentProgress(), 
+                ignore=nullVal)
+            del ds
+
+            # Read back the data as a numpy array
+            ds = gdal.Open(imgfile)
+            band = ds.GetRasterBand(1)
+            rampArr = band.ReadAsArray()
+
+            # Get stats from file, and from array, and compare
+            stats1 = getStatsFromBand(band)
+            stats2 = getStatsFromArray(rampArr, nullVal)
+            iterationName = "%s %s scale=%s"%(driverName, gdal.GetDataTypeName(fileDtype), scalefactor)
+            # This relative tolerance is used for comparing the median and mode, 
+            # because those are approximate only, and the likely error depends on the 
+            # size of the numbers in question (thus it depends on the scalefactor). 
+            # Please do not make it any larger unless you have a really solid reason. 
+            relativeTolerance = 0.1 * scalefactor
+            ok = compareStats(stats1, stats2, iterationName, relativeTolerance)
+            del ds
+
+        if os.path.exists(imgfile):
+            os.remove(imgfile)
     
     if ok:
         riostestutils.report(TESTNAME, "Passed")
