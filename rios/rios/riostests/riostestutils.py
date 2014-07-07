@@ -41,7 +41,8 @@ DEFAULT_EPSG = 28355
 
 def createTestFile(filename, numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS, 
     dtype=DEFAULT_DTYPE, numBands=1, epsg=28355, xLeft=DEFAULT_XLEFT, 
-    yTop=DEFAULT_YTOP, xPix=DEFAULT_PIXSIZE, yPix=DEFAULT_PIXSIZE):
+    yTop=DEFAULT_YTOP, xPix=DEFAULT_PIXSIZE, yPix=DEFAULT_PIXSIZE, 
+    driverName='HFA', creationOptions=['COMPRESS=YES']):
     """
     Create a simple test file, on a standard footprint. Has some fairly arbitrary
     default values for all the relevant characteristics, which can be
@@ -50,10 +51,9 @@ def createTestFile(filename, numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS,
     Returns the dataset object. 
     
     """
-    # Using HFA driver, because it has lots of capabilities we can test, and
-    # it is always a part of GDAL. 
-    driver = gdal.GetDriverByName('HFA')
-    creationOptions = ['COMPRESS=YES']
+    # Unless otherwise specified, use HFA driver, because it has lots of capabilities 
+    # we can test, and it is always a part of GDAL. 
+    driver = gdal.GetDriverByName(driverName)
     
     ds = driver.Create(filename, numCols, numRows, numBands, dtype, creationOptions)
     if ds is None:
