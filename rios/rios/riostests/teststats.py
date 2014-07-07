@@ -60,6 +60,9 @@ def run():
         ('GTiff', ['COMPRESS=LZW', 'TILED=YES', 'INTERLEAVE=BAND']),
         ('KEA', [])
     ]
+    # Remove any which current GDAL not suporting
+    driverTestList = [(drvrName, options) for (drvrName, options) in driverTestList
+        if gdal.GetDriverByName(drvrName) is not None]
     
     # Loop over all drivers
     for (driverName, creationOptions) in driverTestList:
