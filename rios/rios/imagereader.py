@@ -96,7 +96,7 @@ class ImageReader(object):
 				footprint=DEFAULTFOOTPRINT,
 				windowxsize=DEFAULTWINDOWXSIZE, windowysize=DEFAULTWINDOWYSIZE,
 				overlap=DEFAULTOVERLAP, statscache=None,
-                loggingstream=sys.stdout):
+                loggingstream=sys.stdout, layerselection=None):
         """
         imageContainer is a list or dictionary that contains
         the filenames of the images to be read.
@@ -122,6 +122,16 @@ class ImageReader(object):
         Set loggingstream to a file like object if you wish
         logging about resampling to be sent somewhere else
         rather than stdout.
+        
+        layerselection, if given, should be of the same type as imageContainer, 
+        that is, if imageContainer is a dictionary, then layerselection 
+        should be a dictionary with the same keys, and if imageContainer 
+        is a list, then layerselection should be a list of the same length. 
+        The elements in layerselection should always be lists of layer numbers, 
+        used to select only particular layers to read from the corresponding 
+        input image. Layer numbers use GDAL conventions, i.e. start at 1. 
+        Default reads all layers. 
+        
         """
 
         # grab the imageContainer so we can always know what 
@@ -132,6 +142,7 @@ class ImageReader(object):
             # Convert the given imageContainer into a list suitable for
             # the standard InputCollection. 
             imageList = []
+            self.layerselectionList = []
             for name in imageContainer.keys():
                 filename = imageContainer[name]
                 if isinstance(filename, list):
@@ -144,14 +155,31 @@ class ImageReader(object):
                     msg = "Dictionary must contain either lists or strings. Got '%s' instead" % type(filename)
                     raise rioserrors.ParameterError(msg)
 
+                # Layer selection for this filename. 
+                thisLayerSelection = None
+                if layerselection is not None and name in layerselection:
+                    thisLayerSelection = layerselection[name]
+
+                if isinstance(filename, list):
+                    self.layerselectionList.extend([thisLayerSelection for fn in filename])
+                else:
+                    self.layerselectionList.append(thisLayerSelection)
+
         
         elif isinstance(imageContainer,basestring):
             # they passed a string, just make a list out of it
             imageList = [imageContainer]
-
+            if layerselection is not None:
+                self.layerselectionList = [layerselection]
+            else:
+                self.layerselectionList = [None]
         else:
             # we hope they passed a tuple or list. Don't need to do much
             imageList = imageContainer
+            if layerselection is not None:
+                self.layerselectionList = layerselection
+            else:
+                self.layerselectionList = [None for fn in imageList]
         
         # create an InputCollection with our inputs
         self.inputs = inputcollection.InputCollection(imageList,loggingstream=loggingstream)
@@ -418,7 +446,8 @@ class ImageReader(object):
         blockList = []
         
         try:
-        
+            i = 0
+            
             # read all the files using our iterable InputCollection
             for (image,ds,pixgrid,nullValList,datatype) in self.inputs:
             
@@ -428,7 +457,8 @@ class ImageReader(object):
                 # just read in the dataset (will return how many layers it has)
                 # will just use the datatype of the image
                 block = self.readBlockWithMargin(ds,int(round(tl.x)),int(round(tl.y)),blockwidth,blockheight,
-                             datatype, self.overlap, nullValList)
+                             datatype, margin=self.overlap, nullValList=nullValList,
+                             layerselection=self.layerselectionList[i])
 
                 # add this block to our list
                 blockList.append(block)
@@ -437,6 +467,8 @@ class ImageReader(object):
                 # and dataset in case the user needs the dataset object
                 # and/or the original filename
                 info.setBlockDataset(block, ds, image)
+                
+                i += 1
                 
         finally:
             # if there is any exception thrown here, make
@@ -479,7 +511,8 @@ class ImageReader(object):
         
         
     @staticmethod
-    def readBlockWithMargin(ds, xoff, yoff, xsize, ysize, datatype, margin=0, nullValList=None):
+    def readBlockWithMargin(ds, xoff, yoff, xsize, ysize, datatype, margin=0, nullValList=None,
+            layerselection=None):
         """
         A 'drop-in' look-alike for the ReadAsArray function in GDAL,
         but with the option of specifying a margin width, such that
@@ -497,9 +530,11 @@ class ImageReader(object):
         entirely with the null value. 
         
         """
+        if layerselection is None:
+            layerselection = [i+1 for i in range(ds.RasterCount)]
+        nLayers = len(layerselection)
         
         # Create the final array, with margin, but filled with the null value. 
-        nLayers = ds.RasterCount
         xSize_margin = xsize + 2 * margin
         ySize_margin = ysize + 2 * margin
         outBlockShape = (nLayers, ySize_margin, xSize_margin)
@@ -518,8 +553,10 @@ class ImageReader(object):
             if len(outBlockShape) == 2:
                 block_margin.fill(fillValList[0])
             else:
-                for (i, fillVal) in enumerate(fillValList):
-                    block_margin[i].fill(fillVal)
+                for i in range(nLayers):
+                    block_margin[i].fill(fillValList[layerselection[i]-1])
+#                for (i, fillVal) in enumerate(fillValList):
+#                    block_margin[i].fill(fillVal)
         
         
         # Calculate the bounds of the block which we will actually read from the file,
@@ -564,8 +601,15 @@ class ImageReader(object):
         
         if xSize_margin_file > 0 and ySize_margin_file > 0:
             # Now read in the part of the array which we can actually read from the file.
-            block_margin[..., notRead_top:slice_bottom, notRead_left:slice_right] = (
-                ds.ReadAsArray(xoff_margin_file, yoff_margin_file, xSize_margin_file, ySize_margin_file))
+            # Read each layer separately, to honour the layerselection
+            
+            # The part of the final array we are filling
+            imageSlice = (slice(notRead_top, slice_bottom), slice(notRead_left, slice_right))
+            
+            for i in range(nLayers):
+                band = ds.GetRasterBand(layerselection[i])
+                block_margin[i][imageSlice] = band.ReadAsArray(xoff_margin_file, yoff_margin_file, 
+                    xSize_margin_file, ySize_margin_file)
 
         return block_margin
         
@@ -574,3 +618,4 @@ class ImageReader(object):
         Closes all open datasets
         """
         self.inputs.close()
+
