@@ -168,6 +168,7 @@ class ApplierControls(object):
         self.alltouched = False
         self.vectordatatype = numpy.uint8
         self.vectorlayer = 0
+        self.layerselection = None
         
         
         # Options specific to a named image. This was added on later, and is 
@@ -418,6 +419,18 @@ class ApplierControls(object):
                 # resample method
                 d[name] = method
         return d
+    
+    def selectInputImageLayers(self, layerselection, imagename=None):
+        """
+        Set which layers are to be read from the input image(s). Default
+        will read all layers. If imagename is given, selection will be for 
+        that image only. The layerselection parameter should be a list
+        of layer numbers. Layer numbers follow GDAL conventions, i.e. 
+        a layer number of 1 refers to the first layer in the file. 
+        Can  be much more efficient when only using a small subset of 
+        layers from the inputs. 
+        """
+        self.setOptionForImagename('layerselection', imagename, layerselection)
 
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
@@ -470,9 +483,11 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             controls = ApplierControls()
         
         (imagefiles, vectorfiles) = separateVectors(infiles)
+        inputImageLayerSelection = makeInputImageLayerSelection(imagefiles, controls)
         reader = imagereader.ImageReader(imagefiles.__dict__, 
             controls.footprint, controls.windowxsize, controls.windowysize, 
-            controls.overlap, controls.statscache, loggingstream=controls.loggingstream)
+            controls.overlap, controls.statscache, loggingstream=controls.loggingstream,
+            layerselection=inputImageLayerSelection)
 
         vecreader = None
         if len(vectorfiles) > 0:
@@ -738,3 +753,16 @@ def makeVectorObjects(vectorfiles, controls):
                 nullval=vectornull)
 
     return vectordict
+
+
+def makeInputImageLayerSelection(imagefiles, controls):
+    """
+    Make a dictionary with the same image name keys as imagefiles, but with
+    layerselection lists for each entry, as per the controls object. If only
+    some images have a layerselection set, then the remaining entries are None. 
+    
+    """
+    layerselection = {}
+    for name in imagefiles.__dict__.keys():
+        layerselection[name] = controls.getOptionForImagename('layerselection', name)
+    return layerselection

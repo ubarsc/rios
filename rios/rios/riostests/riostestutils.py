@@ -198,6 +198,10 @@ def testAll():
     from . import testratapplier
     ok = testratapplier.run()
     if not ok: failureCount += 1
+    
+    from . import testlayerselection
+    ok = testlayerselection.run()
+    if not ok: failureCount += 1
 
     from . import testavgmulti
     ok = testavgmulti.run()
