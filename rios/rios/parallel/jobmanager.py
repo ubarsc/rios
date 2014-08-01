@@ -392,11 +392,13 @@ class SlurmJobManager(JobManager):
 # uses Slurm, and we want the applications to run the same on both, which means
 # that there should be a way of selecting this from the environment. 
 DEFAULT_JOBMGRTYPE = os.getenv('RIOS_DFLT_JOBMGRTYPE')
-def getJobManagerByType(jobMgrType=DEFAULT_JOBMGRTYPE):
+def getJobManagerClassByType(jobMgrType=DEFAULT_JOBMGRTYPE):
     """
-    Return an instance of a sub-class of JobManager, selected by the type name
+    Return a sub-class of JobManager, selected by the type name
     given. The default jobMgrType is loaded from the environment variable
         $RIOS_DFLT_JOBMGRTYPE
+    All sub-classes of JobManager will be searched for the 
+    given jobMgrType string. 
         
     """
     jobMgr = None
@@ -405,6 +407,7 @@ def getJobManagerByType(jobMgrType=DEFAULT_JOBMGRTYPE):
         if c.jobMgrType == jobMgrType:
             jobMgr = c
     return jobMgr
+
 
 def getAvailableJobManagerTypes():
     """
