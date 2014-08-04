@@ -17,11 +17,15 @@ Possible JobManager for RIOS. Experimental......
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import print_function
+
 import os
 import math
 import abc
 import copy
 import subprocess
+import tempfile
+import time
 try:
     import cPickle as pickle        # For Python 2.x
 except ImportError:
@@ -29,6 +33,7 @@ except ImportError:
 
 import numpy
 
+from .. import rioserrors
 # Import a pickler which can pickle functions, with their dependencies, as well
 # as data. First try to import the one from the full PiCloud package, in case
 # that happens to be installed. If that fails, then import an earlier version of
@@ -61,12 +66,20 @@ class JobManager(object):
     __metaclass__ = abc.ABCMeta
     jobMgrType = None
     
-    def __init__(self, numSubJobs, margin):
+    def __init__(self, numSubJobs):
         """
         numSubJobs is the number of sub-jobs
-        margin is the margin being added for overlapping blocks
         """
         self.numSubJobs = numSubJobs
+        self.margin = 0
+    
+    def setOverlapMargin(self, margin):
+        """
+        Set the overlap margin being used on this job manager. Generally 
+        this will be set by applier.apply(), with the value it is using. 
+        We just need to hang onto it locally. 
+        
+        """
         self.margin = margin
     
     def runSubJobs(self, function, functionArgs):
@@ -247,16 +260,15 @@ class JobManager(object):
         Use getSubArraySlice() to slice out a sub-array. See docstring
         for getSubArraySlice() for details. 
         """
-        s = self.getSubArraySlice(fullArr, i)
+        (nBands, nRows, nCols) = fullArr.shape
+        s = self.getSubArraySlice(nRows, i)
         return fullArr[:, s, :]
     
-    def getSubArraySlice(self, fullArr, i):
+    def getSubArraySlice(self, nRows, i):
         """
-        Return a slice which will select the i-th subarray out of a 
-        total of n, from the given fullArr. The array is assumed to be 3-d, of shape
-            (nImgs, nRows, nCols)
-        and the first and last dimensions are preserved. The array is only split
-        along the second dimension. Note that i begins with zero. 
+        Return a slice which will select the i-th subarray (slicing only the rows)
+        out of a total of self.numSubJobs sub-arrays, from the given nRows. 
+        Note that i begins with zero. 
         
         The given margin is the margin being added for overlapping blocks. This 
         must be honoured in between the sub-arrays, but not before the first one 
@@ -267,8 +279,6 @@ class JobManager(object):
         this does not actually create a new copy of the array data. 
         
         """
-        (nImgs, nRows, nCols) = fullArr.shape
-        
         rowsPerPiece = int(math.ceil(float(nRows) / self.numSubJobs))
         
         # startRow:stopRow is to be a slice in the fullArr
@@ -287,9 +297,36 @@ class JobManager(object):
         Return a ReaderInfo object which replicates the given info object,
         but with various bounds changed to match the i-th subarray. 
         
+        This is more complicated that one might think, probably because 
+        the ReaderInfo object contains far more information than it ought.
+        However, in the interests of full compatibility, we have to do everything. 
+        
+        There are some features of the ReaderInfo object which are never going to 
+        work in this context. Notably, looking things up by block id (the block id's 
+        will be wrong when shifted to a different subprocess). Fortunately, this
+        is one of the things which probably should never be used anyway. 
+        
+        TODO: Until I get around to fixing it, the really useful stuff 
+        like info.getPixRowColBlock() and info.getBlockCoordArrays() also
+        won't work when running sub-jobs. However this is do-able, and just waiting 
+        on me. 
+        
         """
-        newInfo = copy.deepcopy(info)
-        # Need to recalculate corners, etc. 
+        # Make a shallow copy, assuming the objects pointed to by this are
+        # not functions of the block (which I think is true, but I could be wrong)
+        newInfo = copy.copy(info)
+        
+        newInfo.blocklookup = {}       # These are never going to work in the subprocess
+        newInfo.loggingstream = None    # Should not be using this from userFunc anyway
+        
+        # Need to recalculate corners, etc.
+        #(nRows, nCols) = info.getBlockSize()
+        #s = self.getSubArraySlice(nRows, i)
+        #nRowsSub = s.stoprow - s.startrow
+        
+        #newInfo.blockheight = nRowsSub
+        # This is not yet finished.........
+        
         return newInfo
     
     def __str__(self):
@@ -356,13 +393,138 @@ class SubprocJobManager(JobManager):
             outputObj = pickle.loads(pickledOutput)
             outputBlocksList.append(outputObj)
         return outputBlocksList
-    
+
+
 class PbsJobManager(JobManager):
     """
     Use PBS to run individual jobs
     
     """
     jobMgrType = "pbs"
+    
+    def startOneJob(self, userFunc, functionArgs):
+        """
+        Start one job. We create a shell script to submit to a PBS batch queue.
+        When executed, the job will execute the rios_subproc.py command, giving
+        it the names of two pickle files. The first is the pickle of all inputs
+        (including the function), and the second is where it will write the 
+        pickle of outputs. 
+        
+        Uses $RIOS_PBSJOBMGR_QSUBOPTIONS to pick up any desired options to the 
+        qsub command. This should be used to control such things as requested 
+        amount of memory or walltime for each job, which will otherwise be
+        defaulted by PBS. 
+        
+        """
+        allInputs = (userFunc, functionArgs)
+        allInputsPickled = cloudpickle.dumps(allInputs)
+        
+        (fd, inputsfile) = tempfile.mkstemp(prefix='rios_pbsin_', dir='.', suffix='.tmp')
+        os.close(fd)
+        outputsfile = inputsfile.replace('pbsin', 'pbsout')
+        scriptfile = inputsfile.replace('pbsin', 'pbs').replace('.tmp', '.sh')
+        logfile = outputsfile.replace('.tmp', '.log')
+        
+        qsubOptions = os.getenv('RIOS_PBSJOBMGR_QSUBOPTIONS')
+        
+        scriptCmdList = [
+            "#!/bin/bash",
+            "#PBS -j oe -o %s" % logfile
+        ]
+        if qsubOptions is not None:
+            scriptCmdList.append("#PBS %s" % qsubOptions)
+            
+        pbsInitCmds = os.getenv('RIOS_PBSJOBMGR_INITCMDS')
+        if pbsInitCmds is not None:
+            scriptCmdList.append(pbsInitCmds)
+            
+        scriptCmdList.append("rios_subproc.py %s %s"%(inputsfile, outputsfile))
+        scriptStr = '\n'.join(scriptCmdList)
+        
+        open(scriptfile, 'w').write(scriptStr+'\n')
+        open(inputsfile, 'w').write(allInputsPickled)
+        
+        submitCmdWords = ["qsub", scriptfile]
+        proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE)
+        # The qsub command exits almost immediately, printing the PBS job id
+        # to stdout. So, we just wait for the qsub to finish, and grab the
+        # jobID string.     
+        (stdout, stderr) = proc.communicate()
+        pbsJobID = stdout.strip()
+        
+        # Remove the script file, assuming that qsub took a copy of it. 
+        os.remove(scriptfile)
+
+        # If there was something in stderr from the qsub command, then probably 
+        # something bad happened, so we pass it on to the user in the form of
+        # an exception. 
+        if len(stderr) > 0:
+            msg = "Error from qsub. Message:\n"+stderr
+            raise rioserrors.JobMgrError(msg)
+        
+        return (pbsJobID, outputsfile)
+    
+    def waitOnJobs(self, jobIDlist):
+        """
+        Wait until all jobs in the given list have completed. The jobID values
+        are tuples whose first element is a PBS job id string. We poll the PBS 
+        queue until none of them are left in the queue, and then return. 
+        
+        Note that this also assumes the technique used by the default startAllJobs()
+        method, of executing the first job in the current process, and so the first
+        jobID is not a jobID but the results of that. Hence we do not try to wait on
+        that job, but on all the rest. 
+        
+        Returns only when all the listed jobID strings are not longer found in the
+        PBS queue. Currently has no time-out, although perhaps it should. 
+        
+        """
+        allFinished = False
+        
+        # Extract the actual PBS job ID strings, skipping the first element. 
+        # Express as a set, for efficiency later on
+        pbsJobIdSet = set([jobID for (jobID, outputsfile) in jobIDlist[1:]])
+        
+        while not allFinished:
+            qstatCmd = ["qstat"]
+            proc = subprocess.Popen(qstatCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (stdout, stderr) = proc.communicate()
+            
+            stdoutLines = [line for line in stdout.split('\n') if len(line) > 0]   # No blank lines
+            # Skip header lines, and grab first word on each line, which is jobID
+            qstatJobIDlist = [line.split()[0] for line in stdoutLines[2:]]
+            qstatJobIDset = set(qstatJobIDlist)
+            
+            allFinished = pbsJobIdSet.isdisjoint(qstatJobIDset)
+            
+            if not allFinished:
+                # Sleep for a bit before checking again
+                time.sleep(60)
+    
+    def gatherAllOutputs(self, jobIDlist):
+        """
+        Gather up outputs from sub-jobs, and return a list of the
+        outputs objects. Note that we assume that the first element of
+        jobIDlist is actually an outputs object, from running the first sub-array
+        in the current process. 
+        
+        The jobIDlist is a list of tuples whose second element is the name of 
+        the output file containing the pickled outputs object. 
+        
+        """
+        outputBlocksList = [jobIDlist[0]]
+        for (jobID, outputsfile) in jobIDlist[1:]:
+            try:
+                pickledOutput = open(outputsfile).read()
+                outputObj = pickle.loads(pickledOutput)
+                os.remove(outputsfile)
+            except Exception as e:
+                msg = "Error collecting output from PBS sub-job. Exception message:\n"+str(e)
+                raise rioserrors.JobMgrError(msg)
+            outputBlocksList.append(outputObj)
+        return outputBlocksList
+        
     
 class SlurmJobManager(JobManager):
     """
@@ -418,5 +580,3 @@ def getAvailableJobManagerTypes():
     typeList = [c.jobMgrType for c in subClasses]
     return typeList
 
-# Plug in any other JobManager sub-class modules 
-# .........
