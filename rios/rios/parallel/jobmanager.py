@@ -1,5 +1,36 @@
 """
-Possible JobManager for RIOS. Experimental......
+Base class and sub-classes for managing parallel processing in RIOS. 
+
+It should be emphasised at the start that it is only worth using
+parallel processing in RIOS for tasks which are very computationally
+intensive, as there is significant overhead in setting up the sub-jobs. 
+Most image processing is I/O bound, and will not benefit from parallel 
+processing. 
+
+The base class is JobManager(). This is an abstract base class,
+and must be sub-classed before use. Any sub-class is intended to manage 
+processing of the user function in a set of sub-jobs, splitting the
+arrays into sub-arrays, farming out sub-jobs to process them all 
+in parallel, and gathering up the results, and re-combining into a
+single set of outputs. 
+
+Most of this work is handled in the base class, and should be generic
+for different methods of parallel processing. The reason for the
+sub-classes is to allow different approaches to be used, depending on 
+the system configuration. In particular, one can use a cluster batch 
+queue system such as PBS or SLURM to run sub-jobs as independent jobs, 
+allowing it to manage scheduling of jobs and resource management. 
+Alternatively, one can use MPI or Python's own multiprocessing module,
+if this is more appropriate for the system configuration available. 
+
+Sub-classes are provided for using PBS, SLURM, MPI, multiprocessing
+or Python's native subprocess module. Other sub-classes can be made
+as required, outside this module, and will be visible to the function
+    getJobManagerClassByName()
+which is the main function used for selecting which sub-class is required.
+
+The calling program should give the ApplierControls object an instance of 
+the desired JobManager sub-class. 
 
 """
 # This file is part of RIOS - Raster I/O Simplification
