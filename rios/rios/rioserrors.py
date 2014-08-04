@@ -92,3 +92,6 @@ class RatMismatchError(RiosError):
 
 class IntersectionError(RiosError):
     "Images don't have a common area"
+
+class JobMgrError(RiosError):
+    "Errors from Jobmanager class"
