@@ -29,8 +29,22 @@ as required, outside this module, and will be visible to the function
     getJobManagerClassByName()
 which is the main function used for selecting which sub-class is required.
 
-The calling program should give the ApplierControls object an instance of 
-the desired JobManager sub-class. 
+The calling program controls the parallel processing through the
+ApplierControls() object. Normal usage would be as follows:
+    from rios import applier
+    controls = applier.ApplierControls()
+    controls.setNumThreads(5)
+
+If a custom JobManager sub-class is used, its module should be imported 
+into the calling program (in order to create the sub-class), but its use 
+is selected using the same call to controls.setJobManagerType(), giving 
+the jobMgrType of the custom sub-class. 
+
+If $RIOS_DFLT_JOBMGRTYPE is set, this will be used as the default jobMgrType.
+This facilitates writing of application code which can run unmodified on 
+systems with different configurations. Alternatively, this can be set on
+the controls object, e.g.
+    controls.setJobManagerType('pbs')
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -93,6 +107,9 @@ class JobManager(object):
     More sophisticated sub-classes might also need to over-ride:
         startAllJobs()
     
+    A sub-class must also include a class attribute called jobMgrType, which has 
+    string value, which is the name used to select this sub-class. 
+    
     """
     __metaclass__ = abc.ABCMeta
     jobMgrType = None
@@ -103,6 +120,7 @@ class JobManager(object):
         """
         self.numSubJobs = numSubJobs
         self.margin = 0
+        self.tempdir = '.'
     
     def setOverlapMargin(self, margin):
         """
@@ -112,6 +130,15 @@ class JobManager(object):
         
         """
         self.margin = margin
+    
+    def setTempdir(self, tempdir):
+        """
+        Directory to use for temporary files. This is generally set by apply(),
+        using the one it has been given on the ApplierControls object. The
+        default is '.'. 
+        
+        """
+        self.tempdir = tempdir
     
     def runSubJobs(self, function, functionArgs):
         """
@@ -450,7 +477,7 @@ class PbsJobManager(JobManager):
         allInputs = (userFunc, functionArgs)
         allInputsPickled = cloudpickle.dumps(allInputs)
         
-        (fd, inputsfile) = tempfile.mkstemp(prefix='rios_pbsin_', dir='.', suffix='.tmp')
+        (fd, inputsfile) = tempfile.mkstemp(prefix='rios_pbsin_', dir=self.tempdir, suffix='.tmp')
         os.close(fd)
         outputsfile = inputsfile.replace('pbsin', 'pbsout')
         scriptfile = inputsfile.replace('pbsin', 'pbs').replace('.tmp', '.sh')
@@ -494,7 +521,7 @@ class PbsJobManager(JobManager):
             msg = "Error from qsub. Message:\n"+stderr
             raise rioserrors.JobMgrError(msg)
         
-        return (pbsJobID, outputsfile)
+        return (pbsJobID, outputsfile, logfile)
     
     def waitOnJobs(self, jobIDlist):
         """
@@ -515,7 +542,7 @@ class PbsJobManager(JobManager):
         
         # Extract the actual PBS job ID strings, skipping the first element. 
         # Express as a set, for efficiency later on
-        pbsJobIdSet = set([jobID for (jobID, outputsfile) in jobIDlist[1:]])
+        pbsJobIdSet = set([t[0] for t in jobIDlist[1:]])
         
         while not allFinished:
             qstatCmd = ["qstat"]
@@ -545,15 +572,20 @@ class PbsJobManager(JobManager):
         
         """
         outputBlocksList = [jobIDlist[0]]
-        for (jobID, outputsfile) in jobIDlist[1:]:
+        for (jobID, outputsfile, logfile) in jobIDlist[1:]:
             try:
                 pickledOutput = open(outputsfile).read()
                 outputObj = pickle.loads(pickledOutput)
                 os.remove(outputsfile)
             except Exception as e:
-                msg = "Error collecting output from PBS sub-job. Exception message:\n"+str(e)
+                logfileContents = 'No logfile found'
+                if os.path.exists(logfile):
+                    logfileContents = open(logfile).read()
+                msg = ("Error collecting output from PBS sub-job. Exception message:\n"+str(e)+
+                    "\nPBS Logfile:\n"+logfileContents)
                 raise rioserrors.JobMgrError(msg)
             outputBlocksList.append(outputObj)
+            os.remove(logfile)
         return outputBlocksList
         
     
@@ -584,8 +616,7 @@ class SlurmJobManager(JobManager):
 # Our own example is that JRSRP has a system which uses PBS and another which
 # uses Slurm, and we want the applications to run the same on both, which means
 # that there should be a way of selecting this from the environment. 
-DEFAULT_JOBMGRTYPE = os.getenv('RIOS_DFLT_JOBMGRTYPE')
-def getJobManagerClassByType(jobMgrType=DEFAULT_JOBMGRTYPE):
+def getJobManagerClassByType(jobMgrType):
     """
     Return a sub-class of JobManager, selected by the type name
     given. The default jobMgrType is loaded from the environment variable
@@ -611,3 +642,23 @@ def getAvailableJobManagerTypes():
     typeList = [c.jobMgrType for c in subClasses]
     return typeList
 
+
+def getJobMgrObject(controls):
+    """
+    Take an ApplierControls object and return a JobManager sub-class 
+    object which meets the needs specified in the controls object. 
+    If none is required, or none is available, then return None
+    
+    """
+    jobmgr = None
+    if controls.numThreads > 1:
+        if controls.jobManagerType is None:
+            raise rioserrors.JobMgrError('%d threads requested, but no jobManagerType set'%controls.numThreads)
+        jobMgrTypeList = getAvailableJobManagerTypes()
+        if controls.jobManagerType not in jobMgrTypeList:
+            raise rioserrors.JobMgrError("JobMgrType '%s' is not known"%controls.jobManagerType)
+        jobmgrClass = getJobManagerClassByType(controls.jobManagerType)
+        jobmgr = jobmgrClass(controls.numThreads)
+        jobmgr.setOverlapMargin(controls.overlap)
+        jobmgr.setTempdir(controls.tempdir)
+    return jobmgr
