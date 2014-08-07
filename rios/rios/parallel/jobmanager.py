@@ -51,8 +51,8 @@ Environment Variables
     RIOS_DFLT_JOBMGRTYPE                Name string of default JobManager subclass
     RIOS_PBSJOBMGR_QSUBOPTIONS          String of commandline options to be used with PBS qsub.
                                         Use this for things like walltime and queue name. 
-    RIOS_PBSJOBMGR_INITCMDS             String of shell command(s) which will be executed at
-                                        the start of each PBS job, before executing the
+    RIOS_PBSJOBMGR_INITCMDS             String of shell command(s) which will be executed 
+                                        inside each PBS job, before executing the
                                         processing commands. Not generally required, but was
                                         useful for initial testing. 
 
