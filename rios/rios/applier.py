@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
 Basic tools for setting up a function to be applied over 
-a raster processing chain. 
+a raster processing chain. The apply() function is the main
+point of entry in this module. 
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -23,7 +24,7 @@ a raster processing chain.
 # Subversion id keywords
 # $HeadURL$
 # $Id$
-
+import os
 import sys
 
 import numpy
@@ -36,6 +37,7 @@ from . import imageio
 from . import rioserrors
 from . import vectorreader
 from . import cuiprogress
+from .parallel import jobmanager
 
 # All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
@@ -120,6 +122,8 @@ class ApplierControls(object):
         omitPyramids    True/False to omit pyramids when doing stats
         tempdir         Name of directory for temp files (resampling, etc.)
         resampleMethod  String for resample method, when required (as per GDAL)
+        numThreads      Number of parallel threads used for processing each image block
+        jobManagerType  Which JobManager sub-class to use for parallel processing (by name)
     
     Options relating to vector input files
         burnvalue       Value to burn into raster from vector
@@ -160,6 +164,9 @@ class ApplierControls(object):
         self.layernames = None
         self.tempdir = '.'
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
+        self.numThreads = 1
+        self.jobManagerType = os.getenv('RIOS_DFLT_JOBMGRTYPE', default=None)
+
         # Vector fields
         self.burnvalue = 1
         self.vectornull = 0
@@ -431,6 +438,29 @@ class ApplierControls(object):
         layers from the inputs. 
         """
         self.setOptionForImagename('layerselection', imagename, layerselection)
+    
+    def setNumThreads(self, numThreads):
+        """
+        Set the number of 'threads' to be used when processing each block 
+        of imagery. Note that these are not threads in the technical sense, 
+        but are handled by the JobManager class, and are some form of 
+        cooperating parallel processes, depending on the type of job 
+        manager sub-class selected. See rios.parallel.jobmanager 
+        for full details. Note that this is only worth using on very 
+        computationally-intensive tasks. Default is 1, i.e. no parallel 
+        processing. 
+        
+        """
+        self.numThreads = numThreads
+    
+    def setJobManagerType(self, jobMgrType):
+        """
+        Set which type of JobManager is to be used for parallel processing.
+        See rios.parallel.jobmanager for details. Default is taken from
+        $RIOS_DFLT_JOBMGRTYPE. 
+        
+        """
+        self.jobManagerType = jobMgrType
 
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
@@ -505,6 +535,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
             controls.progress.setProgress(0)
         lastpercent = 0
         
+        # Set up for parallel processing, if requested. 
+        jobmgr = jobmanager.getJobMgrObject(controls)
+        
         for (info, blockdict) in reader:
             inputBlocks.__dict__.update(blockdict)
             if vecreader is not None:
@@ -519,7 +552,10 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
                 functionArgs += (otherArgs, )
             
             # Now call the function with those args
-            userFunction(*functionArgs)
+            if jobmgr is None:
+                userFunction(*functionArgs)
+            else:
+                jobmgr.runSubJobs(userFunction, functionArgs)
             
             writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info)
             lastpercent = updateProgress(controls, info, lastpercent)
