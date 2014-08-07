@@ -45,6 +45,16 @@ This facilitates writing of application code which can run unmodified on
 systems with different configurations. Alternatively, this can be set on
 the controls object, e.g.
     controls.setJobManagerType('pbs')
+    
+Environment Variables
+---------------------
+    RIOS_DFLT_JOBMGRTYPE                Name string of default JobManager subclass
+    RIOS_PBSJOBMGR_QSUBOPTIONS          String of commandline options to be used with PBS qsub.
+                                        Use this for things like walltime and queue name. 
+    RIOS_PBSJOBMGR_INITCMDS             String of shell command(s) which will be executed at
+                                        the start of each PBS job, before executing the
+                                        processing commands. Not generally required, but was
+                                        useful for initial testing. 
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -619,8 +629,8 @@ class SlurmJobManager(JobManager):
 def getJobManagerClassByType(jobMgrType):
     """
     Return a sub-class of JobManager, selected by the type name
-    given. The default jobMgrType is loaded from the environment variable
-        $RIOS_DFLT_JOBMGRTYPE
+    given. 
+    
     All sub-classes of JobManager will be searched for the 
     given jobMgrType string. 
         
