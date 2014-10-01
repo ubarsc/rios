@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-The setup script for PyModeller. Creates the module, installs
+The setup script for RIOS. Creates the module, installs
 the scripts. 
 Good idea to use 'install --prefix=/opt/xxxxx' so not installed
 with Python.
