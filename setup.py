@@ -8,12 +8,11 @@ with Python.
 from distutils.core import setup
 import glob, os
 
-import rios
-
 os.chdir('rios')
+from rios.rios import RIOS_VERSION
 
 setup(name='rios',
-      version=rios.RIOS_VERSION,
+      version=RIOS_VERSION,
       description='Raster Input/Output Simplification',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
