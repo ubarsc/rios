@@ -6,9 +6,11 @@ Good idea to use 'install --prefix=/opt/xxxxx' so not installed
 with Python.
 """
 from distutils.core import setup
-import glob
+import glob, os
 
 import rios
+
+os.chdir('rios')
 
 setup(name='rios',
       version=rios.RIOS_VERSION,
