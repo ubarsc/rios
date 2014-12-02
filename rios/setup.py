@@ -17,7 +17,8 @@ setup(name='rios',
       author_email='gillingham.sam@gmail.com',
       scripts=glob.glob("bin/*.py"),
       packages=['rios', 'rios/parallel', 'rios/parallel/multiprocessing', 
-                        'rios/parallel/mpi', 'rios/riostests'],
+                        'rios/parallel/mpi', 'rios/parallel/cloud_playdoh', 
+                        'rios/riostests'],
       license='LICENSE.txt', 
       url='https://bitbucket.org/chchrsc/rios'
      )
