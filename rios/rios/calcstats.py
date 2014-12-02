@@ -27,7 +27,10 @@ from . import cuiprogress
 from .rioserrors import ProcessCancelledError
 
 # Test whether we have access to the GDAL RFC40 facilities
-haveRFC40 = hasattr(gdal.RasterAttributeTable, 'ReadAsArray')
+haveRFC40 = False
+if (os.getenv('RIOS_HISTOGRAM_IGNORE_RFC40') is None and 
+        hasattr(gdal.RasterAttributeTable, 'ReadAsArray')):
+    haveRFC40 = True
 
 # we don't want to build unnecessarily small overview layers  
 # we stop when the smallest dimension in the overview is less 
