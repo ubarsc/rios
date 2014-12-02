@@ -20,7 +20,7 @@ with any other format that supports pyramid layers and statistics
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
+import os
 import numpy
 from osgeo import gdal
 from . import cuiprogress
