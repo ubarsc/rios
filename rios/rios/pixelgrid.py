@@ -200,8 +200,8 @@ class PixelGridDefn(object):
         projection of other
         
         """
-        srSelf = osr.SpatialReference(self.projection)
-        srOther = osr.SpatialReference(other.projection)
+        srSelf = osr.SpatialReference(str(self.projection))
+        srOther = osr.SpatialReference(str(other.projection))
         return bool(srSelf.IsSame(srOther))
         
     def equivalentProjection(self, otherspatialref, pixtolerance):
@@ -213,7 +213,7 @@ class PixelGridDefn(object):
         The coordinates used for this are the four corners and centre
         of image.
         """
-        srSelf = osr.SpatialReference(self.projection)
+        srSelf = osr.SpatialReference(str(self.projection))
         transform = osr.CoordinateTransformation(srSelf, otherspatialref)
 
         xtol = pixtolerance * self.xRes
@@ -251,8 +251,8 @@ class PixelGridDefn(object):
         as targetGrid
         
         """
-        srSelf = osr.SpatialReference(self.projection)
-        srTarget = osr.SpatialReference(targetGrid.projection)
+        srSelf = osr.SpatialReference(str(self.projection))
+        srTarget = osr.SpatialReference(str(targetGrid.projection))
         t = osr.CoordinateTransformation(srSelf, srTarget)
         
         (tl_x, tl_y, z) = t.TransformPoint(self.xMin, self.yMax)
