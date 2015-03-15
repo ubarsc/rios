@@ -27,7 +27,7 @@ You should have received a copy of the GNU Lesser General Public
 License along with this package; if not, see
 http://www.gnu.org/licenses/lgpl-2.1.html
 """
-somecrap
+
 import ctypes
 import os
 import pickle
