@@ -27,7 +27,7 @@ You should have received a copy of the GNU Lesser General Public
 License along with this package; if not, see
 http://www.gnu.org/licenses/lgpl-2.1.html
 """
-
+somecrap
 import ctypes
 import os
 import pickle
@@ -50,6 +50,10 @@ GLOBAL_OPS = [STORE_GLOBAL, DELETE_GLOBAL, LOAD_GLOBAL]
 
 HAVE_ARGUMENT = chr(dis.HAVE_ARGUMENT)
 EXTENDED_ARG = chr(dis.EXTENDED_ARG)
+
+# Suggested work-around for Python 2/3 compatability instead of explicit "L" for long constant
+if sys.version > '3':
+    long = int
 
 
 try:
@@ -259,7 +263,7 @@ class CloudPickler(pickle.Pickler):
                 extended_arg = 0
                 i = i + 2
                 if op == EXTENDED_ARG:
-                    extended_arg = oparg * 65536L
+                    extended_arg = oparg * long(65536)
                 if op in GLOBAL_OPS:
                     out_names.add(names[oparg])
         #print 'extracted', out_names, ' from ', names
