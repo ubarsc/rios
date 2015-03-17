@@ -200,8 +200,10 @@ class PixelGridDefn(object):
         projection of other
         
         """
-        srSelf = osr.SpatialReference(str(self.projection))
-        srOther = osr.SpatialReference(str(other.projection))
+        selfProj = str(self.projection) if self.projection is not None else ''
+        otherProj = str(other.projection) if other.projection is not None else ''
+        srSelf = osr.SpatialReference(wkt=selfProj)
+        srOther = osr.SpatialReference(wkt=otherProj)
         return bool(srSelf.IsSame(srOther))
         
     def equivalentProjection(self, otherspatialref, pixtolerance):
