@@ -17,16 +17,12 @@ import sys
 import os
 
 # Set up 'mock' modules, needed to build docs if numpy, gdal etc., aren't installed
-from unittest.mock import MagicMock
-
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return Mock()
+import mock
 
 MOCK_MODULES = ['numpy','scipy','osgeo','gdal','osgeo.gdal','cloud',
                 'cloud.serialization']
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+for mod_name in MOCK_MODULES:
+    sys.modules[mod_name] = mock.Mock()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
