@@ -13,7 +13,6 @@ High level functions
     :maxdepth: 1
 
     rios_applier
-    rios_vectorreader
     rios_ratapplier
 
 
@@ -34,19 +33,20 @@ Utilities
     :maxdepth: 1
 
     rios_calcstats
+    rios_fileinfo
 
 Internal
 --------------------
 .. toctree::
     :maxdepth: 1
 
-    rios_fileinfo
+    rios_cuiprogress
     rios_imageio
     rios_inputcollection
     rios_pixelgrid
     rios_rioserrors
     rios_riostests
-    rios_cuiprogress
+    rios_vectorreader
 
 * :ref:`modindex`
 * :ref:`search`
