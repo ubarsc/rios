@@ -24,6 +24,9 @@ with Python.
 from distutils.core import setup
 import glob
 
+sys.path.append(os.path.join(os.sys.path[0],'rios'))
+os.chdir('rios')
+
 import rios
 
 setup(name='rios',
