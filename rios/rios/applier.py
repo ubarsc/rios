@@ -37,7 +37,10 @@ from . import imageio
 from . import rioserrors
 from . import vectorreader
 from . import cuiprogress
-from .parallel import jobmanager
+
+ALLOW_JOBMANAGER = (os.getenv("RIOS_PARALLEL_ALLOWJOBMGR") is not None)
+if ALLOW_JOBMANAGER:
+    from .parallel import jobmanager
 
 # All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
@@ -536,7 +539,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         lastpercent = 0
         
         # Set up for parallel processing, if requested. 
-        jobmgr = jobmanager.getJobMgrObject(controls)
+        jobmgr = None
+        if ALLOW_JOBMANAGER:
+            jobmgr = jobmanager.getJobMgrObject(controls)
         
         for (info, blockdict) in reader:
             inputBlocks.__dict__.update(blockdict)
