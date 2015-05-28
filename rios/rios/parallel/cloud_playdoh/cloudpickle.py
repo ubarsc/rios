@@ -319,7 +319,7 @@ class CloudPickler(pickle.Pickler):
             outvars.append('globals: ' + str(globals))
             outvars.append('defaults: ' + str(defaults))
             outvars.append('closure: ' + str(closure))
-            print 'function ', func, 'is extracted to: ', ', '.join(outvars)
+            print('function ' + str(func) + 'is extracted to: ' + ', '.join(outvars))
 
         return (code, globals, defaults, closure, dict)
 
