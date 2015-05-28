@@ -21,8 +21,13 @@ with Python.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
+import sys
 from distutils.core import setup
 import glob
+
+sys.path.append(os.path.join(os.sys.path[0],'rios'))
+os.chdir('rios')
 
 import rios
 
