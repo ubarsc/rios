@@ -6,6 +6,9 @@ be called from outside of RIOS.
 
 Within RIOS, these are called from the ReaderInfo and ImageWriter
 classes.
+
+It is recommended that the ratapplier module be used instead of this
+interface where possible. 
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -402,11 +405,11 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     The color table is given as a numpy array of 5 columns. There is one row 
     (i.e. first array index) for every value to be set, and the columns
     are:
-        pixelValue
-        Red
-        Green
-        Blue
-        Opacity
+        * pixelValue
+        * Red
+        * Green
+        * Blue
+        * Opacity
     The Red/Green/Blue values are on the range 0-255, with 255 meaning full 
     color, and the opacity is in the range 0-255, with 255 meaning fully 
     opaque. 

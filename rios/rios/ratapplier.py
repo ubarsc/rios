@@ -54,8 +54,11 @@ haveRFC40 = hasattr(gdal.RasterAttributeTable, 'ReadAsArray')
 
 # Some constants relating to how we control the length of the output RAT (RCM = Row Count Method)
 RCM_EQUALS_INPUT = 0
+"Same as input"
 RCM_FIXED        = 1
+"Fixed size"
 RCM_INCREMENT    = 2
+"Incremented as required"
 
 
 def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
@@ -66,16 +69,16 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     
     Normal pattern is something like the following:
     
-        inRats = ratapplier.RatAssociations()
-        outRats = ratapplier.RatAssociations()
+    |    inRats = ratapplier.RatAssociations()
+    |    outRats = ratapplier.RatAssociations()
+    |    
+    |    inRats.vegclass = RatHandle('vegclass.kea')
+    |    outRats.vegclass = RatHandle('vegclass.kea')
+    |    
+    |    ratapplier.apply(myFunc, inRats, outRats)
         
-        inRats.vegclass = RatHandle('vegclass.kea')
-        outRats.vegclass = RatHandle('vegclass.kea')
-        
-        ratapplier.apply(myFunc, inRats, outRats)
-        
-    def myFunc(info, inputs, outputs):
-        outputs.vegclass.colSum = inputs.vegclass.col1 + inputs.vegclass.col2
+    | def myFunc(info, inputs, outputs):
+    |    outputs.vegclass.colSum = inputs.vegclass.col1 + inputs.vegclass.col2
     
     The otherargs argument can be any object, and is typically an instance
     of OtherArguments. It will be passed in to each call of the user function, 
@@ -235,9 +238,9 @@ class RatApplierControls(object):
         """
         Determine how the row count of the output RAT(s) is handled. The method
         argument can be one of the following constants:
-            RCM_EQUALS_INPUT        Output RAT(s) have same number of rows as input RAT(s)
-            RCM_FIXED               Output row count is set to a fixed size
-            RCM_INCREMENT           Output row count is incremented as required
+            * RCM_EQUALS_INPUT        Output RAT(s) have same number of rows as input RAT(s)
+            * RCM_FIXED               Output row count is set to a fixed size
+            * RCM_INCREMENT           Output row count is incremented as required
             
         
         The totalsize and incrementsize arguments, if given, should be int.
