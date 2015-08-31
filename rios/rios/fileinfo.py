@@ -521,12 +521,12 @@ class RatStats(object):
     """
     Calculate statistics on columns in a Raster Attribute Table
 
-    Normal usage is via the RatStats class, e.g.
+    Normal usage is via the RatStats class, e.g.::
 
-    |    columnsOfInterest = ['col1', 'col4']
-    |    ratStatsObj = ratstats.RatStats('file.img', columnlist=columnsOfInterest)
-    |
-    |    print ratStatsObj.col1.mean, ratStatsObj.col4.mean
+        columnsOfInterest = ['col1', 'col4']
+        ratStatsObj = ratstats.RatStats('file.img', columnlist=columnsOfInterest)
+    
+        print ratStatsObj.col1.mean, ratStatsObj.col4.mean
 
     Contains an attribute for each named column. Each attribute is 
     a ColumnStats object, containing all relevant global stats 

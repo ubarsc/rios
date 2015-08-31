@@ -67,18 +67,18 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     
     All raster files must already exist, but new columns can be created. 
     
-    Normal pattern is something like the following:
+    Normal pattern is something like the following::
     
-    |    inRats = ratapplier.RatAssociations()
-    |    outRats = ratapplier.RatAssociations()
-    |    
-    |    inRats.vegclass = RatHandle('vegclass.kea')
-    |    outRats.vegclass = RatHandle('vegclass.kea')
-    |    
-    |    ratapplier.apply(myFunc, inRats, outRats)
+        inRats = ratapplier.RatAssociations()
+        outRats = ratapplier.RatAssociations()
         
-    | def myFunc(info, inputs, outputs):
-    |    outputs.vegclass.colSum = inputs.vegclass.col1 + inputs.vegclass.col2
+        inRats.vegclass = RatHandle('vegclass.kea')
+        outRats.vegclass = RatHandle('vegclass.kea')
+        
+        ratapplier.apply(myFunc, inRats, outRats)
+        
+      def myFunc(info, inputs, outputs):
+        outputs.vegclass.colSum = inputs.vegclass.col1 + inputs.vegclass.col2
     
     The otherargs argument can be any object, and is typically an instance
     of OtherArguments. It will be passed in to each call of the user function, 
