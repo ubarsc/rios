@@ -38,20 +38,20 @@ class PixelGridDefn(object):
     
     Methods are defined for relationships with
     other instances, including:
-        intersection()
-        union()
-        reproject()
-        alignedWith()
-        isComparable()
+        * intersection()
+        * union()
+        * reproject()
+        * alignedWith()
+        * isComparable()
     
     Attributes defined on the object:
-        xMin
-        xMax
-        yMin
-        yMax
-        xRes
-        yRes
-        projection
+        * xMin
+        * xMax
+        * yMin
+        * yMax
+        * xRes
+        * yRes
+        * projection
         
     NOTE: The bounds defined the external corners of the image, i.e. the
     top-left corner of the top-left pixel, through to the bottom-right

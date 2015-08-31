@@ -43,23 +43,22 @@ class ImageInfo(object):
     in GDAL conventions. 
     
     Object contains the following fields
-        xMin            Map X coord of left edge of left-most pixel
-        xMax            Map X coord of right edge of right-most pixel
-        yMin            Map Y coord of bottom edge of bottom pixel
-        yMax            Map Y coord of top edge of top-most pixel
-        xRes            Map coord size of each pixel, in X direction
-        yRes            Map coord size of each pixel, in Y direction
-        nrows           Number of rows in image
-        ncols           Number of columns in image
-        transform       Transformation params to map between pixel and 
-                        map coords, in GDAL form
-        projection      WKT string of projection
-        rasterCount     Number of rasters in file
-        lnames          Names of the layers as a list.
-        layerType       "thematic" or "athematic", if it is set
-        dataType        Data type for the first band (as a GDAL integer constant)
-        dataTypeName    Data type for the first band (as a human-readable string)
-        nodataval       Value used as the no-data indicator (per band)
+        * **xMin**            Map X coord of left edge of left-most pixel
+        * **xMax**            Map X coord of right edge of right-most pixel
+        * **yMin**            Map Y coord of bottom edge of bottom pixel
+        * **yMax**            Map Y coord of top edge of top-most pixel
+        * **xRes**            Map coord size of each pixel, in X direction
+        * **yRes**            Map coord size of each pixel, in Y direction
+        * **nrows**           Number of rows in image
+        * **ncols**           Number of columns in image
+        * **transform**       Transformation params to map between pixel and map coords, in GDAL form
+        * **projection**      WKT string of projection
+        * **rasterCount**     Number of rasters in file
+        * **lnames**          Names of the layers as a list.
+        * **layerType**       "thematic" or "athematic", if it is set
+        * **dataType**        Data type for the first band (as a GDAL integer constant)
+        * **dataTypeName**    Data type for the first band (as a human-readable string)
+        * **nodataval**       Value used as the no-data indicator (per band)
     
     The omitPerBand argument on the constructor is provided in order to speed up the 
     access of very large VRT stacks. The information which is normally extracted 
@@ -216,22 +215,22 @@ class ImageLayerStats(object):
     as a part of the ImageFileStats class. 
     
     The object contains the following fields
-        mean        Mean value over all non-null pixels
-        min         Minimum value over all non-null pixels
-        max         Maximum value over all non-null pixels
-        stddev      Standard deviation over all non-null pixels
-        median      Median value over all non-null pixels
-        mode        Mode over all non-null pixels
-        skipfactorx The statistics skip factor in the X direction
-        skipfactory The statistics skip factor in the Y direction
+        * **mean**        Mean value over all non-null pixels
+        * **min**         Minimum value over all non-null pixels
+        * **max**         Maximum value over all non-null pixels
+        * **stddev**      Standard deviation over all non-null pixels
+        * **median**      Median value over all non-null pixels
+        * **mode**        Mode over all non-null pixels
+        * **skipfactorx** The statistics skip factor in the X direction
+        * **skipfactory** The statistics skip factor in the Y direction
         
     There are many ways to report a histogram. 
     The following attributes report it the way GDAL does. 
     See GDAL doco for precise details. 
-        histoCounts     Histogram counts (numpy array)
-        histoMin        Minimum edge of smallest bin
-        histoMax        Maximum edge of largest bin
-        histoNumBins    Number of histogram bins
+        * **histoCounts**     Histogram counts (numpy array)
+        * **histoMin**        Minimum edge of smallest bin
+        * **histoMax**        Maximum edge of largest bin
+        * **histoNumBins**    Number of histogram bins
         
     """
     def __init__(self, bandObj):
@@ -335,18 +334,18 @@ class VectorLayerInfo(object):
     Hold useful general information about a single vector layer. 
     
     Object contains the following fields
-        featureCount        Number of features in the layer
-        xMin                Minimum X coordinate
-        xMax                Maximum X coordinate
-        yMin                Minimum Y coordinate
-        yMax                Maximum Y coordinate
-        geomType            OGR geometry type code (integer)
-        geomTypeStr         Human-readable geometry type name (string)
-        fieldCount          Number of fields (i.e. columns) in attribute table
-        fieldNames          List of names of attribute table fields
-        fieldTypes          List of the type code numbers of each attribute table field
-        fieldTypeNames      List of the string names of the field types
-        spatialRef          osr.SpatialReference object of layer projection
+        * **featureCount**        Number of features in the layer
+        * **xMin**                Minimum X coordinate
+        * **xMax**                Maximum X coordinate
+        * **yMin**                Minimum Y coordinate
+        * **yMax**                Maximum Y coordinate
+        * **geomType**            OGR geometry type code (integer)
+        * **geomTypeStr**         Human-readable geometry type name (string)
+        * **fieldCount**          Number of fields (i.e. columns) in attribute table
+        * **fieldNames**          List of names of attribute table fields
+        * **fieldTypes**          List of the type code numbers of each attribute table field
+        * **fieldTypeNames**      List of the string names of the field types
+        * **spatialRef**          osr.SpatialReference object of layer projection
     
     """
     def __init__(self, ds, i):
@@ -388,13 +387,13 @@ class ColumnStats(object):
     Summary statistics for a single column of a raster attribute table
     
     Attributes are:
-        count
-        mean
-        stddev
-        min
-        max
-        mode            Not yet implemented
-        median          Not yet implemented
+        * **count**
+        * **mean**
+        * **stddev**
+        * **min**
+        * **max**
+        * **mode**            Not yet implemented
+        * **median**          Not yet implemented
     
     Unless otherwise requested, the statistics are weighted by the Histogram column, so
     that they represent spatial statistics, e.g. the mean would correspond to the mean
@@ -523,10 +522,11 @@ class RatStats(object):
     Calculate statistics on columns in a Raster Attribute Table
 
     Normal usage is via the RatStats class, e.g.
-        columnsOfInterest = ['col1', 'col4']
-        ratStatsObj = ratstats.RatStats('file.img', columnlist=columnsOfInterest)
 
-        print ratStatsObj.col1.mean, ratStatsObj.col4.mean
+    |    columnsOfInterest = ['col1', 'col4']
+    |    ratStatsObj = ratstats.RatStats('file.img', columnlist=columnsOfInterest)
+    |
+    |    print ratStatsObj.col1.mean, ratStatsObj.col4.mean
 
     Contains an attribute for each named column. Each attribute is 
     a ColumnStats object, containing all relevant global stats 

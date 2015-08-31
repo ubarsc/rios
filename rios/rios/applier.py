@@ -52,8 +52,11 @@ DEFAULTLOGGINGSTREAM = imagereader.DEFAULTLOGGINGSTREAM
 DEFAULTDRIVERNAME = imagewriter.DEFAULTDRIVERNAME
 DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
 INTERSECTION = imageio.INTERSECTION
+"Use the spatial intersection of inputs"
 UNION = imageio.UNION
+"Use the spatial union of inputs"
 BOUNDS_FROM_REFERENCE = imageio.BOUNDS_FROM_REFERENCE
+"Use the spatial extent of the reference file"
 
 if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
@@ -106,36 +109,35 @@ class ApplierControls(object):
     has methods for setting each of them to something else. 
     
     Attributes are:
-        windowxsize     X size of rios block (pixels)
-        windowysize     Y size of rios block (pixels)
-        overlap         Number of pixels in margin for block overlaps
-        footprint       applier.INTERSECTION or applier.UNION or applier.BOUNDS_FROM_REFERENCE
-        drivername      GDAL driver short name for output
-        creationoptions GDAL creation options for output
-        thematic        True/False for thematic outputs
-        layernames      List of layer names for outputs
-        referenceImage  Image for reference projection and grid that inputs
-                        will be resampled to.
-        referencePixgrid pixelGrid for reference projection and grid
-        loggingstream   file-like for logging of messages
-        progress        progress object
-        statsIgnore     global stats ignore value for output (i.e. null value)
-        statscache      stats cache if pre-calculated
-        calcStats       True/False to signal calculate statistics and pyramids
-        omitPyramids    True/False to omit pyramids when doing stats
-        tempdir         Name of directory for temp files (resampling, etc.)
-        resampleMethod  String for resample method, when required (as per GDAL)
-        numThreads      Number of parallel threads used for processing each image block
-        jobManagerType  Which JobManager sub-class to use for parallel processing (by name)
+        * **windowxsize**     X size of rios block (pixels)
+        * **windowysize**     Y size of rios block (pixels)
+        * **overlap**         Number of pixels in margin for block overlaps
+        * **footprint**       applier.INTERSECTION or applier.UNION or applier.BOUNDS_FROM_REFERENCE
+        * **drivername**      GDAL driver short name for output
+        * **creationoptions** GDAL creation options for output
+        * **thematic**        True/False for thematic outputs
+        * **layernames**      List of layer names for outputs
+        * **referenceImage**  Image for reference projection and grid that inputs will be resampled to.
+        * **referencePixgrid** pixelGrid for reference projection and grid
+        * **loggingstream**   file-like for logging of messages
+        * **progress**        progress object
+        * **statsIgnore**     global stats ignore value for output (i.e. null value)
+        * **statscache**      stats cache if pre-calculated
+        * **calcStats**       True/False to signal calculate statistics and pyramids
+        * **omitPyramids**    True/False to omit pyramids when doing stats
+        * **tempdir**         Name of directory for temp files (resampling, etc.)
+        * **resampleMethod**  String for resample method, when required (as per GDAL)
+        * **numThreads**      Number of parallel threads used for processing each image block
+        * **jobManagerType**  Which JobManager sub-class to use for parallel processing (by name)
     
     Options relating to vector input files
-        burnvalue       Value to burn into raster from vector
-        filtersql       SQL where clause used to filter vector features
-        alltouched      Boolean. If True, all pixels touched are included in vector. 
-        burnattribute   Name of vector attribute used to supply burnvalue
-        vectorlayer     Number (or name) of vector layer
-        vectordatatype  Numpy datatype to use for raster created from vector
-        vectornull      Rasterised vector is initialised to this value, before burning
+        * **burnvalue**       Value to burn into raster from vector
+        * **filtersql**       SQL where clause used to filter vector features
+        * **alltouched**      Boolean. If True, all pixels touched are included in vector. 
+        * **burnattribute**   Name of vector attribute used to supply burnvalue
+        * **vectorlayer**     Number (or name) of vector layer
+        * **vectordatatype**  Numpy datatype to use for raster created from vector
+        * **vectornull**      Rasterised vector is initialised to this value, before burning
         
     
     Default values are provided for all attributes, and can then be over-ridden

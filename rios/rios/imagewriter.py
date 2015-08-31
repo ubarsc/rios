@@ -34,8 +34,8 @@ def setDefaultDriver():
     what defaults we should use for GDAL driver. On any given
     output file these can be over-ridden, and can be over-ridden globally
     using the environment variables 
-        $RIOS_DFLT_DRIVER
-        $RIOS_DFLT_DRIVEROPTIONS
+        * $RIOS_DFLT_DRIVER
+        * $RIOS_DFLT_DRIVEROPTIONS
     
     If RIOS_DFLT_DRIVER is set, then it should be a gdal short driver name
     If RIOS_DFLT_DRIVEROPTIONS is set, it should be a space-separated list
