@@ -1,7 +1,7 @@
 """
 Utility classes for accessing information from files, ouside of the
 main RIOS applier structure. Typically these are used to access information
-required to set up the call to applier.apply(), passing some of the 
+required to set up the call to :func:`rios.applier.apply`, passing some of the 
 information in via the otherargs parameter. 
 
 """
@@ -170,7 +170,8 @@ class ImageInfo(object):
         but with the option to reproject them into a given output projection. 
         Because the output coordinate system will not in general align with the 
         image coordinate system, there are separate values for all four corners. 
-        These are returned as
+        These are returned as::
+
             (ul_x, ul_y, ur_x, ur_y, lr_x, lr_y, ll_x, ll_y)
             
         The output projection can be given as either a WKT string, an 
@@ -281,7 +282,7 @@ class ImageLayerStats(object):
 class ImageFileStats(object):
     """
     Hold the stats for all layers in an image file. This object can be indexed 
-    with the layer index, and each element is an instance of ImageLayerStats. 
+    with the layer index, and each element is an instance of :class:`rios.fileinfo.ImageLayerStats`. 
     
     """
     def __init__(self, filename):
@@ -306,7 +307,7 @@ class VectorFileInfo(object):
     """
     Hold useful general information about a vector file. This object
     can be indexed with the layer index, and each element is
-    an instance of VectorLayerInfo. 
+    an instance of :class:`rios.fileinfo.VectorLayerInfo`. 
     
     """
     def __init__(self, filename):

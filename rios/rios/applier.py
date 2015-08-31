@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 Basic tools for setting up a function to be applied over 
-a raster processing chain. The apply() function is the main
+a raster processing chain. The :func:`rios.applier.apply` function is the main
 point of entry in this module. 
 
 """
@@ -67,7 +67,7 @@ class FilenameAssociations(object):
     """
     Class for associating external image filenames with internal
     names, which are then the same names used inside a function given
-    to the applier.apply() function. 
+    to the :func:`rios.applier.apply` function. 
     
     Each attribute created on this object should be a filename, or a 
     list of filenames. The corresponding attribute names will appear 
@@ -103,7 +103,7 @@ class OtherInputs(object):
 class ApplierControls(object):
     """
     Controls for the operation of rios, for use with 
-    the applier.apply() function. 
+    the :func:`rios.applier.apply` function. 
     
     This object starts with default values for all controls, and 
     has methods for setting each of them to something else. 
@@ -112,7 +112,7 @@ class ApplierControls(object):
         * **windowxsize**     X size of rios block (pixels)
         * **windowysize**     Y size of rios block (pixels)
         * **overlap**         Number of pixels in margin for block overlaps
-        * **footprint**       applier.INTERSECTION or applier.UNION or applier.BOUNDS_FROM_REFERENCE
+        * **footprint**       :data:`rios.applier.INTERSECTION` or :data:`rios.applier.UNION` or :data:`rios.applier.BOUNDS_FROM_REFERENCE`
         * **drivername**      GDAL driver short name for output
         * **creationoptions** GDAL creation options for output
         * **thematic**        True/False for thematic outputs
@@ -128,7 +128,7 @@ class ApplierControls(object):
         * **tempdir**         Name of directory for temp files (resampling, etc.)
         * **resampleMethod**  String for resample method, when required (as per GDAL)
         * **numThreads**      Number of parallel threads used for processing each image block
-        * **jobManagerType**  Which JobManager sub-class to use for parallel processing (by name)
+        * **jobManagerType**  Which :class:`rios.parallel.jobmanager.JobManager` sub-class to use for parallel processing (by name)
     
     Options relating to vector input files
         * **burnvalue**       Value to burn into raster from vector
@@ -144,7 +144,7 @@ class ApplierControls(object):
     with the 'set' methods given. 
     
     Some 'set' methods take an optional imagename argument. If given, this should be 
-    the same internal name used for a given image as in the FilenameAssociations
+    the same internal name used for a given image as in the :class:`rios.applier.FilenameAssociations`
     objects. This is the internal name for that image, and the method will set 
     the parameter in question for that specific image, which will over-ride the
     global value set when no imagename is given. 
@@ -211,7 +211,7 @@ class ApplierControls(object):
         the given imagename, then use that. 
         
         The imagename is the same internal name as used for the image
-        in the FilenameAssociations objects. 
+        in the :class:`rios.applier.FilenameAssociations` objects. 
         
         """
         value = getattr(self, option)
@@ -283,7 +283,7 @@ class ApplierControls(object):
         Set the reference pixel grid. If neither referenceImage nor 
         referencePixgrid are set, then no resampling will be allowed. 
         Only set one of referenceImage or referencePixgrid. The referencePixgrid
-        argument is of type pixelgrid.PixelGridDefn(). 
+        argument is of type :class:`rios.pixelgrid.PixelGridDefn`. 
 
         """
         self.referencePixgrid = referencePixgrid
@@ -450,7 +450,7 @@ class ApplierControls(object):
         of imagery. Note that these are not threads in the technical sense, 
         but are handled by the JobManager class, and are some form of 
         cooperating parallel processes, depending on the type of job 
-        manager sub-class selected. See rios.parallel.jobmanager 
+        manager sub-class selected. See :mod:`rios.parallel.jobmanager` 
         for full details. Note that this is only worth using on very 
         computationally-intensive tasks. Default is 1, i.e. no parallel 
         processing. 
@@ -461,7 +461,7 @@ class ApplierControls(object):
     def setJobManagerType(self, jobMgrType):
         """
         Set which type of JobManager is to be used for parallel processing.
-        See rios.parallel.jobmanager for details. Default is taken from
+        See :mod:`rios.parallel.jobmanager` for details. Default is taken from
         $RIOS_DFLT_JOBMGRTYPE. 
         
         """
@@ -473,19 +473,22 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         Apply the given 'userFunction' to the given
         input and output files. 
         
-        infiles and outfiles are FilenameAssociations objects to 
+        infiles and outfiles are :class:`rios.applier.FilenameAssociations` objects to 
         define associations between internal variable names and
         external filenames, for the raster file inputs and outputs. 
         
         otherArgs is an object of extra arguments to be passed to the 
         userFunction, each with a sensible name on the object. These 
         can be either input or output arguments, entirely at the discretion
-        of userFunction(). 
+        of userFunction(). otherArgs should be in instance of :class:`rios.applier.OtherInputs`
         
-        The userFunction has the following call sequence
+        The userFunction has the following call sequence::
+
             userFunction(info, inputs, outputs)
-        or
+        or::
+
             userFunction(info, inputs, outputs, otherArgs)
+
         if otherArgs is not None. 
         inputs and outputs are objects in which there are named attributes 
         with the same names as those given in the infiles and outfiles 
@@ -498,20 +501,165 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         inputs and outputs objects inside the applied function will be 
         lists of image data blocks instead of single blocks. 
         
-        The numpy arrays are always 3-d arrays, with shape
+        The numpy arrays are always 3-d arrays, with shape::
+
             (numBands, numRows, numCols)
+
         The datatype of the output image(s) is determined directly
         from the datatype of the numpy arrays in the outputs object. 
         
         The info object contains many useful details about the processing, 
         and will always be passed to the userFunction. It can, of course, 
-        be ignored. It is an instance of the readerinfo.ReaderInfo class. 
+        be ignored. It is an instance of the :class:`rios.readerinfo.ReaderInfo` class. 
         
         The controls argument, if given, is an instance of the 
-        ApplierControls class, which allows control of various 
+        :class:`rios.applier.ApplierControls` class, which allows control of various 
         aspects of the reading and writing of images. See the class 
         documentation for further details. 
+
+        **Example**
+
+        ::
+
+            # Reads in two input files and adds them together. 
+            # Assumes that they have the same number of bands. 
+            from rios import applier
         
+            # Set up input and output filenames. 
+            infiles = applier.FilenameAssociations()
+            infiles.image1 = "file1.img"
+            infiles.image2 = "file2.img"
+ 
+            outfiles = applier.FilenameAssociations()
+            outfiles.outimage = "outfile.img"
+ 
+            # Set up the function to be applied
+            def addThem(info, inputs, outputs):
+                # Function to be called by rios.
+                # Adds image1 and image2 from the inputs, and
+                # places the result in the outputs as outimage. 
+                outputs.outimage = inputs.image1 + inputs.image2
+ 
+            # Apply the function to the inputs, creating the outputs. 
+            applier.apply(addThem, infiles, outfiles)
+
+
+        The program shown above is complete, and would work, assuming the two input files existed. 
+        It would create a file called outfile.img, whose pixel values would be the sum of the 
+        corresponding pixels in the two input files, file1.img and file2.img.
+
+        The user-supplied function addThem is passed to the :func:`rios.applier.apply` function, which applies it across the image. 
+        Inside the addThem function, we are given the info object (which we are not making use of in this case, but we are given it anyway), 
+        and the inputs and outputs objects, which contain the data from the raster files defined earlier. 
+        The data is presented as a set of numpy arrays, of the datatype corresponding to that in the raster files. 
+        It is the responsibility of the user to manage all conversions of datatypes.
+
+        All blocks of data are 3-d numpy arrays. The first dimension corresponds to the number of layers in the image file, 
+        and will be present even when there is only one layer.
+
+        The datatype of the output file(s) will be inferred from the datatype of the numpy arrays(s) given in the outputs object. 
+        So, to control the datatype of the output file, use the numpy astype() function to control the datatype of the output arrays.         
+
+        **Passing Other Data Example**
+
+        A mechanism is proved for passing other data to and from the user function, apart from the raster data itself. 
+        This is obviously useful for passing parameters into the processing. It can also be used to pass information out again, 
+        and to preserve data between calls to the function, since the otherargs object is preserved between blocks.
+
+        When invoking the :func:`rios.applier.apply` function, a fourth argument can be given, otherargs. 
+        This can be any python object, but will typically be an instance of the :class:`rios.applier.OtherInputs` class. 
+        If supplied, then the use function should also expect to take this as its fourth argument. It will be supplied to every call to the user function, 
+        and rios will do nothing to it between calls.
+
+        The OtherInputs class is simply a container, so that the application can attach arbitrary attributes to it, 
+        and they will be accessible from inside the user function.
+
+        A simple example, using it to pass in a single parameter, might be a program to multiply an input raster by a scale value and add an offset (showing only the relevant lines of code)::
+
+            def rescale(info, inputs, outputs, otherargs):
+                outputs.scaled = inputs.img * otherargs.scale + otherargs.offset
+
+            otherargs = applier.OtherInputs()
+            otherargs.scale = scaleval
+            otherargs.offset = offsetval
+            applier.apply(rescale, infiles, outfiles, otherargs)
+
+
+        An example of using the otherargs object to accumulate information across blocks might be a program to calculate some statistic 
+        (e.g. the mean) across the whole raster (showing only the relevant lines of code) ::
+            
+            def accum(info, inputs, outputs, otherargs):
+                tot = float(inputs.img.sum())
+                n = inputs.img.size
+                otherargs.tot += tot
+                otherargs.count += n
+
+            otherargs = applier.OtherInputs()
+            otherargs.tot = 0.0
+            otherargs.count = 0
+            applier.apply(accum, infiles, outfiles, otherargs)
+            print 'Average value = ', otherargs.tot / otherargs.count
+
+        The *tot* and *count* values on otherargs are initialized before calling :func:`rios.applier.apply`, and are accumulated between blocks, 
+        as RIOS loops over all blocks in the image. After the call to :func:`rios.applier.apply`, these attributes have their final values, and we can calculate the final average.
+
+        Of course, there already exist superior ways of calculating the mean value of an image, but the point about using rios to do 
+        something like this would be that: (a) opening the input rasters is taken care of; and (b) it takes up very little memory, as only small blocks are in memory at one time. The same mechanism can be used to do more specialized calculations across the image(s).
+
+        Note that there are no output rasters from the last example - this is perfectly valid.         
+
+        **Controlling Reading/Writing Example**
+
+        A simple example would be to allow resampling of input rasters. 
+        Normally, rios will raise an exception if the input rasters are on different projections, 
+        but if requested to do so, it will reproject on-the-fly. This is enabled by telling it 
+        which of the input rasters should be used as the reference (all other inputs will be 
+        reprojected onto the reference projection. This is done as follows (showing only the relevant lines)::
+
+            controls = applier.ApplierControls()
+            controls.setReferenceImage(infiles.img2)
+            applier.apply(userFunc, infiles, outfiles, controls=controls)
+
+        Other controls which can be manipulated are detailed in the full python documentation for the :class:`rios.applier.ApplierControls` class.
+
+        
+        **Arbitrary Numbers of Input (and Output) Files**
+
+        Each name on the infiles or outfiles object can also be a list of filenames, 
+        instead of a single filename. This will cause the corresponding attribute on the 
+        inputs/outputs object to be a list of blocks, instead of a single block. 
+        This allows the function to process an arbitrary number of files, without having 
+        to give each one a separate name within the function. An example might be a function 
+        to average a number of raster files, which should work the same regardless of 
+        how many files are to be averaged. This could be written as follows::
+
+            import sys
+            from rios import applier
+
+            def doAverage(info, inputs, outputs):
+                "Called from RIOS. Average the input files"
+                tot = inputs.imgs[0].astype(numpy.float32)
+                for img in inputs.imgs[1:]:
+                    tot = tot + img
+                avg = tot / len(inputs.imgs)
+                outputs.avg = avg.astype(img.dtype)
+
+            infiles = applier.FilenameAssociations()
+            # names of imput images
+            infiles.imgs = sys.argv[1:-1]
+            # Last name given is the output
+            outfiles.avg = sys.argv[-1]
+            applier.apply(doAverage, infiles, outfiles)
+
+        **Vector Inputs**
+
+        As of RIOS 1.1, it is possible for the input files to be vector files as well as raster files. 
+        Any polygon file which can be read using GDAL/OGR is acceptable. The polygons will be rasterized on the fly, 
+        and presented inside the user's function as numpy arrays, in exactly the same way as would normally happen with raster inputs.
+
+        Some attributes are added to the :class:`rios.applier.ApplierControls` object to manage the rasterizing process, 
+        setting such things as a burn value (i.e. the value in the array corresponding to pixels "inside" the polygons. 
+
         """
         # Get default controls object if none given. 
         if controls is None:
@@ -575,7 +723,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
 def closeOutputImages(writerdict, outfiles, controls):
     """
-    Called by apply() to close all output image files. 
+    Called by :func:`rios.applier.apply` to close all output image files. 
     """
     for name in outfiles.__dict__.keys():
         writer = writerdict[name]
@@ -594,7 +742,7 @@ def closeOutputImages(writerdict, outfiles, controls):
 
 def updateProgress(controls, info, lastpercent):
     """
-    Called by apply() to update progress
+    Called by :func:`rios.applier.apply` to update progress
     """
     if controls.progress is not None:
         percent = info.getPercent()
@@ -606,7 +754,7 @@ def updateProgress(controls, info, lastpercent):
 
 def handleInputResampling(infiles, controls, reader):
     """
-    Called by apply() to handle automatic resampling of input rasters.
+    Called by :func:`rios.applier.apply` to handle automatic resampling of input rasters.
     Most of the work is done by the read.allowResample() method. 
     """
     if controls.referenceImage is not None:
@@ -622,7 +770,7 @@ def handleInputResampling(infiles, controls, reader):
 
 def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
     """
-    Called by apply(), to write the output blocks, after
+    Called by :func:`rios.applier.apply`, to write the output blocks, after
     they have been created by the user function. 
     For internal use only. 
     
@@ -691,8 +839,8 @@ def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
 
 def separateVectors(infiles):
     """
-    Given a FilenameAssociations object, separate out the files which 
-    are raster, and the files which are vectors. Returns two FilenameAssociations
+    Given a :class:`rios.applier.FilenameAssociations` object, separate out the files which 
+    are raster, and the files which are vectors. Returns two :class:`rios.applier.FilenameAssociations`
     objects, carrying the same attribute names, but each has only the raster
     or the vectors. 
     
@@ -762,10 +910,10 @@ def opensAsVector(filename):
 
 def makeVectorObjects(vectorfiles, controls):
     """
-    Returns a dictionary of vectorreader.Vector objects,
+    Returns a dictionary of :class:`rios.vectorreader.Vector` objects,
     with the keys being the attribute names used
     on the vectorfiles object. This is then ready to
-    go into the vectorreader.VectorReader constructor. 
+    go into the :class:`rios.vectorreader.VectorReader` constructor. 
     
     """
     vectordict = {}

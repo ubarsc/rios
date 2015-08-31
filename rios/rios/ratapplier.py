@@ -5,9 +5,9 @@ the details of reading and writing columns from the RAT.
 
 This was written in rough mimicry of the RIOS image applier functionality. 
 
-The most important components are the apply() function, and 
-the RatApplierControls class. Pretty much everything else is for internal 
-use only. The docstring for the apply() function gives a simple example
+The most important components are the :func:`rios.ratapplier.apply` function, and 
+the :class:`rios.ratapplier.RatApplierControls` class. Pretty much everything else is for internal 
+use only. The docstring for the :func:`rios.ratapplier.apply` function gives a simple example
 of its use. 
 
 In order to work through the RAT(s) block by block, we rely on having
@@ -64,6 +64,8 @@ RCM_INCREMENT    = 2
 def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     """
     Apply the given function across the whole of the given raster attribute tables.
+    The attribute table is processing one chunk at a time allowing very large tables
+    without running out of memory.
     
     All raster files must already exist, but new columns can be created. 
     
@@ -72,27 +74,55 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         inRats = ratapplier.RatAssociations()
         outRats = ratapplier.RatAssociations()
         
-        inRats.vegclass = RatHandle('vegclass.kea')
-        outRats.vegclass = RatHandle('vegclass.kea')
+        inRats.vegclass = ratapplier.RatHandle('vegclass.kea')
+        outRats.vegclass = ratapplier.RatHandle('vegclass.kea')
         
         ratapplier.apply(myFunc, inRats, outRats)
         
-      def myFunc(info, inputs, outputs):
-        outputs.vegclass.colSum = inputs.vegclass.col1 + inputs.vegclass.col2
+        def myFunc(info, inputs, outputs):
+            outputs.vegclass.colSum = inputs.vegclass.col1 + inputs.vegclass.col2
+
+    The :class:`rios.ratapplier.RatHandle` defaults to using the RAT from the first layer of 
+    the image which is usual for thematic imagery. 
+    This can be overridden using the layernum parameter. The names of the columns are reflected in 
+    the names of the fields on the inputs and outputs parameters and multiple input and output RAT's can be specified
     
     The otherargs argument can be any object, and is typically an instance
-    of OtherArguments. It will be passed in to each call of the user function, 
+    of :class:`rios.ratapplier.OtherArguments`. It will be passed in to each call of the user function, 
     unchanged between calls, so that other values can be passed in, and 
     calculated quantities passed back. The values stored on this object are not
     directly associated with rows of the RAT, and must be managed entirely by
     the user. If it is not required, it need not be passed. 
     
-    The controls object is an instance of the RatApplierControls class, and 
+    The controls object is an instance of the :class:`rios.ratapplier.RatApplierControls` class, and 
     is only required if the default control settings are to be changed. 
     
     The info object which is passed to the user function is an instance of 
-    the RatApplierState class. 
-        
+    the :class:`rios.ratapplier.RatApplierState` class. 
+
+    By default new columns are marked as 'Generic'. If they need to be marked as having a specific usage, the following syntax is used::
+
+        def addCols(info, inputs, outputs):
+            "Add two columns and output"
+            outputs.outimg.colSum = inputs.inimg.col1 + inputs.inimg.col4
+            outputs.outImg.Red = someRedValue      # some calculated red value, in 0-255 range
+            outputs.outImg.setUsage('Red', gdal.GFU_Red)
+
+    **Statistics**
+
+    Since the RAT is now read one chunk at a time calling numpy functions like mean() 
+    etc will only return statistics for the current chunk, not globally. The solution is to use the 
+    :class:`rios.fileinfo.RatStats` class::
+
+        from rios.fileinfo import RatStats
+
+        columnsOfInterest = ['col1', 'col4']
+        ratStatsObj = RatStats('file.img', columnlist=columnsOfInterest)
+
+        print(ratStatsObj.col1.mean, ratStatsObj.col4.mean)
+
+    Each column attribute is an instance of :class:`rios.fileinfo.ColumnStats` and is intended to be 
+    passed through the apply function via the otherargs mechanism.
     """
     # Get a default controls object if we have not been given one
     if controls is None:
