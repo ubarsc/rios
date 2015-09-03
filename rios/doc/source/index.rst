@@ -4,7 +4,7 @@ Raster I/O Simplification
 ========================================================
 
 Introduction
-############
+------------
 A set of Python modules which makes it easy to write raster processing 
 code in Python. Built on top of GDAL, it handles the details of 
 opening and closing files, checking alignment of projection and 
@@ -13,7 +13,7 @@ allowing the programmer to concentrate on the processing involved.
 It is licensed under GPL 3.
 
 Example
-#######
+-------
 
 ::
 
@@ -43,10 +43,11 @@ Example
     # Apply the function to the inputs, creating the outputs. 
     applier.apply(addThem, infiles, outfiles)
 
-See :func:`rios.applier.apply` for more complete documentation.
+See :doc:`applierexamples` for more information.
+
 
 Downloads
-#########
+---------
 From `Sourceforge <http://sourceforge.net/projects/rios/>`_ or `BitBucket <https://bitbucket.org/chchrsc/rios/downloads>`_.
 
 High level functions
