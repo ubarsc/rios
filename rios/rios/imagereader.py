@@ -89,8 +89,20 @@ class ImageIterator(object):
 
 class ImageReader(object):
     """
-    Class that reads a list of files and 
+    Class that reads a single file, a list or dictionary of files and 
     iterates through them block by block
+
+    **Example**
+    
+    ::
+    
+        import sys
+        from rios.imagereader import ImageReader
+
+        reader = ImageReader(sys.argv[1]) 
+        for (info, block) in reader:     
+            block2 = block * 2
+
     """
     def __init__(self, imageContainer,
 				footprint=DEFAULTFOOTPRINT,
@@ -98,7 +110,7 @@ class ImageReader(object):
 				overlap=DEFAULTOVERLAP, statscache=None,
                 loggingstream=sys.stdout, layerselection=None):
         """
-        imageContainer is a list or dictionary that contains
+        imageContainer is a filename or list or dictionary that contains
         the filenames of the images to be read.
         If a list is passed, a list of blocks is returned at 
         each iteration, if a dictionary a dictionary is

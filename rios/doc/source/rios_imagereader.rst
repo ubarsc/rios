@@ -1,5 +1,5 @@
 imagereader
-=========
+===========
 .. automodule:: rios.imagereader
    :members:
    :undoc-members:

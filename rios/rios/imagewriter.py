@@ -34,8 +34,8 @@ def setDefaultDriver():
     what defaults we should use for GDAL driver. On any given
     output file these can be over-ridden, and can be over-ridden globally
     using the environment variables 
-        * $RIOS_DFLT_DRIVER
-        * $RIOS_DFLT_DRIVEROPTIONS
+    * $RIOS_DFLT_DRIVER
+    * $RIOS_DFLT_DRIVEROPTIONS
     
     If RIOS_DFLT_DRIVER is set, then it should be a gdal short driver name
     If RIOS_DFLT_DRIVEROPTIONS is set, it should be a space-separated list
@@ -85,6 +85,28 @@ class ImageWriter(object):
     time to the output image - this is designed to be used at each 
     iteration through the ImageReader object. Otherwise, the writeAt() 
     method can be used to write blocks to arbitary locations.
+
+    **Example**
+    
+    ::
+
+        import sys
+        from rios.imagereader import ImageReader
+        from rios.imagewriter import ImageWriter
+
+        inputs = [sys.argv[1],sys.argv[2]]
+        reader = ImageReader(inputs) 
+        writer = None 
+        for (info, blocks) in reader:     
+            block1,block2 = blocks
+            out = block1 * 4 + block2
+            if writer is None:
+                writer = ImageWriter(sys.argv[3],info=info,
+                    firstblock=out)
+            else:
+                writer.write(out)
+
+        writer.close(calcStats=True)
     
     """
     def __init__(self, filename, drivername=DEFAULTDRIVERNAME, creationoptions=DEFAULTCREATIONOPTIONS,

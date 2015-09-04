@@ -59,7 +59,7 @@ High level functions
     Processing Raster and Vector files with rios.applier <rios_applier>
     Processing Raster Attribute Tables with rios.ratapplier <rios_ratapplier>
     Obtaining information on files with rios.fileinfo <rios_fileinfo>
-
+    RIOS Environment Variables <environmentvars>
 
 Low level functions
 --------------------
