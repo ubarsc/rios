@@ -148,3 +148,8 @@ and presented inside the user's function as numpy arrays, in exactly the same wa
 
 Some attributes are added to the :class:`rios.applier.ApplierControls` object to manage the rasterizing process, 
 setting such things as a burn value (i.e. the value in the array corresponding to pixels "inside" the polygons. 
+
+Advanced Examples
+-----------------
+
+More advanced RIOS examples are available from the `Spectraldifferences site <https://spectraldifferences.wordpress.com/tag/rios/>`_.
