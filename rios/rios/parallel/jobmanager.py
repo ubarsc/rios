@@ -90,15 +90,12 @@ import numpy
 
 from .. import rioserrors
 # Import a pickler which can pickle functions, with their dependencies, as well
-# as data. First try to import the one from the full PiCloud package, in case
-# that happens to be installed. If that fails, then import an earlier version of
-# the same thing which we filched from the playdoh package, who had filched it 
-# from cloud and made it work in isolation. 
+# as data. https://github.com/cloudpipe/cloudpickle 
 try:
-    from cloud.serialization import cloudpickle
+    from cloudpickle import cloudpickle
 except ImportError:
     # Import from our own local copy. This is what will usually happen. 
-    from .cloud_playdoh import cloudpickle
+    from . import cloudpickle
 
 class BlockAssociations(object):
     """
