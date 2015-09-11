@@ -37,10 +37,7 @@ from . import imageio
 from . import rioserrors
 from . import vectorreader
 from . import cuiprogress
-
-ALLOW_JOBMANAGER = (os.getenv("RIOS_PARALLEL_ALLOWJOBMGR") is not None)
-if ALLOW_JOBMANAGER:
-    from .parallel import jobmanager
+from .parallel import jobmanager
 
 # All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
@@ -539,7 +536,6 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         handleInputResampling(imagefiles, controls, reader)
 
         writerdict = {}
-        inputBlocks = BlockAssociations()
         outputBlocks = BlockAssociations()
         
         if controls.progress is not None:
@@ -549,29 +545,54 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         
         # Set up for parallel processing, if requested. 
         jobmgr = None
-        if ALLOW_JOBMANAGER:
+        if controls.numThreads > 1:
             jobmgr = jobmanager.getJobMgrObject(controls)
-        
-        for (info, blockdict) in reader:
-            inputBlocks.__dict__.update(blockdict)
-            if vecreader is not None:
-                vecblocks = vecreader.rasterize(info)
-                inputBlocks.__dict__.update(vecblocks)
-            
-            # Make a tuple of the arguments to pass to the function. 
-            # Must have inputBlocks and outputBlocks, but if otherArgs 
-            # is not None, then that is also included. 
-            functionArgs = (info, inputBlocks, outputBlocks)
-            if otherArgs is not None:
-                functionArgs += (otherArgs, )
+
+        done = False
+        iterator = reader.__iter__()
+        while not done:
+            # list of tuples. Each tuple is an input into the function
+            # One tuple for every thread.
+            fnInputs = []
+
+            for n in range(controls.numThreads):
+                try:
+                    info, blockdict = iterator.__next__()
+                except StopIteration:
+                    done = True
+                    break
+
+                inputBlocks = BlockAssociations()
+                inputBlocks.__dict__.update(blockdict)
+                if vecreader is not None:
+                    vecblocks = vecreader.rasterize(info)
+                    inputBlocks.__dict__.update(vecblocks)
+
+                # Make a tuple of the arguments to pass to the function. 
+                # Must have inputBlocks and outputBlocks, but if otherArgs 
+                # is not None, then that is also included. 
+                functionArgs = (info, inputBlocks, outputBlocks)
+                if otherArgs is not None:
+                    functionArgs += (otherArgs, )
+
+                fnInputs.append(functionArgs)
+
+            if len(fnInputs) == 0:
+                break
             
             # Now call the function with those args
             if jobmgr is None:
+                # single threaded - just call it
                 userFunction(*functionArgs)
+                writeOutputBlocks(writerdict, outfiles, outputBlocks, 
+                                controls, info)
             else:
-                jobmgr.runSubJobs(userFunction, functionArgs)
+                # multi threaded - get the job manager to run jobs
+                outBlocksList = jobmgr.runSubJobs(userFunction, fnInputs)
+                for outputBlocks in outBlocksList:
+                    writeOutputBlocks(writerdict, outfiles, outputBlocks, 
+                                controls, info)
             
-            writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info)
             lastpercent = updateProgress(controls, info, lastpercent)
                 
         if controls.progress is not None:
