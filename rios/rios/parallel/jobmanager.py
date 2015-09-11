@@ -90,7 +90,8 @@ import numpy
 
 from .. import rioserrors
 # Import a pickler which can pickle functions, with their dependencies, as well
-# as data. https://github.com/cloudpipe/cloudpickle 
+# as data. Either use the version installed with cloudpickle
+# (https://github.com/cloudpipe/cloudpickle) or the bundled versin
 try:
     from cloudpickle import cloudpickle
 except ImportError:
@@ -147,36 +148,23 @@ class JobManager(object):
         """
         self.tempdir = tempdir
     
-    def runSubJobs(self, function, functionArgs):
+    def runSubJobs(self, function, fnInputs):
         """
-        Take the given function arguments, break up the input arrays 
-        into sub-arrays, and run the given function for each one, as 
-        a separate asynchronous job. 
-        
-        """
-        info = functionArgs[0]
-        inputs = functionArgs[1]
-        outputs = functionArgs[2]
-        otherargs = None
-        if len(functionArgs) == 4:
-            otherargs = functionArgs[3]
+        Take the given list of function arguments, run the given function 
+        for each one, as a separate asynchronous job. 
 
-        inputBlocksList = []
-        infoList = []
-        for i in range(self.numSubJobs):
-            subInputs = self.replicateInputWithSubarrays(inputs, i)
-            inputBlocksList.append(subInputs)
-            infoList.append(self.getSubReaderInfo(info, i))
+        Returns a list of output BlockAssociations.
         
-        jobIDlist = self.startAllJobs(function, inputBlocksList, infoList, otherargs)
+        """
+        jobIDlist = self.startAllJobs(function, fnInputs)
         self.waitOnJobs(jobIDlist)
         
         outputBlocksList = self.gatherAllOutputs(jobIDlist)
-        self.combineAllOutputs(outputBlocksList, outputs)
+        return outputBlocksList
     
-    def startAllJobs(self, function, inputBlocksList, infoList, otherargs):
+    def startAllJobs(self, function, fnInputs):
         """
-        Start up all of the jobs processing sub-arrays. Default implementation
+        Start up all of the jobs processing blocks. Default implementation
         loops over the lists of jobs, starting each job separately. Keeps the
         first job aside, and runs it here before going off to wait for 
         the others. This means that the first element in the jobID list is not
@@ -185,23 +173,17 @@ class JobManager(object):
         """
         jobIDlist = [None]
         for i in range(1, self.numSubJobs):
-            inputs = inputBlocksList[i]
-            info = infoList[i]
-            functionArgs = (info, inputs)
-            if otherargs is not None:
-                functionArgs += (otherargs, )
+            inputs = fnInputs[i]
                 
-            jobID = self.startOneJob(function, functionArgs)
+            jobID = self.startOneJob(function, inputs)
             jobIDlist.append(jobID)
         
         # Run the first one here
-        inputs = inputBlocksList[0]
-        info = infoList[0]
-        outputs = BlockAssociations()
-        functionArgs = (info, inputs, outputs)
-        if otherargs is not None:
-            functionArgs += (otherargs, )
-        function(*functionArgs)
+        inputs = fnInputs[0]
+        function(*inputs)
+
+        # TODO: determine output in a RIOS independent way
+        outputs = inputs[2]
         jobIDlist[0] = outputs
 
         return jobIDlist
@@ -233,166 +215,6 @@ class JobManager(object):
         This is an abstract method, and must be over-ridden in a sub-class. 
         
         """
-    
-    def combineAllOutputs(self, outputBlocksList, outputs):
-        """
-        Combine the list of output blocks into a single outputs object,
-        by combining the sub-arrays into full arrays. 
-        
-        """
-        # Get the attribute names from the first one
-        nameList = outputBlocksList[0].__dict__.keys()
-        for name in nameList:
-            attrList = [getattr(b, name) for b in outputBlocksList]
-            attr = self.combineOneOutput(attrList)
-            setattr(outputs, name, attr)
-    
-    def combineOneOutput(self, attrList):
-        """
-        Combine separate sub-outputs for a given attribute into
-        a single output. This could be either a single array,
-        or a list of arrays, depending on what the user function 
-        is working with. 
-        
-        """
-        if isinstance(attrList[0], list):
-            numOutBlocks = len(attrList[0])
-            outBlockList = []
-            for i in range(numOutBlocks):
-                subArrList = [blockList[i] for blockList in attrList]
-                fullArr = self.combineSubArrays(subArrList)
-                outBlockList.append(fullArr)
-            attr = outBlockList
-        else:
-            attr = self.combineSubArrays(attrList)
-        return attr
-    
-    def combineSubArrays(self, subarrList):
-        """
-        Combine the given list of sub-arrays into a single full array. Each
-        sub-array has shape
-            (nBands, nRowsSub, nCols)
-        and the sub-arrays are combined along the second dimension (i.e. rows are
-        stacked together). Resulting array has shape
-            (nBands, nRows, nCols)
-        
-        Note that we must honour the margin, except for the first and last 
-        sub-arrays. 
-        
-        """
-        # First remove the margin
-        subarrList_nomargin = []
-        numSubarr = len(subarrList)
-        for i in range(numSubarr):
-            subArrShape = subarrList[i].shape
-            startRow = 0
-            if i > 0:
-                startRow += self.margin
-            stopRow = subArrShape[1]
-            if i < (numSubarr-1):
-                stopRow -= self.margin
-            subarr = subarrList[i][:, startRow:stopRow, :]
-            
-            subarrList_nomargin.append(subarr)
-        fullArr = numpy.concatenate(subarrList_nomargin, axis=1)
-        return fullArr
-
-    def replicateInputWithSubarrays(self, inputs, i):
-        """
-        Replicate the given BlockAssociations object, but with a
-        set of sub-arrays in place of the full arrays. The sub-arrays
-        are the i-th sub-arrays of a total of n. Note that i begins with zero. 
-        
-        The margin argument is the value the margin being added for
-        overlapping blocks, and is honoured in the sub-arrays, too, so
-        that they can still be used for processing which requires it. 
-        
-        """
-        newInputs = BlockAssociations()
-        
-        nameList = inputs.__dict__.keys()
-        for name in nameList:
-            attr = getattr(inputs, name)
-            if isinstance(attr, list):
-                arrList = [self.getSubArray(arr, i) for arr in attr]
-                setattr(newInputs, name, arrList)
-            else:
-                setattr(newInputs, name, self.getSubArray(attr, i))
-        return newInputs
-    
-    def getSubArray(self, fullArr, i):
-        """
-        Use getSubArraySlice() to slice out a sub-array. See docstring
-        for getSubArraySlice() for details. 
-        """
-        (nBands, nRows, nCols) = fullArr.shape
-        s = self.getSubArraySlice(nRows, i)
-        return fullArr[:, s, :]
-    
-    def getSubArraySlice(self, nRows, i):
-        """
-        Return a slice which will select the i-th subarray (slicing only the rows)
-        out of a total of self.numSubJobs sub-arrays, from the given nRows. 
-        Note that i begins with zero. 
-        
-        The given margin is the margin being added for overlapping blocks. This 
-        must be honoured in between the sub-arrays, but not before the first one 
-        or after the final one. 
-        
-        Note that, in general terms, because the sub-array is created as 
-        a slice of the original arrays, they will share the data, as
-        this does not actually create a new copy of the array data. 
-        
-        """
-        rowsPerPiece = int(math.ceil(float(nRows) / self.numSubJobs))
-        
-        # startRow:stopRow is to be a slice in the fullArr
-        startRow = i * rowsPerPiece
-        stopRow = (i+1) * rowsPerPiece
-        
-        # Cope with the margin
-        startRow = max(0, (startRow - self.margin))
-        stopRow = min(nRows, (stopRow + self.margin))
-        
-        # Generate the slice
-        return slice(startRow, stopRow)
-    
-    def getSubReaderInfo(self, info, i):
-        """
-        Return a ReaderInfo object which replicates the given info object,
-        but with various bounds changed to match the i-th subarray. 
-        
-        This is more complicated that one might think, probably because 
-        the ReaderInfo object contains far more information than it ought.
-        However, in the interests of full compatibility, we have to do everything. 
-        
-        There are some features of the ReaderInfo object which are never going to 
-        work in this context. Notably, looking things up by block id (the block id's 
-        will be wrong when shifted to a different subprocess). Fortunately, this
-        is one of the things which probably should never be used anyway. 
-        
-        TODO: Until I get around to fixing it, the really useful stuff 
-        like info.getPixRowColBlock() and info.getBlockCoordArrays() also
-        won't work when running sub-jobs. However this is do-able, and just waiting 
-        on me. 
-        
-        """
-        # Make a shallow copy, assuming the objects pointed to by this are
-        # not functions of the block (which I think is true, but I could be wrong)
-        newInfo = copy.copy(info)
-        
-        newInfo.blocklookup = {}       # These are never going to work in the subprocess
-        newInfo.loggingstream = None    # Should not be using this from userFunc anyway
-        
-        # Need to recalculate corners, etc.
-        #(nRows, nCols) = info.getBlockSize()
-        #s = self.getSubArraySlice(nRows, i)
-        #nRowsSub = s.stoprow - s.startrow
-        
-        #newInfo.blockheight = nRowsSub
-        # This is not yet finished.........
-        
-        return newInfo
     
     def __str__(self):
         """
@@ -426,12 +248,20 @@ class SubprocJobManager(JobManager):
         outputs object. 
         
         """
-        allInputs = (userFunc, functionArgs)
+        # TODO: Can't pickle GDAL datasets. Need to find a 
+        # generic way of doing this...
+        info = functionArgs[0]
+        info.blocklookup = {}
+        # explude output. TODO: generic way
+        newFunctionArgs = (info,) + functionArgs[1:-1]
+
+        allInputs = (userFunc, newFunctionArgs)
         allInputsPickled = cloudpickle.dumps(allInputs)
-        
+
         proc = subprocess.Popen(['rios_subproc.py'], stdin=subprocess.PIPE,
             stdout=subprocess.PIPE)
         proc.stdin.write(allInputsPickled)
+
         return proc
     
     def waitOnJobs(self, jobIDlist):

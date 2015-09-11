@@ -19,12 +19,14 @@ def mainRoutine():
     Main program
     """
     nArgs = len(sys.argv) - 1
-    inf = sys.stdin
-    outf = sys.stdout
+    # use binary buffer objects
+    # otherwise unpickling fails
+    inf = sys.stdin.buffer
+    outf = sys.stdout.buffer
     if nArgs >= 1:
-        inf = open(sys.argv[1])
+        inf = open(sys.argv[1], 'rb')
     if nArgs == 2:
-        outf = open(sys.argv[2], 'w')
+        outf = open(sys.argv[2], 'wb')
 
     # Read the pickled input
     (fn, a) = pickle.load(inf)
@@ -34,9 +36,9 @@ def mainRoutine():
         inf.close()
         os.remove(sys.argv[1])
     
-    # Decompose the input data and assemble arguments to pass to user function
     info = a[0]
     inputs = a[1]
+    # TODO: create blank output in general way
     outputs = applier.BlockAssociations()
     funcArgs = (info, inputs, outputs)
     if len(a) > 2:
