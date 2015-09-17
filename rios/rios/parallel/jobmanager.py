@@ -470,13 +470,90 @@ class SlurmJobManager(JobManager):
 #    """
 #    jobMgrType = "mpi"
 #    
-#class MultiJobManager(JobManager):
-#    """
-#    Use Python's standard multiprocessing module to run individual jobs
-#    
-#    """
-#    jobMgrType = "multiprocessing"
 
+def multiUserFunc(userFunc, jobInfo):
+    """
+    This function is run by the MultiJobManager to run
+    one job. It runs the user function and then 
+    returns the output block as multiprocessing.Pool 
+    expects a function to behave.
+    """
+
+    params = jobInfo.getFunctionParams()
+    userFunc(*params)
+
+    result = jobInfo.getFunctionResult(params)
+    return result
+    
+class MultiJobManager(JobManager):
+    """
+    Use Python's standard multiprocessing module to run individual jobs.
+    
+    This JobManager sub-class should be used with caution, as it does not 
+    involve any kind of load balancing, and all sub-processes simply run 
+    concurrently. If you have enough spare cores and memory to do that, then
+    no problem, but if not, you may clog the system. 
+    
+    """
+    jobMgrType = "multiprocessing"
+    # an instance of multiprocessing.Pool
+    pool = None
+
+    def __init__(self, numSubJobs):
+        from multiprocessing import Pool
+
+        # base class does one job in current process so we don't
+        # need to create processes for each job
+        self.pool = Pool(numSubJobs - 1)
+
+        # call base class implementation
+        JobManager.__init__(self, numSubJobs)
+
+    def __del__(self):
+        # shut down the pool object as we have finished.
+        self.pool.close()
+        self.pool.join()
+
+    def startOneJob(self, userFunc, jobInfo):
+        """
+        Start one job. Uses the multiprocessing.Pool.apply_async call. 
+        This handles all the details of getting the data into the other
+        process we we don't have to do any pickling here. 
+
+        However we do call jobInfo.prepareForPickling() since
+        multiprocessing has problems with the same things that the pickler
+        does so we can assume the cleanup of the function here will suffice.
+        
+        """
+        jobInfo = jobInfo.prepareForPickling()
+
+        proc = self.pool.apply_async(multiUserFunc, (userFunc, jobInfo))
+        return proc
+
+    def waitOnJobs(self, jobIDlist):
+        """
+        Wait on all the jobs with AsyncResult.wait().
+        The first element of jobIDlist is actually an outputs object
+        so we ignore that.
+
+        """
+        for job in jobIDlist[1:]:
+            job.wait(timeout=None)
+            
+    def gatherAllOutputs(self, jobIDlist):
+        """
+        Gather up outputs from sub-jobs, and return a list of the
+        outputs objects. Note that we assume that the first element of
+        jobIDlist is actually an outputs object, from running the first sub-array
+        in the current process. 
+
+        """
+        outputBlocks = [jobIDlist[0]]
+        for job in jobIDlist[1:]:
+            output = job.get(timeout=None)            
+            outputBlocks.append(output)
+
+        return outputBlocks
 
 # This mechanism for selecting which job manager sub-class to use is important in 
 # order to allow an application to run without modification on different systems.

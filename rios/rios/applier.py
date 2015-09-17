@@ -848,14 +848,24 @@ class RIOSJobInfo(jobmanager.JobInfo):
     def prepareForPickling(self):
         """
         GDAL datasets cannot be pickled
+        and neither stderr (in info.logginstream)
+        so we clean up the info object a bit
+
         """
         self.info.blocklookup = {}
+        self.info.loggingstream = None
         return self
 
     def getFunctionParams(self):
         """
         Return the parameters as a tuple.
+
+        As this is run in the subprocess we can 
+        reset the info.loggingstream so something
+        sensible
+
         """
+        self.info.loggingstream = sys.stderr
         outputs = BlockAssociations()
         params = (self.info, self.inputs, outputs)
         if self.otherargs is not None:
@@ -866,6 +876,7 @@ class RIOSJobInfo(jobmanager.JobInfo):
     def getFunctionResult(self, params):
         """
         Return the ouputs parameter
+
         """
         return params[2]
 
