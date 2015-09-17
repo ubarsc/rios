@@ -536,7 +536,6 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         handleInputResampling(imagefiles, controls, reader)
 
         writerdict = {}
-        outputBlocks = BlockAssociations()
         
         if controls.progress is not None:
             controls.progress.setTotalSteps(100)
@@ -551,9 +550,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         done = False
         iterator = reader.__iter__()
         while not done:
-            # list of tuples. Each tuple is an input into the function
-            # One tuple for every thread.
-            fnInputs = []
+            # list of RIOSJobInfo
+            jobInputs = []
 
             for n in range(controls.numThreads):
                 try:
@@ -568,27 +566,24 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
                     vecblocks = vecreader.rasterize(info)
                     inputBlocks.__dict__.update(vecblocks)
 
-                # Make a tuple of the arguments to pass to the function. 
-                # Must have inputBlocks and outputBlocks, but if otherArgs 
-                # is not None, then that is also included. 
-                functionArgs = (info, inputBlocks, outputBlocks)
-                if otherArgs is not None:
-                    functionArgs += (otherArgs, )
+                # build a RIOSJobInfo with the params
+                jobInfo = RIOSJobInfo(info, inputBlocks, otherArgs)
+                jobInputs.append(jobInfo)
 
-                fnInputs.append(functionArgs)
-
-            if len(fnInputs) == 0:
+            if len(jobInputs) == 0:
                 break
             
             # Now call the function with those args
             if jobmgr is None:
                 # single threaded - just call it
-                userFunction(*functionArgs)
+                params = jobInfo.getFunctionParams()
+                userFunction(*params)
+                outputBlocks = jobInfo.getFunctionResult(params)
                 writeOutputBlocks(writerdict, outfiles, outputBlocks, 
                                 controls, info)
             else:
                 # multi threaded - get the job manager to run jobs
-                outBlocksList = jobmgr.runSubJobs(userFunction, fnInputs)
+                outBlocksList = jobmgr.runSubJobs(userFunction, jobInputs)
                 for outputBlocks in outBlocksList:
                     writeOutputBlocks(writerdict, outfiles, outputBlocks, 
                                 controls, info)
@@ -837,3 +832,40 @@ def makeInputImageLayerSelection(imagefiles, controls):
     for name in imagefiles.__dict__.keys():
         layerselection[name] = controls.getOptionForImagename('layerselection', name)
     return layerselection
+
+class RIOSJobInfo(jobmanager.JobInfo):
+    """
+    Class that contains information for parameters to a RIOS
+    function
+    """
+    def __init__(self, info, inputs, otherargs=None):
+        self.info = info
+        self.inputs = inputs
+        self.otherargs = otherargs
+        # we don't bother pickling the outputs - start again 
+        # with a fresh BlockAssociations
+
+    def prepareForPickling(self):
+        """
+        GDAL datasets cannot be pickled
+        """
+        self.info.blocklookup = {}
+        return self
+
+    def getFunctionParams(self):
+        """
+        Return the parameters as a tuple.
+        """
+        outputs = BlockAssociations()
+        params = (self.info, self.inputs, outputs)
+        if self.otherargs is not None:
+            params += (self.otherargs,)
+
+        return params
+
+    def getFunctionResult(self, params):
+        """
+        Return the ouputs parameter
+        """
+        return params[2]
+

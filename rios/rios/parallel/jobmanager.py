@@ -103,6 +103,36 @@ class BlockAssociations(object):
     Dummy class, to mimic applier.BlockAssociations, while avoiding circular imports. 
     """
 
+class JobInfo(object):
+    """
+    Abstract base class for the information that needs to be passed to a job.
+
+    """
+    __metaclass__ = abc.ABCMeta
+
+    def prepareForPickling(self):
+        """
+        Returns an instance of JobInfo to be pickled.
+        Normally derived classes will just return 'self'
+        but in some cases more complicated processing can
+        happen
+        """
+        return self
+
+    @abc.abstractmethod
+    def getFunctionParams(self):
+        """
+        Return the parameters to be passed to the actual function
+        in the sub process. Should return a tuple.
+        """
+
+    @abc.abstractmethod
+    def getFunctionResult(self, params):
+        """
+        Return the parameter(s) that were modified
+        by the function so they can be returned.
+        """
+
 class JobManager(object):
     """
     Manage breaking up of RIOS processing into sub-jobs, and farming them out. 
@@ -162,41 +192,44 @@ class JobManager(object):
         outputBlocksList = self.gatherAllOutputs(jobIDlist)
         return outputBlocksList
     
-    def startAllJobs(self, function, fnInputs):
+    def startAllJobs(self, function, jobInputs):
         """
         Start up all of the jobs processing blocks. Default implementation
         loops over the lists of jobs, starting each job separately. Keeps the
         first job aside, and runs it here before going off to wait for 
         the others. This means that the first element in the jobID list is not
         a jobID, but the results of the first sub-job. 
+
+        jobInputs should be a list of JobInfo derived objects.
         
         """
         jobIDlist = [None]
         for i in range(1, self.numSubJobs):
-            inputs = fnInputs[i]
+            inputs = jobInputs[i]
                 
             jobID = self.startOneJob(function, inputs)
             jobIDlist.append(jobID)
         
         # Run the first one here
-        inputs = fnInputs[0]
-        function(*inputs)
+        inputs = jobInputs[0]
+        params = inputs.getFunctionParams()
+        function(*params)
 
-        # TODO: determine output in a RIOS independent way
-        outputs = inputs[2]
-        jobIDlist[0] = outputs
+        jobIDlist[0] = inputs.getFunctionResult(params)
 
         return jobIDlist
     
     @abc.abstractmethod
-    def startOneJob(self, userFunc, functionArgs):
+    def startOneJob(self, userFunc, jobInfo):
         """
         Start one job. Return a jobID object suitable for identifying the
         job, with all information required to wait for it, and 
         recover its output. This jobID is specific to the subclass. 
         
         This is an abstract method, and must be over-ridden in a sub-class.
-        
+
+        jobInfo should be a JobInfo derived object.        
+
         """
     
     @abc.abstractmethod
@@ -240,7 +273,7 @@ class SubprocJobManager(JobManager):
     """
     jobMgrType = "subproc"
     
-    def startOneJob(self, userFunc, functionArgs):
+    def startOneJob(self, userFunc, jobInfo):
         """
         Start one job. We execute the rios_subproc.py command,
         communicating via its stdin/stdout. We give it the pickled
@@ -248,14 +281,9 @@ class SubprocJobManager(JobManager):
         outputs object. 
         
         """
-        # TODO: Can't pickle GDAL datasets. Need to find a 
-        # generic way of doing this...
-        info = functionArgs[0]
-        info.blocklookup = {}
-        # explude output. TODO: generic way
-        newFunctionArgs = (info,) + functionArgs[1:-1]
+        jobInfo = jobInfo.prepareForPickling()
 
-        allInputs = (userFunc, newFunctionArgs)
+        allInputs = (userFunc, jobInfo)
         allInputsPickled = cloudpickle.dumps(allInputs)
 
         proc = subprocess.Popen(['rios_subproc.py'], stdin=subprocess.PIPE,
@@ -297,7 +325,7 @@ class PbsJobManager(JobManager):
     """
     jobMgrType = "pbs"
     
-    def startOneJob(self, userFunc, functionArgs):
+    def startOneJob(self, userFunc, jobInfo):
         """
         Start one job. We create a shell script to submit to a PBS batch queue.
         When executed, the job will execute the rios_subproc.py command, giving
@@ -311,7 +339,9 @@ class PbsJobManager(JobManager):
         defaulted by PBS. 
         
         """
-        allInputs = (userFunc, functionArgs)
+        jobInfo = jobInfo.prepareForPickling()
+
+        allInputs = (userFunc, jobInfo)
         allInputsPickled = cloudpickle.dumps(allInputs)
         
         (fd, inputsfile) = tempfile.mkstemp(prefix='rios_pbsin_', dir=self.tempdir, suffix='.tmp')
