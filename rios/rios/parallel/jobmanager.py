@@ -55,6 +55,14 @@ Environment Variables
                                         inside each PBS job, before executing the
                                         processing commands. Not generally required, but was
                                         useful for initial testing. 
+    RIOS_SLURMJOBMGR_SBATCHOPTIONS      String of commandline options to be used with SLRM
+                                        sbatch. Use this for things like walltime and queue name.
+                                        The output and error logs do not need to be specified - they
+                                        are set to temporary filenames by RIOS.
+    RIOS_SLURMJOBMGR_INITCMDS           String of shell command(s) which will be executed 
+                                        inside each SLURM job, before executing the
+                                        processing commands. Not generally required, but was
+                                        useful for initial testing. 
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -390,7 +398,7 @@ class PbsJobManager(JobManager):
         jobID is not a jobID but the results of that. Hence we do not try to wait on
         that job, but on all the rest. 
         
-        Returns only when all the listed jobID strings are not longer found in the
+        Returns only when all the listed jobID strings are no longer found in the
         PBS queue. Currently has no time-out, although perhaps it should. 
         
         """
@@ -452,6 +460,148 @@ class SlurmJobManager(JobManager):
     """
     jobMgrType = "slurm"
 
+    def startOneJob(self, userFunc, jobInfo):
+        """
+        Start one job. We create a shell script to submit to a SLURM batch queue.
+        When executed, the job will execute the rios_subproc.py command, giving
+        it the names of two pickle files. The first is the pickle of all inputs
+        (including the function), and the second is where it will write the 
+        pickle of outputs. 
+        
+        Uses $RIOS_SLURMJOBMGR_SBATCHOPTIONS to pick up any desired options to the 
+        sbatch command. This should be used to control such things as requested 
+        amount of memory or walltime for each job, which will otherwise be
+        defaulted by SLURM. 
+        
+        """
+        jobInfo = jobInfo.prepareForPickling()
+
+        allInputs = (userFunc, jobInfo)
+        allInputsPickled = cloudpickle.dumps(allInputs)
+        
+        (fd, inputsfile) = tempfile.mkstemp(prefix='rios_slurmin_', dir=self.tempdir, suffix='.tmp')
+        os.close(fd)
+        outputsfile = inputsfile.replace('slurmin', 'slurmout')
+        scriptfile = inputsfile.replace('slurmin', 'slurm').replace('.tmp', '.sl')
+        logfile = outputsfile.replace('.tmp', '.log')
+        
+        sbatchOptions = os.getenv('RIOS_SLURMJOBMGR_SBATCHOPTIONS')
+        
+        scriptCmdList = [
+            "#!/bin/bash",
+            "#SBATCH -o %s" % logfile,
+            "#SBATCH -e %s" % logfile
+        ]
+        if sbatchOptions is not None:
+            scriptCmdList.append("#SBATCH %s" % sbatchOptions)
+            
+        slurmInitCmds = os.getenv('RIOS_SLURMJOBMGR_INITCMDS')
+        if slurmInitCmds is not None:
+            scriptCmdList.append(slurmInitCmds)
+            
+        scriptCmdList.append("rios_subproc.py %s %s"%(inputsfile, outputsfile))
+        scriptStr = '\n'.join(scriptCmdList)
+        
+        open(scriptfile, 'w').write(scriptStr+'\n')
+        open(inputsfile, 'wb').write(allInputsPickled)
+        
+        submitCmdWords = ["sbatch", scriptfile]
+        proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE, 
+            stderr=subprocess.PIPE)
+        # The sbatch command exits almost immediately, printing the SLURM job id
+        # to stdout. So, we just wait for the sbatch to finish, and grab the
+        # jobID string.     
+        (stdout, stderr) = proc.communicate()
+        if sys.version_info[0] > 2:
+            stderr = stderr.decode()
+            stdout = stdout.decode()
+        slurmOutputList = stdout.strip().split()
+        slurmJobID = None
+        # slurm prints a sentence to the stdout:
+        # 'Submitted batch job X'
+        if len(slurmOutputList) >= 4:
+            slurmJobID = slurmOutputList[3]
+        
+        # Remove the script file, assuming that sbatch took a copy of it. 
+        os.remove(scriptfile)
+
+        # If there was something in stderr from the sbatch command, then probably 
+        # something bad happened, so we pass it on to the user in the form of
+        # an exception. 
+        if slurmJobID is None or len(stderr) > 0:
+            msg = "Error from sbatch. Message:\n"+stderr
+            raise rioserrors.JobMgrError(msg)
+        
+        return (slurmJobID, outputsfile, logfile)
+    
+    def waitOnJobs(self, jobIDlist):
+        """
+        Wait until all jobs in the given list have completed. The jobID values
+        are tuples whose first element is a SLURM job id string. We poll the SLURM 
+        queue until none of them are left in the queue, and then return. 
+        
+        Note that this also assumes the technique used by the default startAllJobs()
+        method, of executing the first job in the current process, and so the first
+        jobID is not a jobID but the results of that. Hence we do not try to wait on
+        that job, but on all the rest. 
+        
+        Returns only when all the listed jobID strings are no longer found in the
+        PBS queue. Currently has no time-out, although perhaps it should. 
+        
+        """
+        allFinished = False
+        
+        # Extract the actual SLURM job ID strings, skipping the first element. 
+        # Express as a set, for efficiency later on
+        slurmJobIdSet = set([t[0] for t in jobIDlist[1:]])
+        
+        while not allFinished:
+            squeueCmd = ["squeue", "--noheader"]
+            proc = subprocess.Popen(squeueCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            (stdout, stderr) = proc.communicate()
+            
+            if sys.version_info[0] > 2:
+                stdout = stdout.decode()
+            
+            stdoutLines = [line for line in stdout.split('\n') if len(line) > 0]   # No blank lines
+            # Grab first word on each line, which is jobID
+            squeueJobIDlist = [line.split()[0] for line in stdoutLines]
+            squeueJobIDset = set(squeueJobIDlist)
+            
+            allFinished = slurmJobIdSet.isdisjoint(squeueJobIDset)
+            
+            if not allFinished:
+                # Sleep for a bit before checking again
+                time.sleep(60)
+    
+    def gatherAllOutputs(self, jobIDlist):
+        """
+        Gather up outputs from sub-jobs, and return a list of the
+        outputs objects. Note that we assume that the first element of
+        jobIDlist is actually an outputs object, from running the first sub-array
+        in the current process. 
+        
+        The jobIDlist is a list of tuples whose second element is the name of 
+        the output file containing the pickled outputs object. 
+        
+        """
+        outputBlocksList = [jobIDlist[0]]
+        for (jobID, outputsfile, logfile) in jobIDlist[1:]:
+            try:
+                pickledOutput = open(outputsfile, 'rb').read()
+                outputObj = pickle.loads(pickledOutput)
+                os.remove(outputsfile)
+            except Exception as e:
+                logfileContents = 'No logfile found'
+                if os.path.exists(logfile):
+                    logfileContents = open(logfile).read()
+                msg = ("Error collecting output from SLURM sub-job. Exception message:\n"+str(e)+
+                    "\nSLURM Logfile:\n"+logfileContents)
+                raise rioserrors.JobMgrError(msg)
+            outputBlocksList.append(outputObj)
+            os.remove(logfile)
+        return outputBlocksList
+
 def find_executable(executable):
     """
     Our own version of distutils.spawn.find_executable that finds 
@@ -499,11 +649,13 @@ class MpiJobManager(JobManager):
         JobManager.__init__(self, numSubJobs)
 
     def __del__(self):
-        # tell all the sub jobs to exit
-        for dest in range(self.numSubJobs-1):
-            self.comm.send([False, 0], dest=dest)
+        # check constructor succeeded
+        if hasattr(self, 'numSubJobs'):
+            # tell all the sub jobs to exit
+            for dest in range(self.numSubJobs-1):
+                self.comm.send([False, 0], dest=dest)
 
-        self.comm.Disconnect()
+            self.comm.Disconnect()
 
     def startOneJob(self, userFunc, jobInfo):
         """
