@@ -75,6 +75,7 @@ Environment Variables
 from __future__ import print_function
 
 import os
+import sys
 import math
 import abc
 import copy
@@ -462,14 +463,111 @@ class SlurmJobManager(JobManager):
     
     """
     jobMgrType = "slurm"
+
+def find_executable(executable):
+    """
+    Our own version of distutils.spawn.find_executable that finds 
+    the location of a script by trying all the paths in $PATH.
+    Unlike distutils.spawn.find_executable, it does not add .exe
+    to the script name under Windows.
+
+    """
+    path = os.environ['PATH']
+    paths = path.split(os.pathsep)
+
+    for p in paths:
+        f = os.path.join(p, executable)
+        if os.path.isfile(f):
+            return f
+    return None
     
-#class MpiJobManager(JobManager):
-#    """
-#    Use MPI to run individual jobs. Requires mpi4py module. 
-#    
-#    """
-#    jobMgrType = "mpi"
-#    
+class MpiJobManager(JobManager):
+    """
+    Use MPI to run individual jobs. Requires mpi4py module. 
+    
+    """
+    jobMgrType = "mpi"
+    # returned by MPI.COMM_SELF.Spawn
+    comm = None
+    # current destination job, so we can spread the data around
+    # to all evently
+    dest = 0
+
+    def __init__(self, numSubJobs):
+        from mpi4py import MPI
+
+        # find the path to rios_subproc_mpi.py
+        subproc = find_executable('rios_subproc_mpi.py')
+        if subproc is None:
+            msg = 'Cannot find path to rios_subproc_mpi.py'
+            raise rioserrors.FileOpenError(msg)
+
+        # base class does one job in current process so we don't
+        # need to create processes for each job
+        self.comm = MPI.COMM_SELF.Spawn(sys.executable, [subproc],
+                            maxprocs=(numSubJobs-1))
+
+        # call base class implementation
+        JobManager.__init__(self, numSubJobs)
+
+    def __del__(self):
+        # tell all the sub jobs to exit
+        for dest in range(self.numSubJobs-1):
+            self.comm.send([False, 0], dest=dest)
+
+        self.comm.Disconnect()
+
+    def startOneJob(self, userFunc, jobInfo):
+        """
+        Start one job. Uses the MPI send call. 
+        MPI does a certain level of pickling, but 
+        we do our own here so that the function etc gets pickled.
+
+        """
+        jobInfo = jobInfo.prepareForPickling()
+
+        allInputs = (userFunc, jobInfo)
+        allInputsPickled = cloudpickle.dumps(allInputs)
+
+        # send info off to sub process
+        # we also send a flag telling the subprocess
+        # not to exit and be ready for another message
+        self.comm.send([True, allInputsPickled], dest=self.dest)
+
+        # return the current one
+        proc = self.dest
+
+        # set self.dest back to zero if we have done them all
+        self.dest += 1
+        if self.dest >= (self.numSubJobs - 1):
+            self.dest = 0
+
+        return proc
+
+    def waitOnJobs(self, jobIDlist):
+        """
+        Can't actually wait on jobs with MPI, so we do nothing here.
+        The waiting happens when we gatherAllOutputs() (and call MPI.recv)
+        below.
+
+        """
+
+    def gatherAllOutputs(self, jobIDlist):
+        """
+        Gather up outputs from sub-jobs, and return a list of the
+        outputs objects. Note that we assume that the first element of
+        jobIDlist is actually an outputs object, from running the first sub-array
+        in the current process. 
+
+        """
+        outputBlocks = [jobIDlist[0]]
+        for job in jobIDlist[1:]:
+            pickledOutput = self.comm.recv(source=job)
+            outputObj = pickle.loads(pickledOutput)
+
+            outputBlocks.append(outputObj)
+
+        return outputBlocks
 
 def multiUserFunc(userFunc, jobInfo):
     """
@@ -493,6 +591,9 @@ class MultiJobManager(JobManager):
     involve any kind of load balancing, and all sub-processes simply run 
     concurrently. If you have enough spare cores and memory to do that, then
     no problem, but if not, you may clog the system. 
+
+    This is much faster than the SubprocJobManager presumeably due to the
+    custom data pickling that Python does.
     
     """
     jobMgrType = "multiprocessing"
