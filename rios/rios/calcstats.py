@@ -44,7 +44,7 @@ def progressFunc(value,string,userdata):
     percent = (userdata.curroffset + (value / userdata.nbands) * 100)
     userdata.progress.setProgress(percent)
     if value == 1.0:
-        userdata.curroffset = userdata.curroffset + 100 / userdata.nbands
+        userdata.curroffset = userdata.curroffset + 100.0 / userdata.nbands
     return not userdata.progress.wasCancelled()
   
 # make userdata object with progress and num bands
@@ -71,7 +71,7 @@ def addPyramid(ds,progress):
     
     nOverviews = 0
     for i in levels:
-        if (mindim / i ) > minoverviewdim:
+        if (mindim // i ) > minoverviewdim:
             nOverviews = nOverviews + 1
 
     # Need to find out if we are thematic or continuous 
@@ -134,7 +134,7 @@ def addStatistics(ds,progress,ignore=None):
     progress.setLabelText("Computing Statistics...")
     progress.setProgress(0)
     percent = 0
-    percentstep = 100 / (ds.RasterCount * 2) # 2 steps for each layer
+    percentstep = 100.0 / (ds.RasterCount * 2) # 2 steps for each layer
   
     for bandnum in range(ds.RasterCount):
         band = ds.GetRasterBand(bandnum + 1)
