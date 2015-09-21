@@ -158,17 +158,7 @@ class JobManager(object):
         numSubJobs is the number of sub-jobs
         """
         self.numSubJobs = numSubJobs
-        self.margin = 0
         self.tempdir = '.'
-    
-    def setOverlapMargin(self, margin):
-        """
-        Set the overlap margin being used on this job manager. Generally 
-        this will be set by applier.apply(), with the value it is using. 
-        We just need to hang onto it locally. 
-        
-        """
-        self.margin = margin
     
     def setTempdir(self, tempdir):
         """
@@ -254,8 +244,7 @@ class JobManager(object):
         """
         String representation
         """
-        return "jobMgrType=%s, numSubJobs=%s, margin=%s" % (self.jobMgrType, self.numSubJobs, 
-            self.margin)
+        return "jobMgrType=%s, numSubJobs=%s" % (self.jobMgrType, self.numSubJobs)
 
 
 class SubprocJobManager(JobManager):
@@ -704,6 +693,5 @@ def getJobMgrObject(controls):
             raise rioserrors.JobMgrError("JobMgrType '%s' is not known"%controls.jobManagerType)
         jobmgrClass = getJobManagerClassByType(controls.jobManagerType)
         jobmgr = jobmgrClass(controls.numThreads)
-        jobmgr.setOverlapMargin(controls.overlap)
         jobmgr.setTempdir(controls.tempdir)
     return jobmgr
