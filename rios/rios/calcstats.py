@@ -134,7 +134,7 @@ def addStatistics(ds,progress,ignore=None):
     progress.setLabelText("Computing Statistics...")
     progress.setProgress(0)
     percent = 0
-    percentstep = 100 / (ds.RasterCount * 2) # 2 steps for each layer
+    percentstep = 100.0 / (ds.RasterCount * 2) # 2 steps for each layer
   
     for bandnum in range(ds.RasterCount):
         band = ds.GetRasterBand(bandnum + 1)
