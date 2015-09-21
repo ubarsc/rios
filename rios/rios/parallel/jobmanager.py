@@ -382,7 +382,7 @@ class PbsJobManager(JobManager):
         scriptStr = '\n'.join(scriptCmdList)
         
         open(scriptfile, 'w').write(scriptStr+'\n')
-        open(inputsfile, 'w').write(allInputsPickled)
+        open(inputsfile, 'wb').write(allInputsPickled)
         
         submitCmdWords = ["qsub", scriptfile]
         proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE, 
@@ -456,7 +456,7 @@ class PbsJobManager(JobManager):
         outputBlocksList = [jobIDlist[0]]
         for (jobID, outputsfile, logfile) in jobIDlist[1:]:
             try:
-                pickledOutput = open(outputsfile).read()
+                pickledOutput = open(outputsfile, 'rb').read()
                 outputObj = pickle.loads(pickledOutput)
                 os.remove(outputsfile)
             except Exception as e:
