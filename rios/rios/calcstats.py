@@ -44,7 +44,7 @@ def progressFunc(value,string,userdata):
     percent = (userdata.curroffset + (value / userdata.nbands) * 100)
     userdata.progress.setProgress(percent)
     if value == 1.0:
-        userdata.curroffset = userdata.curroffset + 100 / userdata.nbands
+        userdata.curroffset = userdata.curroffset + 100.0 / userdata.nbands
     return not userdata.progress.wasCancelled()
   
 # make userdata object with progress and num bands
