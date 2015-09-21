@@ -149,6 +149,19 @@ and presented inside the user's function as numpy arrays, in exactly the same wa
 Some attributes are added to the :class:`rios.applier.ApplierControls` object to manage the rasterizing process, 
 setting such things as a burn value (i.e. the value in the array corresponding to pixels "inside" the polygons. 
 
+Parallel Processing
+-------------------
+
+As of RIOS 1.4 each block can be processed on a seperate CPU using either PBS, SLURM, MPI, multiprocessing
+or Python's native subprocess module. The :mod:`rios.parallel.jobmanager` module has more information on the details.
+Making use of this facility is very easy and in most cases should be as simple as setting some more options on the 
+control class as below::
+
+    from rios import applier
+    controls = applier.ApplierControls()
+    controls.setNumThreads(5)
+    controls.setJobManagerType('mpi')
+
 Advanced Examples
 -----------------
 

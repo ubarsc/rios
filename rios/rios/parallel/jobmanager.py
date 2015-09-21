@@ -7,12 +7,14 @@ intensive, as there is significant overhead in setting up the sub-jobs.
 Most image processing is I/O bound, and will not benefit from parallel 
 processing. 
 
-The base class is JobManager(). This is an abstract base class,
+It should also be noted that the 'otherargs' parameter to :func:`rios.applier.apply`
+works for passing data into a user function, but updated data is not passed out at present.
+
+The base class is :class:`rios.parallel.jobmanager.JobManager`. This is an abstract base class,
 and must be sub-classed before use. Any sub-class is intended to manage 
-processing of the user function in a set of sub-jobs, splitting the
-arrays into sub-arrays, farming out sub-jobs to process them all 
-in parallel, and gathering up the results, and re-combining into a
-single set of outputs. 
+processing of the user function in a set of sub-jobs, farming out 
+sub-jobs to process them all in parallel, and gathering up the 
+results, and re-combining into a single set of outputs. 
 
 Most of this work is handled in the base class, and should be generic
 for different methods of parallel processing. The reason for the
@@ -25,12 +27,15 @@ if this is more appropriate for the system configuration available.
 
 Sub-classes are provided for using PBS, SLURM, MPI, multiprocessing
 or Python's native subprocess module. Other sub-classes can be made
-as required, outside this module, and will be visible to the function
+as required, outside this module, and will be visible to the function::
+
     getJobManagerClassByName()
+
 which is the main function used for selecting which sub-class is required.
 
 The calling program controls the parallel processing through the
-ApplierControls() object. Normal usage would be as follows:
+ApplierControls() object. Normal usage would be as follows::
+
     from rios import applier
     controls = applier.ApplierControls()
     controls.setNumThreads(5)
@@ -43,26 +48,36 @@ the jobMgrType of the custom sub-class.
 If $RIOS_DFLT_JOBMGRTYPE is set, this will be used as the default jobMgrType.
 This facilitates writing of application code which can run unmodified on 
 systems with different configurations. Alternatively, this can be set on
-the controls object, e.g.
+the controls object, e.g.::
+
     controls.setJobManagerType('pbs')
     
 Environment Variables
 ---------------------
-    RIOS_DFLT_JOBMGRTYPE                Name string of default JobManager subclass
-    RIOS_PBSJOBMGR_QSUBOPTIONS          String of commandline options to be used with PBS qsub.
-                                        Use this for things like walltime and queue name. 
-    RIOS_PBSJOBMGR_INITCMDS             String of shell command(s) which will be executed 
-                                        inside each PBS job, before executing the
-                                        processing commands. Not generally required, but was
-                                        useful for initial testing. 
-    RIOS_SLURMJOBMGR_SBATCHOPTIONS      String of commandline options to be used with SLRM
-                                        sbatch. Use this for things like walltime and queue name.
-                                        The output and error logs do not need to be specified - they
-                                        are set to temporary filenames by RIOS.
-    RIOS_SLURMJOBMGR_INITCMDS           String of shell command(s) which will be executed 
-                                        inside each SLURM job, before executing the
-                                        processing commands. Not generally required, but was
-                                        useful for initial testing. 
+
++---------------------------------+-----------------------------------------------------------------+
+| Name                            | Description                                                     |
++=================================+=================================================================+
+|RIOS_DFLT_JOBMGRTYPE             | Name string of default JobManager subclass                      |
++---------------------------------+-----------------------------------------------------------------+
+|RIOS_PBSJOBMGR_QSUBOPTIONS       | String of commandline options to be used with PBS qsub.         |
+|                                 | Use this for things like walltime and queue name.               |
++---------------------------------+-----------------------------------------------------------------+
+|RIOS_PBSJOBMGR_INITCMDS          | String of shell command(s) which will be executed               |
+|                                 | inside each PBS job, before executing the                       |
+|                                 | processing commands. Not generally required, but was            |
+|                                 | useful for initial testing.                                     |
++---------------------------------+-----------------------------------------------------------------+
+|RIOS_SLURMJOBMGR_SBATCHOPTIONS   | String of commandline options to be used with SLURM             |
+|                                 | sbatch. Use this for things like walltime and queue name.       |
+|                                 | The output and error logs do not need to be specified - they    |
+|                                 | are set to temporary filenames by RIOS.                         |
++---------------------------------+-----------------------------------------------------------------+
+|RIOS_SLURMJOBMGR_INITCMDS        | String of shell command(s) which will be executed               |
+|                                 | inside each SLURM job, before executing the                     |
+|                                 | processing commands. Not generally required, but was            |
+|                                 | useful for initial testing.                                     |
++---------------------------------+-----------------------------------------------------------------+
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -147,11 +162,14 @@ class JobManager(object):
     Manage breaking up of RIOS processing into sub-jobs, and farming them out. 
     
     Should be sub-classed to create new ways of farming out jobs. The sub-class 
-    should at least over-ride the following abstract methods:
+    should at least over-ride the following abstract methods::
+
         startOneJob()
         waitOnJobs()
         gatherAllOutputs()
-    More sophisticated sub-classes might also need to over-ride:
+
+    More sophisticated sub-classes might also need to over-ride::
+
         startAllJobs()
     
     A sub-class must also include a class attribute called jobMgrType, which has 
