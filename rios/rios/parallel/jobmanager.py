@@ -195,8 +195,7 @@ class JobManager(object):
         
         """
         jobIDlist = [None]
-        for i in range(1, self.numSubJobs):
-            inputs = jobInputs[i]
+        for inputs in jobInputs[1:]:
                 
             jobID = self.startOneJob(function, inputs)
             jobIDlist.append(jobID)

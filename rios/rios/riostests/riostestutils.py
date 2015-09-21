@@ -203,16 +203,16 @@ def testAll():
     ok = testlayerselection.run()
     if not ok: failureCount += 1
 
-    #from . import testavgmulti
-    #ok = testavgmulti.run()
-    #if not ok: failureCount += 1
+    from . import testavgmulti
+    ok = testavgmulti.run()
+    if not ok: failureCount += 1
 
-    #try:
-    #    from . import testavgmpi
-    #    ok = testavgmpi.run()
-    #    if not ok: failureCount += 1
-    #except ImportError:
-    #    print("Skipped MPI test due to failed import - mpi4py needed")
+    try:
+        from . import testavgmpi
+        ok = testavgmpi.run()
+        if not ok: failureCount += 1
+    except ImportError:
+        print("Skipped MPI test due to failed import - mpi4py needed")
 
     # After all tests
     print()
