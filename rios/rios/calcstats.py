@@ -71,7 +71,7 @@ def addPyramid(ds,progress):
     
     nOverviews = 0
     for i in levels:
-        if (mindim / i ) > minoverviewdim:
+        if (mindim // i ) > minoverviewdim:
             nOverviews = nOverviews + 1
 
     # Need to find out if we are thematic or continuous 
