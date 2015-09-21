@@ -386,7 +386,7 @@ class PbsJobManager(JobManager):
         
         submitCmdWords = ["qsub", scriptfile]
         proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE, universal_newlines=True)
         # The qsub command exits almost immediately, printing the PBS job id
         # to stdout. So, we just wait for the qsub to finish, and grab the
         # jobID string.     
@@ -428,7 +428,8 @@ class PbsJobManager(JobManager):
         
         while not allFinished:
             qstatCmd = ["qstat"]
-            proc = subprocess.Popen(qstatCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(qstatCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                universal_newlines=True)
             (stdout, stderr) = proc.communicate()
             
             stdoutLines = [line for line in stdout.split('\n') if len(line) > 0]   # No blank lines
