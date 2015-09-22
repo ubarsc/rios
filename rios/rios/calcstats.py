@@ -121,7 +121,7 @@ def addStatistics(ds,progress,ignore=None):
     """
     Calculates statistics and adds them to the image
     
-    Uses gdal.Band.GetStatistics() for mean, stddev, min and max,
+    Uses gdal.Band.ComputeStatistics() for mean, stddev, min and max,
     and gdal.Band.GetHistogram() to do histogram calculation. 
     The median and mode are estimated using the histogram, and so 
     for larger datatypes, they will be approximate only. 
@@ -151,7 +151,7 @@ def addStatistics(ds,progress,ignore=None):
         useExceptions = gdal.GetUseExceptions()
         gdal.UseExceptions()
         try:
-            (minval,maxval,meanval,stddevval) = band.GetStatistics(False,True)
+            (minval,maxval,meanval,stddevval) = band.ComputeStatistics(False)
         except RuntimeError as e:
             if str(e).endswith('Failed to compute statistics, no valid pixels found in sampling.'):
                 minval = ignore
