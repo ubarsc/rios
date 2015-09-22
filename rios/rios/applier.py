@@ -482,6 +482,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         The userFunction has the following call sequence::
 
             userFunction(info, inputs, outputs)
+
         or::
 
             userFunction(info, inputs, outputs, otherArgs)

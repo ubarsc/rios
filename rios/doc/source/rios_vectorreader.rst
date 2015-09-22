@@ -1,5 +1,5 @@
 vectorreader
-=========
+============
 .. automodule:: rios.vectorreader
    :members:
    :undoc-members:

@@ -405,11 +405,13 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     The color table is given as a numpy array of 5 columns. There is one row 
     (i.e. first array index) for every value to be set, and the columns
     are:
+
         * pixelValue
         * Red
         * Green
         * Blue
         * Opacity
+
     The Red/Green/Blue values are on the range 0-255, with 255 meaning full 
     color, and the opacity is in the range 0-255, with 255 meaning fully 
     opaque. 

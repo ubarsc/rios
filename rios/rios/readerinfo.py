@@ -213,8 +213,10 @@ class ReaderInfo(object):
 
     def getBlockSize(self):
         """
-        Get the size of the current block. Returns a tuple
+        Get the size of the current block. Returns a tuple::
+
             (numCols, numRows)
+
         for the current block. Mostly the same as the window size, 
         except on the edge of the raster. 
         """
@@ -235,8 +237,10 @@ class ReaderInfo(object):
         """
         Return a tuple of the world coordinates for every pixel
         in the current block. Each array has the same shape as the 
-        current block. Return value is a tuple
+        current block. Return value is a tuple::
+
             (xBlock, yBlock)
+
         where the values in xBlock are the X coordinates of the centre
         of each pixel, and similarly for yBlock. 
         
@@ -320,8 +324,10 @@ class ReaderInfo(object):
         Get the (col, row) relative to the current image grid,
         for the nominated pixel within the current block. The
         given (x, y) are column/row numbers (starting at zero),
-        and the return is a tuple
+        and the return is a tuple::
+
             (column, row)
+
         where these are relative to the whole of the current
         working grid. If working with a single raster, this is the same
         as for that raster, but if working with multiple rasters, 

@@ -1,5 +1,5 @@
 rioserrors
-=========
+==========
 .. automodule:: rios.rioserrors
    :members:
    :undoc-members:
