@@ -37,10 +37,7 @@ from . import imageio
 from . import rioserrors
 from . import vectorreader
 from . import cuiprogress
-
-ALLOW_JOBMANAGER = (os.getenv("RIOS_PARALLEL_ALLOWJOBMGR") is not None)
-if ALLOW_JOBMANAGER:
-    from .parallel import jobmanager
+from .parallel import jobmanager
 
 # All default values, etc., copied in from their appropriate rios modules. 
 DEFAULT_RESAMPLEMETHOD = "near"
@@ -539,8 +536,6 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         handleInputResampling(imagefiles, controls, reader)
 
         writerdict = {}
-        inputBlocks = BlockAssociations()
-        outputBlocks = BlockAssociations()
         
         if controls.progress is not None:
             controls.progress.setTotalSteps(100)
@@ -549,29 +544,50 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         
         # Set up for parallel processing, if requested. 
         jobmgr = None
-        if ALLOW_JOBMANAGER:
+        if controls.numThreads > 1:
             jobmgr = jobmanager.getJobMgrObject(controls)
-        
-        for (info, blockdict) in reader:
-            inputBlocks.__dict__.update(blockdict)
-            if vecreader is not None:
-                vecblocks = vecreader.rasterize(info)
-                inputBlocks.__dict__.update(vecblocks)
-            
-            # Make a tuple of the arguments to pass to the function. 
-            # Must have inputBlocks and outputBlocks, but if otherArgs 
-            # is not None, then that is also included. 
-            functionArgs = (info, inputBlocks, outputBlocks)
-            if otherArgs is not None:
-                functionArgs += (otherArgs, )
+
+        done = False
+        iterator = reader.__iter__()
+        while not done:
+            # list of RIOSJobInfo
+            jobInputs = []
+
+            for n in range(controls.numThreads):
+                try:
+                    info, blockdict = iterator.__next__()
+                except StopIteration:
+                    done = True
+                    break
+
+                inputBlocks = BlockAssociations()
+                inputBlocks.__dict__.update(blockdict)
+                if vecreader is not None:
+                    vecblocks = vecreader.rasterize(info)
+                    inputBlocks.__dict__.update(vecblocks)
+
+                # build a RIOSJobInfo with the params
+                jobInfo = RIOSJobInfo(info, inputBlocks, otherArgs)
+                jobInputs.append(jobInfo)
+
+            if len(jobInputs) == 0:
+                break
             
             # Now call the function with those args
             if jobmgr is None:
-                userFunction(*functionArgs)
+                # single threaded - just call it
+                params = jobInfo.getFunctionParams()
+                userFunction(*params)
+                outputBlocks = jobInfo.getFunctionResult(params)
+                writeOutputBlocks(writerdict, outfiles, outputBlocks, 
+                                controls, info)
             else:
-                jobmgr.runSubJobs(userFunction, functionArgs)
+                # multi threaded - get the job manager to run jobs
+                outBlocksList = jobmgr.runSubJobs(userFunction, jobInputs)
+                for outputBlocks in outBlocksList:
+                    writeOutputBlocks(writerdict, outfiles, outputBlocks, 
+                                controls, info)
             
-            writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info)
             lastpercent = updateProgress(controls, info, lastpercent)
                 
         if controls.progress is not None:
@@ -816,3 +832,51 @@ def makeInputImageLayerSelection(imagefiles, controls):
     for name in imagefiles.__dict__.keys():
         layerselection[name] = controls.getOptionForImagename('layerselection', name)
     return layerselection
+
+class RIOSJobInfo(jobmanager.JobInfo):
+    """
+    Class that contains information for parameters to a RIOS
+    function
+    """
+    def __init__(self, info, inputs, otherargs=None):
+        self.info = info
+        self.inputs = inputs
+        self.otherargs = otherargs
+        # we don't bother pickling the outputs - start again 
+        # with a fresh BlockAssociations
+
+    def prepareForPickling(self):
+        """
+        GDAL datasets cannot be pickled
+        and neither stderr (in info.logginstream)
+        so we clean up the info object a bit
+
+        """
+        self.info.blocklookup = {}
+        self.info.loggingstream = None
+        return self
+
+    def getFunctionParams(self):
+        """
+        Return the parameters as a tuple.
+
+        As this is run in the subprocess we can 
+        reset the info.loggingstream so something
+        sensible
+
+        """
+        self.info.loggingstream = sys.stderr
+        outputs = BlockAssociations()
+        params = (self.info, self.inputs, outputs)
+        if self.otherargs is not None:
+            params += (self.otherargs,)
+
+        return params
+
+    def getFunctionResult(self, params):
+        """
+        Return the ouputs parameter
+
+        """
+        return params[2]
+

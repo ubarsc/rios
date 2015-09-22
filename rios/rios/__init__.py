@@ -26,3 +26,4 @@ from distutils.version import LooseVersion
 
 RIOS_VERSION = '1.3.1'
 RIOS_VERSION_OBJ = LooseVersion(RIOS_VERSION)
+__version__ = RIOS_VERSION

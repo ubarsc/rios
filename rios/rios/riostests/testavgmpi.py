@@ -4,9 +4,6 @@ Does a broad, general test of the parallel.multiprocessing.mpi functionality.
 Uses 2 prcesses since we can be reasonably sure that the users computer will
 at least have 2 cores.
 
-Note: This module has to re-spawn itself using mpirun so standby for something 
-very boggly.
-
 Generates a pair of images, and then applies a function to calculate
 the average of them. Checks the resulting output against a known 
 correct answer. 
@@ -34,20 +31,13 @@ import sys
 import subprocess
 import numpy
 from osgeo import gdal
-from rios.parallel.mpi import applier
+from rios import applier
 
 TESTNAME = "TESTAVGMPI"
 
 TEST_NCPUS = 2
-MPIRUN = 'mpirun'
 
-try:
-    # this doesn't work when this file
-    # is being executed (via mpirun) rather than imported
-    # so add a workaround
-    from . import riostestutils
-except SystemError:
-    import riostestutils
+from . import riostestutils
 
 def run():
     """
@@ -61,24 +51,9 @@ def run():
     riostestutils.genRampImageFile(ramp2, reverse=True)
     outfile = 'rampavg.img'
 
-    # execute this module as a script
-    # the __name__ == "__main__" clause will get
-    # executed as each process is spawned
-    args = [MPIRUN, '-n', str(TEST_NCPUS), 'python', __file__,
-            ramp1, ramp2, outfile]
-    try:
-        retCode = subprocess.call(args)
-        
-        if retCode != 0:
-            print("Received error code %d from mpirun" % retCode)
-            print("Failed to execute mpirun")
-            ok = False
+    calcAverage(ramp1, ramp2, outfile)
 
-        else:
-            ok = checkResult(outfile)
-    except FileNotFoundError as e:
-        print(e)
-        ok = False
+    ok = checkResult(outfile)
     
     # Clean up
     for filename in [ramp1, ramp2, outfile]:
@@ -89,18 +64,19 @@ def run():
 
 def calcAverage(file1, file2, avgfile):
     """
-    Use RIOS to calculate the average of two files.
+    Use RIOS to calculate the average of two files using MPI.
 
-    called from the '__name__ == "__main__"' clause below
-    when this is executed from mpirun.
-    Will be called TEST_NCPUS times - one per spawned process
     """
     infiles = applier.FilenameAssociations()
     outfiles = applier.FilenameAssociations()
     infiles.img = [file1, file2]
     outfiles.avg = avgfile
 
-    applier.apply(doAvg, infiles, outfiles)
+    controls = applier.ApplierControls()
+    controls.setNumThreads(TEST_NCPUS)
+    controls.setJobManagerType("mpi")
+
+    applier.apply(doAvg, infiles, outfiles, controls=controls)
 
 
 def doAvg(info, inputs, outputs):
@@ -147,12 +123,4 @@ def checkResult(avgfile):
     return ok
 
 if __name__ == "__main__":
-    # assume we are being called from mpirun
-    # interpret the command line args and call
-    # calcAverage()
-    file1 = sys.argv[1]
-    file2 = sys.argv[2]
-    outfile = sys.argv[3]
-    calcAverage(file1, file2, outfile)
-
-
+    run()
