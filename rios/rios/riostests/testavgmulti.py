@@ -30,7 +30,7 @@ import os
 
 import numpy
 from osgeo import gdal
-from rios.parallel.multiprocessing import applier
+from rios import applier
 
 TESTNAME = "TESTAVGMULTI"
 TEST_NCPUS = 2
@@ -55,7 +55,8 @@ def run():
     
     # Clean up
     for filename in [ramp1, ramp2, outfile]:
-        os.remove(filename)
+        if os.path.exists(filename):
+            os.remove(filename)
     
     return ok
 
@@ -70,7 +71,8 @@ def calcAverage(file1, file2, avgfile):
     outfiles.avg = avgfile
 
     controls = applier.ApplierControls()
-    controls.setNProcesses(TEST_NCPUS)
+    controls.setNumThreads(TEST_NCPUS)
+    controls.setJobManagerType("multiprocessing")
     
     applier.apply(doAvg, infiles, outfiles, controls=controls)
 

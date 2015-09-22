@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 """
-Main program for RIOS subprocesses. 
+Main program for RIOS MPI subprocesses. 
+This uses the MPI calls to receive and send data
+from the main process.
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -20,29 +22,39 @@ Main program for RIOS subprocesses.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function
 
+from mpi4py import MPI
 from rios.parallel import subproc
 
 import sys
+from io import BytesIO
 
 if __name__ == "__main__":
-    nArgs = len(sys.argv) - 1
 
-    # This is for the case of no commandline args    
-    if sys.version_info[0] > 2:
-        # For Python 3, use binary buffer objects
-        # otherwise unpickling fails
-        inf = sys.stdin.buffer
-        outf = sys.stdout.buffer
-    else:
-        inf = sys.stdin
-        outf = sys.stdout
-    
-    # These are for the cases with some commandline args
-    inFileName = None
-    if nArgs >= 1:
-        inFileName = sys.argv[1]
-        inf = open(inFileName, 'rb')
-    if nArgs == 2:
-        outf = open(sys.argv[2], 'wb')
+    # get the handle to the parent
+    comm = MPI.Comm.Get_parent()
 
-    subproc.runJob(inf, outf, inFileName)
+    # keep going until we are told to exit
+    while True:
+        # get the data from the parent
+        data = comm.recv(source=0)
+
+        status, blockData = data
+        if not status:
+            break
+
+        # wrap it with a BytesIO object so it can be treated
+        # like a file by subproc.runJob() - this keeps compatibility
+        # with the other sub job types
+        inf = BytesIO(blockData)
+        inf.seek(0)
+
+        # output file object
+        outf = BytesIO()
+
+        # do the processing
+        subproc.runJob(inf, outf)
+
+        # send the result back
+        outdata = outf.getvalue()
+        comm.send(outdata, dest=0)
+
