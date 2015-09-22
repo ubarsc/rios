@@ -1,5 +1,5 @@
 readerinfo
-=========
+==========
 .. automodule:: rios.readerinfo
    :members:
    :undoc-members:

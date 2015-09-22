@@ -268,6 +268,7 @@ class RatApplierControls(object):
         """
         Determine how the row count of the output RAT(s) is handled. The method
         argument can be one of the following constants:
+
             * RCM_EQUALS_INPUT        Output RAT(s) have same number of rows as input RAT(s)
             * RCM_FIXED               Output row count is set to a fixed size
             * RCM_INCREMENT           Output row count is incremented as required
@@ -363,7 +364,7 @@ class RatBlockAssociation(object):
     number of genuine attributes which also need to be present, for internal 
     use, and it is obviously important that their names not be the same as 
     any columns. Since we obviously cannot guarantee this, we have named them 
-    beginning with "Z__", in the hope that no-one ever has a column with
+    beginning with "Z\_\_", in the hope that no-one ever has a column with
     a name like this. These are all created within the __init__ method. 
     
     The main purpose of using __getattr__ is to avoid reading columns which 
@@ -533,10 +534,11 @@ class GdalHandles(object):
     """
     Hang onto all the required GDAL objects relating to a given opened RAT.
     Attributes are:
-        ds                  The gdal.Dataset object
-        band                The gdal.Band object
-        gdalRat             The gdal.RasterAttributeTable object
-        columnNdxByName     A lookup table to get column index from column name
+
+        * **ds**                  The gdal.Dataset object
+        * **band**                The gdal.Band object
+        * **gdalRat**             The gdal.RasterAttributeTable object
+        * **columnNdxByName**     A lookup table to get column index from column name
         
     """
     def __init__(self, ratHandle, update=False, sharedDS=None):

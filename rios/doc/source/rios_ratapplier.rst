@@ -1,5 +1,5 @@
 ratapplier
-=========
+==========
 .. automodule:: rios.ratapplier
    :members:
    :undoc-members:

@@ -1,5 +1,5 @@
 inputcollection
-=========
+===============
 .. automodule:: rios.inputcollection
    :members:
    :undoc-members:

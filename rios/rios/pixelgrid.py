@@ -38,6 +38,7 @@ class PixelGridDefn(object):
     
     Methods are defined for relationships with
     other instances, including:
+
         * intersection()
         * union()
         * reproject()
@@ -45,6 +46,7 @@ class PixelGridDefn(object):
         * isComparable()
     
     Attributes defined on the object:
+
         * xMin
         * xMax
         * yMin
@@ -97,8 +99,10 @@ class PixelGridDefn(object):
         Alignment is checked within a small tolerance, so that exact 
         floating point matches are not required. However, notionally it
         is possible to get a match which shouldn't be. The tolerance is
-        calculated as 
+        calculated as::
+ 
             tolerance = 0.01 * pixsize / npix
+
         and if a mis-alignment is <= tolerance, it is assumed to be zero. 
         For further details, read the source code. 
         
@@ -282,8 +286,10 @@ class PixelGridDefn(object):
     def getDimensions(self):
         """
         Utility method which returns the number of rows and columns
-        in the grid. Returns a tuple
+        in the grid. Returns a tuple::
+
             (nrows, ncols)
+
         calculated from the min/max/res values. 
         
         """

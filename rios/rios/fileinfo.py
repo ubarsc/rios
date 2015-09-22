@@ -228,6 +228,7 @@ class ImageLayerStats(object):
     There are many ways to report a histogram. 
     The following attributes report it the way GDAL does. 
     See GDAL doco for precise details. 
+
         * **histoCounts**     Histogram counts (numpy array)
         * **histoMin**        Minimum edge of smallest bin
         * **histoMax**        Maximum edge of largest bin
