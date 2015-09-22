@@ -195,15 +195,12 @@ class Vector(object):
         os.remove(tmpVectorfile)
         cmdList = ["ogr2ogr", '-f', "ESRI Shapefile", '-t_srs', projWKT,
             tmpVectorfile, self.filename]
-        proc = subprocess.Popen(cmdList, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmdList, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                            universal_newlines=True)
         (stdoutStr, stderrStr) = proc.communicate()
         # sometimes warnings etc printed to stderr so we can't
         # rely on that for testing success. Use returncode instead.
         if proc.returncode != 0:
-            if sys.version_info[0] > 2:
-                # convert from bytes to string
-                stdoutStr = stdoutStr.decode()
-                stderrStr = stderrStr.decode()
             msg = "Trouble reprojecting vector\n\n"+stdoutStr+'\n'+stderrStr
             raise rioserrors.VectorProjectionError(msg)
         
