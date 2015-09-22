@@ -526,14 +526,11 @@ class SlurmJobManager(JobManager):
         
         submitCmdWords = ["sbatch", scriptfile]
         proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE, 
-            stderr=subprocess.PIPE)
+            stderr=subprocess.PIPE, universal_newlines=True)
         # The sbatch command exits almost immediately, printing the SLURM job id
         # to stdout. So, we just wait for the sbatch to finish, and grab the
         # jobID string.     
         (stdout, stderr) = proc.communicate()
-        if sys.version_info[0] > 2:
-            stderr = stderr.decode()
-            stdout = stdout.decode()
         slurmOutputList = stdout.strip().split()
         slurmJobID = None
         # slurm prints a sentence to the stdout:
@@ -565,7 +562,7 @@ class SlurmJobManager(JobManager):
         that job, but on all the rest. 
         
         Returns only when all the listed jobID strings are no longer found in the
-        PBS queue. Currently has no time-out, although perhaps it should. 
+        SLURM queue. Currently has no time-out, although perhaps it should. 
         
         """
         allFinished = False
@@ -576,11 +573,9 @@ class SlurmJobManager(JobManager):
         
         while not allFinished:
             squeueCmd = ["squeue", "--noheader"]
-            proc = subprocess.Popen(squeueCmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            proc = subprocess.Popen(squeueCmd, stdout=subprocess.PIPE, 
+                    stderr=subprocess.PIPE, universal_newlines=True)
             (stdout, stderr) = proc.communicate()
-            
-            if sys.version_info[0] > 2:
-                stdout = stdout.decode()
             
             stdoutLines = [line for line in stdout.split('\n') if len(line) > 0]   # No blank lines
             # Grab first word on each line, which is jobID
