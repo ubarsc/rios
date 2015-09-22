@@ -26,10 +26,18 @@ import sys
 
 if __name__ == "__main__":
     nArgs = len(sys.argv) - 1
-    # use binary buffer objects
-    # otherwise unpickling fails
-    inf = sys.stdin.buffer
-    outf = sys.stdout.buffer
+
+    # This is for the case of no commandline args    
+    if sys.version_info[0] > 2:
+        # For Python 3, use binary buffer objects
+        # otherwise unpickling fails
+        inf = sys.stdin.buffer
+        outf = sys.stdout.buffer
+    else:
+        inf = sys.stdin
+        outf = sys.stdout
+    
+    # These are for the cases with some commandline args
     inFileName = None
     if nArgs >= 1:
         inFileName = sys.argv[1]
