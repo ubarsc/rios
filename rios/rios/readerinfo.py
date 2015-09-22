@@ -311,6 +311,30 @@ class ReaderInfo(object):
         
         return (blockRow, blockCol)
     
+    def getPixColRow(self,x,y):
+        """
+        This function is for internal use only. The user should
+        be looking at getBlockCoordArrays() or getPixRowColBlock()
+        for dealing with blocks and coordinates.
+        
+        Get the (col, row) relative to the current image grid,
+        for the nominated pixel within the current block. The
+        given (x, y) are column/row numbers (starting at zero),
+        and the return is a tuple
+            (column, row)
+        where these are relative to the whole of the current
+        working grid. If working with a single raster, this is the same
+        as for that raster, but if working with multiple rasters, 
+        the working grid is the intersection or union of them. 
+        
+        Note that this function will give incorrect/misleading results
+        if used in conjunction with a block overlap. 
+         
+        """
+        col = self.xblock * self.windowxsize + x
+        row = self.yblock * self.windowysize + y
+        return (col,row)
+
     def isFirstBlock(self):
         """
         Returns True if this is the first block to be processed
