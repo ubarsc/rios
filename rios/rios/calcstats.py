@@ -1,6 +1,6 @@
 """
 This module creates pyramid layers and calculates statistics for image
-files. Much of it was orignally for ERDAS Imagine files but should work 
+files. Much of it was originally for ERDAS Imagine files but should work 
 with any other format that supports pyramid layers and statistics
 
 """
@@ -32,10 +32,18 @@ if (os.getenv('RIOS_HISTOGRAM_IGNORE_RFC40') is None and
         hasattr(gdal.RasterAttributeTable, 'ReadAsArray')):
     haveRFC40 = True
 
-# we don't want to build unnecessarily small overview layers  
-# we stop when the smallest dimension in the overview is less 
-# than this number
-minoverviewdim = 33
+
+# When calculating overviews (i.e. pyramid layers), default behaviour
+# is controlled by these
+dfltOverviewLvls = os.getenv('RIOS_DEFAULT_OVERVIEWLEVELS')
+if dfltOverviewLvls is None:
+    DEFAULT_OVERVIEWLEVELS = [ 4, 8, 16, 32, 64, 128, 256, 512 ]
+else:
+    DEFAULT_OVERVIEWLEVELS = [int(i) for i in dfltOverviewLvls.split(',')]
+DEFAULT_MINOVERVIEWDIM = int(os.getenv('RIOS_DEFAULT_MINOVERLEVELDIM', default=33))
+DEFAULT_OVERVIEWAGGREGRATIONTYPE = os.getenv('RIOS_DEFAULT_OVERVIEWAGGREGATIONTYPE', 
+    default="AVERAGE")
+
 
 def progressFunc(value,string,userdata):
     """
@@ -51,17 +59,20 @@ def progressFunc(value,string,userdata):
 class ProgressUserData:
     pass
 
-def addPyramid(ds,progress):
+def addPyramid(ds, progress, 
+        minoverviewdim=DEFAULT_MINOVERVIEWDIM, 
+        levels=DEFAULT_OVERVIEWLEVELS,
+        aggregationType=None):
     """
     Adds Pyramid layers to the dataset. Adds levels until
     the raster dimension of the overview layer is < minoverviewdim,
-    up to a maximum level of 512. 
+    up to a maximum level controlled by the levels parameter. 
+    
     Uses gdal.Dataset.BuildOverviews() to do the work. 
     
     """
     progress.setLabelText("Computing Pyramid Layers...")
     progress.setProgress(0)
-    levels = [ 4, 8, 16, 32, 64, 128, 256, 512 ]
 
     # first we work out how many overviews to build based on the size
     if ds.RasterXSize < ds.RasterYSize:
@@ -74,15 +85,16 @@ def addPyramid(ds,progress):
         if (mindim // i ) > minoverviewdim:
             nOverviews = nOverviews + 1
 
-    # Need to find out if we are thematic or continuous 
+    # Need to find out if we are thematic or continuous. 
     tmpmeta = ds.GetRasterBand(1).GetMetadata()
-    if 'LAYER_TYPE' in tmpmeta:
-        if tmpmeta['LAYER_TYPE'] == 'athematic':
-            aggregationType = "AVERAGE"
+    if aggregationType is None:
+        if 'LAYER_TYPE' in tmpmeta:
+            if tmpmeta['LAYER_TYPE'] == 'athematic':
+                aggregationType = "AVERAGE"
+            else:
+                aggregationType = "NEAREST"
         else:
-            aggregationType = "NEAREST"
-    else:
-        aggregationType = "AVERAGE"
+            aggregationType = DEFAULT_OVERVIEWAGGREGRATIONTYPE
     
     userdata = ProgressUserData()
     userdata.progress = progress
@@ -331,7 +343,10 @@ def addStatistics(ds,progress,ignore=None):
     progress.setProgress(100)
     
     
-def calcStats(ds,progress=None,ignore=None):
+def calcStats(ds,progress=None,ignore=None,
+        minoverviewdim=DEFAULT_MINOVERVIEWDIM, 
+        levels=DEFAULT_OVERVIEWLEVELS,
+        aggregationType=None):
     """
     Does both the stats and pyramid layers. Calls addStatistics()
     and addPyramid() functions. See their docstrings for details. 
@@ -339,6 +354,9 @@ def calcStats(ds,progress=None,ignore=None):
     """
     if progress is None:
         progress = cuiprogress.CUIProgressBar()
+        
     addStatistics(ds,progress,ignore)
-    addPyramid(ds,progress)
+    
+    addPyramid(ds, progress, minoverviewdim=minoverviewdim, levels=levels, 
+        aggregationType=aggregationType)
 
