@@ -34,6 +34,7 @@ from . import imageio
 from . import rioserrors
 from . import vectorreader
 from . import cuiprogress
+from . import calcstats
 from .parallel import jobmanager
 
 # All default values, etc., copied in from their appropriate rios modules. 
@@ -51,6 +52,15 @@ UNION = imageio.UNION
 "Use the spatial union of inputs"
 BOUNDS_FROM_REFERENCE = imageio.BOUNDS_FROM_REFERENCE
 "Use the spatial extent of the reference file"
+
+# From the calcstats module
+DEFAULT_OVERVIEWLEVELS = calcstats.DEFAULT_OVERVIEWLEVELS
+"Default overview levels on output images"
+DEFAULT_MINOVERVIEWDIM = calcstats.DEFAULT_MINOVERVIEWDIM
+"Default minimum dimension of highest overview level calculated"
+DEFAULT_OVERVIEWAGGREGRATIONTYPE = calcstats.DEFAULT_OVERVIEWAGGREGRATIONTYPE
+"Default agregation type when using formats without LAYER_TYPE"
+
 
 if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
@@ -119,6 +129,9 @@ class ApplierControls(object):
         * **statscache**      stats cache if pre-calculated
         * **calcStats**       True/False to signal calculate statistics and pyramids
         * **omitPyramids**    True/False to omit pyramids when doing stats
+        * **overviewLevels**  List of level factors used when calculating output image overviews
+        * **overviewMinDim**  Minimum dimension of highest overview level
+        * **overviewAggType** Aggregation type for calculating overviews
         * **tempdir**         Name of directory for temp files (resampling, etc.)
         * **resampleMethod**  String for resample method, when required (as per GDAL)
         * **numThreads**      Number of parallel threads used for processing each image block
@@ -159,6 +172,9 @@ class ApplierControls(object):
         self.statsIgnore = 0
         self.calcStats = True
         self.omitPyramids = False
+        self.overviewLevels = DEFAULT_OVERVIEWLEVELS
+        self.overviewMinDim = DEFAULT_MINOVERVIEWDIM
+        self.overviewAggType = None
         self.thematic = False
         self.layernames = None
         self.tempdir = '.'
@@ -326,6 +342,40 @@ class ApplierControls(object):
         Usual default is False. 
         """
         self.setOptionForImagename('omitPyramids', imagename, omitPyramids)
+    
+    def setOverviewLevels(self, overviewLevels, imagename=None):
+        """
+        Set the overview levels to be used on output images (i.e. pyramid layers). 
+        Levels are specified as a list of integer factors, with the same meanings 
+        as given to the gdaladdo command. 
+        
+        """
+        self.setOptionForImagename('overviewLevels', imagename, overviewLevels)
+    
+    def setOverviewMinDim(self, overviewMinDim, imagename=None):
+        """
+        Set minimum dimension allowed for output overview. Overview levels (i.e. pyramid
+        layers) will be calculated as per the overviewLevels list of factors, but 
+        only until the minimum dimension falls below the value of overviewMinDim
+        
+        """
+        self.setOptionForImagename('overviewMinDim', imagename, overviewMinDim)
+    
+    def setOverviewAggregationType(self, overviewAggType, imagename=None):
+        """
+        Set the type of aggregation used when computing overview images (i.e. pyramid 
+        layers). Normally a thematic image should be aggregated using "NEAREST", while a 
+        continuous image should be aggregated using "AVERAGE". When the setting is 
+        given as None, then a default is used. If using an output format which 
+        supports LAYER_TYPE, the default is based on this, but if not, it comes from 
+        the value of the environment variable $RIOS_DEFAULT_OVERVIEWAGGREGATIONTYPE.
+        
+        This method should usually be used to set when writing an output to a format
+        which does not support LAYER_TYPE, and which is not appropriate for the
+        setting given by the environment default. 
+        
+        """
+        self.setOptionForImagename('overviewAggType', imagename, overviewAggType)
         
     def setThematic(self, thematicFlag, imagename=None):
         "Set boolean value of thematic flag (may not be supported by the GDAL driver)"
