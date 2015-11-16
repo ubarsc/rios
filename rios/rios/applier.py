@@ -867,7 +867,7 @@ class RIOSJobInfo(jobmanager.JobInfo):
 
         """
         if self.info.loggingstream is None:
-            self.info.loggingstream = sys.stdout
+            self.info.loggingstream = imagereader.DEFAULTLOGGINGSTREAM
         outputs = BlockAssociations()
         params = (self.info, self.inputs, outputs)
         if self.otherargs is not None:
