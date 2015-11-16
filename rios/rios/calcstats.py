@@ -35,13 +35,13 @@ if (os.getenv('RIOS_HISTOGRAM_IGNORE_RFC40') is None and
 
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
-dfltOverviewLvls = os.getenv('RIOS_DEFAULT_OVERVIEWLEVELS')
+dfltOverviewLvls = os.getenv('RIOS_DFLT_OVERVIEWLEVELS')
 if dfltOverviewLvls is None:
     DEFAULT_OVERVIEWLEVELS = [ 4, 8, 16, 32, 64, 128, 256, 512 ]
 else:
     DEFAULT_OVERVIEWLEVELS = [int(i) for i in dfltOverviewLvls.split(',')]
-DEFAULT_MINOVERVIEWDIM = int(os.getenv('RIOS_DEFAULT_MINOVERLEVELDIM', default=33))
-DEFAULT_OVERVIEWAGGREGRATIONTYPE = os.getenv('RIOS_DEFAULT_OVERVIEWAGGTYPE', 
+DEFAULT_MINOVERVIEWDIM = int(os.getenv('RIOS_DFLT_MINOVERLEVELDIM', default=33))
+DEFAULT_OVERVIEWAGGREGRATIONTYPE = os.getenv('RIOS_DFLT_OVERVIEWAGGTYPE', 
     default="AVERAGE")
 
 
