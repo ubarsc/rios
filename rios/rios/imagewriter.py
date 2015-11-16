@@ -27,6 +27,7 @@ from osgeo import gdal
 from . import imageio
 from . import rioserrors
 from . import rat
+from . import calcstats
 
 def setDefaultDriver():
     """
@@ -299,18 +300,21 @@ class ImageWriter(object):
         """
         self.blocknum = 0
     
-    def close(self, calcStats=False, statsIgnore=None, progress=None, omitPyramids=False):
+    def close(self, calcStats=False, statsIgnore=None, progress=None, omitPyramids=False,
+            overviewLevels=calcstats.DEFAULT_OVERVIEWLEVELS,
+            overviewMinDim=calcstats.DEFAULT_MINOVERVIEWDIM, 
+            overviewAggType=calcstats.DEFAULT_OVERVIEWAGGREGRATIONTYPE):
         """
         Closes the open dataset
         """
         if calcStats:
-            from . import calcstats
             from .cuiprogress import SilentProgress
             if progress is None:
                 progress = SilentProgress()
             calcstats.addStatistics(self.ds, progress, statsIgnore)
             if not omitPyramids:
-                calcstats.addPyramid(self.ds, progress)
+                calcstats.addPyramid(self.ds, progress, minoverviewdim=overviewMinDim,
+                    levels=overviewLevels, aggregationType=overviewAggType)
         
         self.ds.FlushCache()
         del self.ds
