@@ -604,13 +604,12 @@ def closeOutputImages(writerdict, outfiles, controls):
     for name in outfiles.__dict__.keys():
         writer = writerdict[name]
         if isinstance(writer, list):
-            for singleWriter in writer:
-                singleWriter.close(calcStats=controls.getOptionForImagename('calcStats', name), 
-                    statsIgnore=controls.getOptionForImagename('statsIgnore', name), 
-                    progress=controls.progress,
-                    omitPyramids=controls.getOptionForImagename('omitPyramids', name))
+            writerList = writer
         else:
-            writer.close(calcStats=controls.getOptionForImagename('calcStats', name), 
+            writerList = [writer]
+
+        for singleWriter in writerList:
+            singleWriter.close(calcStats=controls.getOptionForImagename('calcStats', name), 
                 statsIgnore=controls.getOptionForImagename('statsIgnore', name), 
                 progress=controls.progress,
                 omitPyramids=controls.getOptionForImagename('omitPyramids', name))
