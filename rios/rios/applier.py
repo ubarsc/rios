@@ -861,12 +861,13 @@ class RIOSJobInfo(jobmanager.JobInfo):
         """
         Return the parameters as a tuple.
 
-        As this is run in the subprocess we can 
-        reset the info.loggingstream so something
-        sensible
+        When this is run in the subprocess, we can 
+        reset the info.loggingstream to something
+        other than None
 
         """
-        self.info.loggingstream = sys.stderr
+        if self.info.loggingstream is None:
+            self.info.loggingstream = sys.stdout
         outputs = BlockAssociations()
         params = (self.info, self.inputs, outputs)
         if self.otherargs is not None:
