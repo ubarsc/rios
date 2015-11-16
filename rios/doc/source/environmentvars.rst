@@ -32,3 +32,15 @@ RIOS honours the following environment variables which can be used to override d
 |RIOS_SLURMJOBMGR_SBATCHOPTIONS |                                       |                |                       |
 |RIOS_SLURMJOBMGR_INITCMDS      |                                       |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_DFLT_OVERVIEWLEVELS       | Global default overview levels.       | 4,8,16,32,64,  | overviewLevels        |
+|                               | A comma-separated list of reduction   | 128,256,512    |                       |
+|                               | factors, as per gdaladdo command      |                |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_DFLT_MINOVERLEVELDIM      | Minimum dimension of overview layers. | 33             | overviewMinDim        |
+|                               | Overview layers with any dimension    |                |                       |
+|                               | less than this will not be created.   |                |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_DFLT_OVERVIEWAGGTYPE      | Default aggregation type for          | AVERAGE        | overviewAggType       |
+|                               | overviews, used with formats not      |                |                       |
+|                               | supporting LAYER_TYPE                 |                |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
