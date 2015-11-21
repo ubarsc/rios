@@ -22,7 +22,10 @@ working grid, and the underlying rasters, and this tests whether
 these behave as expected, in a range of circumstances. 
 
 """
+from __future__ import division
+
 import os
+import math
 
 from rios import applier
 
@@ -39,7 +42,8 @@ STEP = PIX * applier.DEFAULTWINDOWXSIZE
 HALFPIX = 0.5 * PIX
 OLAP = 2
 MARGIN = OLAP * PIX
-OFFSET_2ND_IMAGE = 100 * PIX
+OFFSET_PIXELS = 100
+OFFSET_2ND_IMAGE = OFFSET_PIXELS * PIX
 
 TSTPT_X = XSTART + OFFSET_2ND_IMAGE + 10.5 * PIX
 TSTPT_Y = YSTART - OFFSET_2ND_IMAGE - 10.5 * PIX
@@ -47,13 +51,17 @@ TSTPT_Y = YSTART - OFFSET_2ND_IMAGE - 10.5 * PIX
 TSTPIX_1FILE_NOOVERLAP = [(110, 110)]
 TSTPIX_1FILE_OVERLAP2 = [(112, 112)]
 TSTPIX_2FILE_OVERLAP2 = [(12, 12)]
+NUMBLOCKSX = int(math.ceil(riostestutils.DEFAULT_COLS /  applier.DEFAULTWINDOWXSIZE))
+NUMBLOCKSY = int(math.ceil(riostestutils.DEFAULT_ROWS /  applier.DEFAULTWINDOWYSIZE))
 CENTRES_1FILE_NOOVERLAP = [(XSTART + j * STEP + HALFPIX, YSTART - i * STEP - HALFPIX) 
-    for i in range(3) for j in range(3)]
+    for i in range(NUMBLOCKSY) for j in range(NUMBLOCKSX)]
 CENTRES_1FILE_OVERLAP2 = [(XSTART + j * STEP + HALFPIX - MARGIN, YSTART - i * STEP - HALFPIX + MARGIN) 
-    for i in range(3) for j in range(3)]
+    for i in range(NUMBLOCKSY) for j in range(NUMBLOCKSX)]
+NUMBLOCKSX_WITHOFFSET = int(math.ceil((riostestutils.DEFAULT_COLS - 2 * OFFSET_PIXELS)/  applier.DEFAULTWINDOWXSIZE))
+NUMBLOCKSY_WITHOFFSET = int(math.ceil((riostestutils.DEFAULT_ROWS - 2 * OFFSET_PIXELS)/  applier.DEFAULTWINDOWYSIZE))
 CENTRES_2FILE_OVERLAP2 = [(XSTART + OFFSET_2ND_IMAGE+ j * STEP + HALFPIX - MARGIN, 
     YSTART - OFFSET_2ND_IMAGE- i * STEP - HALFPIX + MARGIN) 
-    for i in range(2) for j in range(2)]
+    for i in range(NUMBLOCKSY_WITHOFFSET) for j in range(NUMBLOCKSX_WITHOFFSET)]
 
 
 def run():
