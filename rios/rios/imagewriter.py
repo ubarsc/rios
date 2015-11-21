@@ -395,10 +395,13 @@ class ImageWriter(object):
             
             # If no tiff blocksizes were explictly requested, then set them the same as the 
             # RIOS block sizes
+            resettingTiffBlocksize = False
             if tiffBlockX is None:
                 tiffBlockX = riosBlockX
+                resettingTiffBlocksize = True
             if tiffBlockY is None:
                 tiffBlockY = riosBlockY
+                resettingTiffBlocksize = True
             
             # Require that tiff block sizes be a factor of the RIOS block size, so that whole
             # TIFF blocks are always written exactly once, with no re-writing. 
@@ -410,8 +413,12 @@ class ImageWriter(object):
 
             # The GDAL GTiff driver will complain if GTiff block sizes are not powers of 2
             def isPowerOf2(n): return (((n-1) & n) == 0)
-            if not (isPowerOf2(self.windowxsize) and isPowerOf2(self.windowysize)):
-                msg = "GTiff block sizes must be powers of 2. "
+            if not (isPowerOf2(tiffBlockX) and isPowerOf2(tiffBlockY)):
+                msg = "GTiff block sizes are {}. Must be powers of 2. ".format((tiffBlockX, tiffBlockY))
+                if resettingTiffBlocksize:
+                    msg += "GTiff block size(s) have been reset to match RIOS block sizes, so recommend adjusting RIOS block sizes. "
+                else:
+                    msg += "Recommend resetting explicit GTiff block sizes. "
                 raise rioserrors.ImageOpenError(msg)
 
             # Now append what we want the block size to be. 
