@@ -254,6 +254,10 @@ class ApplierControls(object):
         for the default driver, so if one sets the output driver, then 
         the creation options should be reviewed too. 
         
+        In more recent versions of RIOS, the addition of driver-specific
+        default creation options ($RIOS_DFLT_CREOPT_<driver>) allows for
+        multiple default creation optionsto be set up. 
+        
         """
         self.setOptionForImagename('drivername', imagename, drivername)
         
