@@ -35,21 +35,29 @@ def setDefaultDriver():
     what defaults we should use for GDAL driver. On any given
     output file these can be over-ridden, and can be over-ridden globally
     using the environment variables 
-    * $RIOS_DFLT_DRIVER
-    * $RIOS_DFLT_DRIVEROPTIONS
+        * $RIOS_DFLT_DRIVER
+        * $RIOS_DFLT_DRIVEROPTIONS
+        * $RIOS_DFLT_CREOPT_<drivername>
     
-    If RIOS_DFLT_DRIVER is set, then it should be a gdal short driver name
+    If RIOS_DFLT_DRIVER is set, then it should be a gdal short driver name. 
     If RIOS_DFLT_DRIVEROPTIONS is set, it should be a space-separated list
     of driver creation options, e.g. "COMPRESS=LZW TILED=YES", and should
     be appropriate for the selected GDAL driver. This can also be 'None'
     in which case an empty list of creation options is passed to the driver.
     
+    The same rules apply to the driver-specific creation options given
+    using $RIOS_DFLT_CREOPT_<driver>. These options are a later paradigm, and 
+    are intended to supercede the previous generic driver defaults. 
+    
     If not otherwise supplied, the default is to use the HFA driver, with compression. 
+    
+    The code here is more complex than desirable, because it copes with legacy behaviour
+    in the absence of the environment variables, and in the absence of the driver-specific
+    option variables. 
         
     """
     global DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS
     DEFAULTDRIVERNAME = os.getenv('RIOS_DFLT_DRIVER', default='HFA')
-    DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE','IGNOREUTM=TRUE']
     creationOptionsStr = os.getenv('RIOS_DFLT_DRIVEROPTIONS')
     if creationOptionsStr is not None:
         if creationOptionsStr == 'None':
@@ -59,6 +67,28 @@ def setDefaultDriver():
             DEFAULTCREATIONOPTIONS = []
         else:
             DEFAULTCREATIONOPTIONS = creationOptionsStr.split()
+    else:
+        # To cope with the old behaviour, set something sensible for HFA, but not
+        # otherwise
+        if DEFAULTDRIVERNAME == "HFA":
+            DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE','IGNOREUTM=TRUE']
+        else:
+            DEFAULTCREATIONOPTIONS = []
+    
+    # In the new paradigm, default creation options are specific to each driver, and
+    # are loaded into a dictionary
+    global dfltDriverOptions
+    dfltDriverOptions = {}
+    # Start with the old generic default options, applied to the default driver
+    dfltDriverOptions[DEFAULTDRIVERNAME] = DEFAULTCREATIONOPTIONS
+    # Now load any which are specified by environment variables, of the
+    # form RIOS_DFLT_CREOPT_<drivername>
+    driverOptVarPrefix = 'RIOS_DFLT_CREOPT_'
+    for varname in os.environ:
+        if varname.startswith(driverOptVarPrefix):
+            drvrName = varname[len(driverOptVarPrefix):]
+            optionsStr = os.getenv(varname)
+            dfltDriverOptions[drvrName] = optionsStr.split()
 
 setDefaultDriver()
     
@@ -110,7 +140,7 @@ class ImageWriter(object):
         writer.close(calcStats=True)
     
     """
-    def __init__(self, filename, drivername=DEFAULTDRIVERNAME, creationoptions=DEFAULTCREATIONOPTIONS,
+    def __init__(self, filename, drivername=DEFAULTDRIVERNAME, creationoptions=None,
                     nbands=None, gdaldatatype=None, firstblock=None, 
                     info=None, 
                     xsize=None, ysize=None, transform=None, projection=None,
@@ -178,7 +208,12 @@ class ImageWriter(object):
             (nbands,y,x) = firstblock.shape
             # and the datatype
             gdaldatatype = imageio.NumpyTypeToGDALType(firstblock.dtype)
-                        
+
+        if creationoptions is None:
+            if drivername in dfltDriverOptions:
+                creationoptions = dfltDriverOptions[drivername]
+            else:
+                creationoptions = []
                     
         # Create the output dataset
         driver = gdal.GetDriverByName(drivername)
@@ -319,3 +354,4 @@ class ImageWriter(object):
         self.ds.FlushCache()
         del self.ds
         self.ds = None
+

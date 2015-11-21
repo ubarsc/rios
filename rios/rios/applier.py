@@ -167,7 +167,7 @@ class ApplierControls(object):
         self.referenceImage = None
         self.referencePixgrid = None
         self.progress = cuiprogress.SilentProgress()
-        self.creationoptions = DEFAULTCREATIONOPTIONS
+        self.creationoptions = None
         self.statscache = None
         self.statsIgnore = 0
         self.calcStats = True
