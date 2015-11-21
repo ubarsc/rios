@@ -36,10 +36,9 @@ def run():
         
     stack = numpy.array(lyrList)
 
-
     # Sum of all pixels in bands 2 & 4
     layerList = [2, 4]
-    correctSum = sum([(stack[i-1].astype(numpy.float32)).sum() for i in layerList])
+    correctSum = sum([(stack[i-1].astype(numpy.float64)).sum() for i in layerList])
     
     # Now do it using RIOS
     infiles = applier.FilenameAssociations()
@@ -78,7 +77,7 @@ def doSum(info, inputs, outputs, otherargs):
         otherargs.numLayersIsOK = False
     
     # Now accumulate the total
-    otherargs.total += inputs.img.astype(numpy.float32).sum()
+    otherargs.total += inputs.img.astype(numpy.float64).sum()
 
 
 if __name__ == "__main__":
