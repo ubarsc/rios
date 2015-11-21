@@ -311,7 +311,9 @@ class ApplierControls(object):
         Each list element is a string of the form "NAME=VALUE". 
         
         Defaults are suitable for the default driver, and need to be changed
-        if that is changed. 
+        if that is changed. However, if an appropriate driver-specific default 
+        environment variable ($RIOS_DFLT_CREOPT_<drvier>) is given, this 
+        will be used. 
         
         """
         self.setOptionForImagename('creationoptions', imagename, creationoptions)
