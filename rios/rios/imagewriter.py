@@ -88,7 +88,11 @@ def setDefaultDriver():
         if varname.startswith(driverOptVarPrefix):
             drvrName = varname[len(driverOptVarPrefix):]
             optionsStr = os.getenv(varname)
-            dfltDriverOptions[drvrName] = optionsStr.split()
+            if optionsStr == 'None':
+                # Repeat that ridiculous hack for the KEA/LoadLeveler combination
+                dfltDriverOptions[drvrName] = []
+            else:
+                dfltDriverOptions[drvrName] = optionsStr.split()
 
 setDefaultDriver()
     
