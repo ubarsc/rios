@@ -5,12 +5,26 @@ Environment Variables
 RIOS honours the following environment variables which can be used to override default behaviour globally:
 
 +-------------------------------+---------------------------------------+----------------+-----------------------+
-|Environment Variable           | Description                           | Default        |  ApplierControls name |
+|Environment Variable           |Description                            | Default        |  ApplierControls name |
 +===============================+=======================================+================+=======================+
-|RIOS_DFLT_DRIVER               | The name of the default GDAL driver   | HFA            | drivername            |
+|RIOS_DFLT_DRIVER               |The name of the default GDAL driver    |HFA             | drivername            |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
-|RIOS_DFLT_DRIVEROPTIONS        | Creation Options to be passed to GDAL.| COMPRESSED=TRUE| creationoptions       |
-|                               | Can be 'None'.                        | IGNOREUTM=TRUE |                       |
+|RIOS_DFLT_DRIVEROPTIONS        |Creation Options to be passed to GDAL. |COMPRESSED=TRUE | creationoptions       |
+|                               |Can be 'None'.                         |IGNOREUTM=TRUE  |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_DFLT_CREOPT_<driver>      |Driver-specific creation options.      |From generic    |creationoptions should |
+|                               |These are new, and intended to         |variable        |be None to use these   |
+|                               |supercede the old generic default.     |                |                       |
+|                               |Can be specified for any driver,       |                |                       |
+|                               |but defaults are given as below        |                |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_DFLT_CREOPT_HFA           | Default creation options for HFA      |COMPRESS=YES    |                       |
+|                               |                                       |IGNOREUTM=TRUE  |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_DFLT_CREOPT_GTiff         | Default creation options for GTiff    |TILED=YES       |                       |
+|                               |                                       |INTERLEAVE=BAND |                       |
+|                               |                                       |COMPRESS=LZW    |                       |
+|                               |                                       |BIGTIFF=IF_SAFER|                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_FOOTPRINT            | 0 for intersection, 1 for union       | Intersection   | footprint             |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
