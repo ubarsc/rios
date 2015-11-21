@@ -289,6 +289,9 @@ class ApplierControls(object):
         then no resampling will be allowed. Only set one of referenceImage or
         referencePixgrid. 
         
+        Note that this is the external filename, not the internal name (which 
+        unfortunately is a bit inconsistent with everything else). 
+        
         """
         self.referenceImage = referenceImage
         
