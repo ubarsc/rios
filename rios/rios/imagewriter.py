@@ -214,6 +214,7 @@ class ImageWriter(object):
                 creationoptions = dfltDriverOptions[drivername]
             else:
                 creationoptions = []
+        creationoptions = self.doubleCheckCreationOptions(drivername, creationoptions)
                     
         # Create the output dataset
         driver = gdal.GetDriverByName(drivername)
@@ -355,3 +356,66 @@ class ImageWriter(object):
         del self.ds
         self.ds = None
 
+    def doubleCheckCreationOptions(self, drivername, creationoptions):
+        """
+        Try to ensure that the given creation options are not incompatible with RIOS
+        operations. Does not attempt to ensure they are totally valid, as that is GDAL's
+        job. 
+        
+        Returns a copy of creationoptions, possibly modified, or raises ImageOpenError
+        in cases where the problem is not fixable. 
+        
+        """
+        newCreationoptions = creationoptions
+        
+        if drivername == 'GTiff':
+            # The GDAL GTiff driver is incapable of reclaiming space within the file. This means that
+            # if a block is re-written, then the space already used is left dangling, and the total
+            # file size gets larger accordingly. If the RIOS block size is not a multiple of the 
+            # TIFF block size, then each RIOS block will require the re-writing of at least one
+            # TIFF block (usually several). This turns out to be a disaster for file sizes. So,
+            # here, we do our best to check these things, and prevent such a result. 
+            # The recommended configuration is that the $RIOS_DFLT_BLOCKXSIZE and 
+            # $RIOS_DFLT_BLOCKYSIZE be set to a power of 2, and everything else will follow. 
+            
+            tiffBlockX = None
+            tiffBlockY = None
+            riosBlockX = self.windowxsize
+            riosBlockY = self.windowysize
+            
+            # First copy the existing options, but keep aside any explicitly specified block size
+            newCreationoptions = []
+            for optStr in creationoptions:
+                if optStr[:11] == 'BLOCKXSIZE=':
+                    tiffBlockX = int(optStr[11:])
+                elif optStr[:11] == 'BLOCKXSIZE=':
+                    tiffBlockX = int(optStr[11:])
+                else:
+                    newCreationoptions.append(optStr)
+            
+            # If no tiff blocksizes were explictly requested, then set them the same as the 
+            # RIOS block sizes
+            if tiffBlockX is None:
+                tiffBlockX = riosBlockX
+            if tiffBlockY is None:
+                tiffBlockY = riosBlockY
+            
+            # Require that tiff block sizes be a factor of the RIOS block size, so that whole
+            # TIFF blocks are always written exactly once, with no re-writing. 
+            if (((riosBlockX % tiffBlockX) != 0) or ((riosBlockY % tiffBlockY) != 0)):
+                msg = "GTiff block sizes {} should be factors of RIOS block sizes {}, ".format(
+                    (tiffBlockX, tiffBlockY), (riosBlockX, riosBlockY))
+                msg += "otherwise vast amounts of space are wasted rewriting blocks which are not reclaimed. "
+                raise rioserrors.ImageOpenError(msg)
+
+            # The GDAL GTiff driver will complain if GTiff block sizes are not powers of 2
+            def isPowerOf2(n): return (((n-1) & n) == 0)
+            if not (isPowerOf2(self.windowxsize) and isPowerOf2(self.windowysize)):
+                msg = "GTiff block sizes must be powers of 2. "
+                raise rioserrors.ImageOpenError(msg)
+
+            # Now append what we want the block size to be. 
+            newCreationoptions.append('BLOCKXSIZE={}'.format(self.windowxsize))
+            newCreationoptions.append('BLOCKYSIZE={}'.format(self.windowysize))
+
+        return newCreationoptions
