@@ -222,6 +222,8 @@ class ImageWriter(object):
                     
         # Create the output dataset
         driver = gdal.GetDriverByName(drivername)
+        if os.path.exists(filename):
+            driver.Delete(str(filename))
         self.ds = driver.Create(str(filename), xsize, ysize, nbands, gdaldatatype, creationoptions)
         if self.ds is None:
             msg = 'Unable to create output file %s' % filename
