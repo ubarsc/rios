@@ -30,6 +30,11 @@ Environment Variables
     If you wish to use a default GDAL driver other than HFA, then set
     the environment variables, which are then given to GDAL
          RIOS_DFLT_DRIVER="short name of GDAL driver"
+         RIOS_DFLT_CREOPT_<driver>="list of driver options (space-separated)"
+    Variables of the form RIOS_DFLT_CREOPT_* can be used to set default creation
+    options for any number of drivers.
+    
+    The deprecated form below will be applied only to the default driver. 
          RIOS_DFLT_DRIVEROPTIONS="list of driver options (space-separated)"
     
     To change the default behaviour when determining the footprint across multiple 
