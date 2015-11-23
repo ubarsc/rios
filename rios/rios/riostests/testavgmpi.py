@@ -51,14 +51,14 @@ def run():
     riostestutils.genRampImageFile(ramp2, reverse=True)
     outfile = 'rampavg.img'
 
-    calcAverage(ramp1, ramp2, outfile)
-
-    ok = checkResult(outfile)
-    
-    # Clean up
-    for filename in [ramp1, ramp2, outfile]:
-        if os.path.exists(filename):
-            os.remove(filename)
+    try:
+        calcAverage(ramp1, ramp2, outfile)
+        ok = checkResult(outfile)
+    finally:
+        # Clean up, even when an exception raised
+        for filename in [ramp1, ramp2, outfile]:
+            if os.path.exists(filename):
+                os.remove(filename)
     
     return ok
 
