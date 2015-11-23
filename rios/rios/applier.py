@@ -319,7 +319,7 @@ class ApplierControls(object):
         
         Defaults are suitable for the default driver, and need to be changed
         if that is changed. However, if an appropriate driver-specific default 
-        environment variable ($RIOS_DFLT_CREOPT_<drvier>) is given, this 
+        environment variable ($RIOS_DFLT_CREOPT_<driver>) is given, this 
         will be used. 
         
         """
