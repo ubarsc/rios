@@ -223,7 +223,12 @@ class ImageWriter(object):
         # Create the output dataset
         driver = gdal.GetDriverByName(drivername)
         if os.path.exists(filename):
+            # sometimes there are errors printed if the 
+            # file is empty or otherwise corrupt.
+            # just ignore ay errors.
+            gdal.PushErrorHandler('CPLQuietErrorHandler')
             driver.Delete(str(filename))
+            gdal.PopErrorHandler()
         self.ds = driver.Create(str(filename), xsize, ysize, nbands, gdaldatatype, creationoptions)
         if self.ds is None:
             msg = 'Unable to create output file %s' % filename
