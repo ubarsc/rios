@@ -43,11 +43,11 @@ def run():
     """
     riostestutils.reportStart(TESTNAME)
     
-    ramp1 = 'ramp1.img'
-    ramp2 = 'ramp2.img'
+    ramp1 = 'ramp1multi.img'
+    ramp2 = 'ramp2multi.img'
     riostestutils.genRampImageFile(ramp1)
     riostestutils.genRampImageFile(ramp2, reverse=True)
-    outfile = 'rampavg.img'
+    outfile = 'rampavgmulti.img'
     
     calcAverage(ramp1, ramp2, outfile)
     
