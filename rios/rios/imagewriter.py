@@ -350,7 +350,7 @@ class ImageWriter(object):
     def close(self, calcStats=False, statsIgnore=None, progress=None, omitPyramids=False,
             overviewLevels=calcstats.DEFAULT_OVERVIEWLEVELS,
             overviewMinDim=calcstats.DEFAULT_MINOVERVIEWDIM, 
-            overviewAggType=calcstats.DEFAULT_OVERVIEWAGGREGRATIONTYPE):
+            overviewAggType=None):
         """
         Closes the open dataset
         """
