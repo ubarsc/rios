@@ -45,11 +45,11 @@ def run():
     """
     riostestutils.reportStart(TESTNAME)
     
-    ramp1 = 'ramp1.img'
-    ramp2 = 'ramp2.img'
+    ramp1 = 'ramp1mpi.img'
+    ramp2 = 'ramp2mpi.img'
     riostestutils.genRampImageFile(ramp1)
     riostestutils.genRampImageFile(ramp2, reverse=True)
-    outfile = 'rampavg.img'
+    outfile = 'rampavgmpi.img'
 
     try:
         calcAverage(ramp1, ramp2, outfile)
@@ -58,7 +58,10 @@ def run():
         # Clean up, even when an exception raised
         for filename in [ramp1, ramp2, outfile]:
             if os.path.exists(filename):
-                os.remove(filename)
+                try:
+                    os.remove(filename)
+                except:
+                    pass
     
     return ok
 
