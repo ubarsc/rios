@@ -668,7 +668,10 @@ def closeOutputImages(writerdict, outfiles, controls):
             singleWriter.close(calcStats=controls.getOptionForImagename('calcStats', name), 
                 statsIgnore=controls.getOptionForImagename('statsIgnore', name), 
                 progress=controls.progress,
-                omitPyramids=controls.getOptionForImagename('omitPyramids', name))
+                omitPyramids=controls.getOptionForImagename('omitPyramids', name),
+                overviewLevels=controls.getOptionForImagename('overviewLevels', name),
+                overviewMinDim=controls.getOptionForImagename('overviewMinDim', name), 
+                overviewAggType=controls.getOptionForImagename('overviewAggType', name))
 
 
 def updateProgress(controls, info, lastpercent):
