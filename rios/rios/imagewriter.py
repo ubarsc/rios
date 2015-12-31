@@ -18,6 +18,9 @@ Contains the ImageWriter class
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from __future__ import print_function, division
+
 import os
 import math
 
@@ -219,16 +222,11 @@ class ImageWriter(object):
             else:
                 creationoptions = []
         creationoptions = self.doubleCheckCreationOptions(drivername, creationoptions)
+        
+        self.deleteIfExisting(filename)
                     
         # Create the output dataset
         driver = gdal.GetDriverByName(drivername)
-        if os.path.exists(filename):
-            # sometimes there are errors printed if the 
-            # file is empty or otherwise corrupt.
-            # just ignore ay errors.
-            gdal.PushErrorHandler('CPLQuietErrorHandler')
-            driver.Delete(str(filename))
-            gdal.PopErrorHandler()
         self.ds = driver.Create(str(filename), xsize, ysize, nbands, gdaldatatype, creationoptions)
         if self.ds is None:
             msg = 'Unable to create output file %s' % filename
@@ -244,6 +242,41 @@ class ImageWriter(object):
         if firstblock is not None:
             self.write(firstblock)
             
+    @staticmethod
+    def deleteIfExisting(filename):
+        """
+        Delete the filename if it already exists.
+        If possible, use the appropriate GDAL driver to do so, to ensure
+        that any associated files will also be deleted. 
+
+        """
+        if os.path.exists(filename):
+            # Save the current exception-use state
+            usingExceptions = gdal.GetUseExceptions()
+            if not usingExceptions:
+                gdal.UseExceptions()
+
+            # Try opening it for read, to find out whether it is 
+            # a valid GDAL file, and which driver it goes with
+            try:
+                ds = gdal.Open(str(filename))
+            except RuntimeError:
+                ds = None
+
+            if ds is not None:
+                # It is apparently a valid GDAL file, so get the driver appropriate for it.
+                drvr = ds.GetDriver()
+                del ds
+                # Use this driver to delete the file
+                drvr.Delete(filename)
+            else:
+                # Apparently not a valid GDAL file, for whatever reason, so just remove the file
+                # directly. 
+                os.remove(filename)
+
+            # Restore exception-use state
+            if not usingExceptions:
+                gdal.DontUseExceptions()
             
     def getGDALDataset(self):
         """
