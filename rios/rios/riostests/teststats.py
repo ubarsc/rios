@@ -20,7 +20,7 @@ import os
 
 import numpy
 from osgeo import gdal
-import scipy.stats
+
 from rios import calcstats, cuiprogress
 
 from . import riostestutils
@@ -144,7 +144,7 @@ def getStatsFromArray(arr, nullVal):
     minval = nonNullArr.min()
     maxval = nonNullArr.max()
     median = numpy.median(nonNullArr)
-    mode = scipy.stats.mode(nonNullArr, axis=None)[0][0]
+    mode = calcMode(nonNullArr, axis=None)[0][0]
     return Stats(mean, stddev, minval, maxval, median, mode)
 
 
@@ -156,6 +156,43 @@ def equalTol(a, b, tol):
     """
     diff = abs(a - b)
     return (diff < tol)
+
+
+def calcMode(a, axis=0):
+    """
+    Copied directly from scipy.stats.mode(), so as not to have a dependency on scipy. 
+    """
+    def _chk_asarray(a, axis):
+        "Also copied from scipy.stats, and inserted into this function. "
+        if axis is None:
+            a = numpy.ravel(a)
+            outaxis = 0
+        else:
+            a = numpy.asarray(a)
+            outaxis = axis
+
+        if a.ndim == 0:
+            a = numpy.atleast_1d(a)
+
+        return a, outaxis
+        
+    a, axis = _chk_asarray(a, axis)
+    if a.size == 0:
+        return numpy.array([]), numpy.array([])
+
+    scores = numpy.unique(numpy.ravel(a))       # get ALL unique values
+    testshape = list(a.shape)
+    testshape[axis] = 1
+    oldmostfreq = numpy.zeros(testshape, dtype=a.dtype)
+    oldcounts = numpy.zeros(testshape, dtype=int)
+    for score in scores:
+        template = (a == score)
+        counts = numpy.expand_dims(numpy.sum(template, axis), axis)
+        mostfrequent = numpy.where(counts > oldcounts, score, oldmostfreq)
+        oldcounts = numpy.maximum(counts, oldcounts)
+        oldmostfreq = mostfrequent
+
+    return (mostfrequent, oldcounts)
 
 
 class Stats(object):
