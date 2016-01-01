@@ -20,7 +20,7 @@ import rios # for version info
 # Set up 'mock' modules, needed to build docs if numpy, gdal etc., aren't installed
 import mock
 
-MOCK_MODULES = ['numpy','scipy','osgeo','gdal','osgeo.gdal','cloud',
+MOCK_MODULES = ['numpy','osgeo','gdal','osgeo.gdal','cloud',
                 'cloud.serialization']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
