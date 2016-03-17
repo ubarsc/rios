@@ -224,12 +224,19 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
     if hasattr(gdal.RasterAttributeTable, "WriteArray"):
         # new behaviour
         attrTbl = gdalBand.GetDefaultRAT()
-        isFileRAT = True
-
-        # but if it doesn't support dynamic writing
-        # we still ahve to call SetDefaultRAT
-        if not attrTbl.ChangesAreWrittenToFile():
+        if attrTbl is None:
+            # some formats eg ENVI return None
+            # here so we need to be able to cope
+            attrTbl = gdal.RasterAttributeTable()
             isFileRAT = False
+        else:
+
+            isFileRAT = True
+
+            # but if it doesn't support dynamic writing
+            # we still ahve to call SetDefaultRAT
+            if not attrTbl.ChangesAreWrittenToFile():
+                isFileRAT = False
 
     else:
         # old behaviour
