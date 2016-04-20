@@ -139,6 +139,31 @@ how many files are to be averaged. This could be written as follows::
     outfiles.avg = sys.argv[-1]
     applier.apply(doAverage, infiles, outfiles)
 
+Filters and Overlap
+-------------------
+
+Because RIOS operates on a per block basis, care must be taken to 
+set the overlap correctly when working with filters::
+
+    from rios import applier
+    from scipy.ndimage import uniform_filter
+
+    controls = applier.ApplierControls()
+    # for a 3x3 the overlap is 1, 5x5 overlap is 2 etc
+    controls.setOverlap(1)
+
+    def doFilter(info, inputs, outputs):
+        # does a 3x3 uniform filter. Select just one input band at a time
+        # or you will get an unexpected result
+        filtered = uniform_filter(inputs.indata[0], size=3)
+        # create 3d image from 2d array
+        outputs.result = numpy.expand_dims(filtered, axis=0) 
+
+    applier.apply(doFilter, infiles, outfiles, controls=controls)
+
+Many other `Scipy Filters <http://docs.scipy.org/doc/scipy/reference/ndimage.html>`_ are also available
+and can be used in a similar way.
+
 Vector Inputs
 -------------
 
