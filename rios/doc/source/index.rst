@@ -48,7 +48,14 @@ See :doc:`applierexamples` for more information.
 
 Downloads
 ---------
-From `Sourceforge <http://sourceforge.net/projects/rios/>`_ or `BitBucket <https://bitbucket.org/chchrsc/rios/downloads>`_.
+From `BitBucket <https://bitbucket.org/chchrsc/rios/downloads>`_.
+
+`Conda <http://conda.pydata.org/miniconda.html#miniconda>`_ packages are available under the 'conda-forge' channel.
+Once you have installed `Conda <http://conda.pydata.org/miniconda.html#miniconda>`_, run the following commands on the command line to install rios: ::
+
+    conda config --add channels conda-forge 
+    conda create -n myenv rios
+    source activate myenv # omit 'source' on Windows
 
 High level functions
 ---------------------
