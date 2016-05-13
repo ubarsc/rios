@@ -432,8 +432,8 @@ class ImageWriter(object):
             for optStr in creationoptions:
                 if optStr[:11] == 'BLOCKXSIZE=':
                     tiffBlockX = int(optStr[11:])
-                elif optStr[:11] == 'BLOCKXSIZE=':
-                    tiffBlockX = int(optStr[11:])
+                elif optStr[:11] == 'BLOCKYSIZE=':
+                    tiffBlockY = int(optStr[11:])
                 else:
                     newCreationoptions.append(optStr)
             
