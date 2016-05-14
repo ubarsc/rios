@@ -48,7 +48,7 @@ So, to control the datatype of the output file, use the numpy astype() function 
 Passing Other Data Example
 --------------------------
 
-A mechanism is proved for passing other data to and from the user function, apart from the raster data itself. 
+A mechanism is provided for passing other data to and from the user function, apart from the raster data itself. 
 This is obviously useful for passing parameters into the processing. It can also be used to pass information out again, 
 and to preserve data between calls to the function, since the otherargs object is preserved between blocks.
 
