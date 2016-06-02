@@ -194,7 +194,7 @@ class Vector(object):
         # This is naughty, but otherwise ogr2ogr won't work
         os.remove(tmpVectorfile)
         cmdList = ["ogr2ogr", '-f', "ESRI Shapefile", '-t_srs', projWKT,
-            tmpVectorfile, self.filename]
+            tmpVectorfile, self.filename, self.layer.GetName()]
         proc = subprocess.Popen(cmdList, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             universal_newlines=True)
         (stdoutStr, stderrStr) = proc.communicate()
