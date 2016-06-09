@@ -85,6 +85,8 @@ def setDefaultDriver():
     dfltDriverOptions = {}
     # Start with the old generic default options, applied to the default driver
     dfltDriverOptions[DEFAULTDRIVERNAME] = DEFAULTCREATIONOPTIONS
+    # Load some others which we wish to have as defaults, even if not set by the environment
+    dfltDriverOptions['GTiff'] = ['TILED=YES', 'COMPRESS=LZW', 'INTERLEAVE=BAND', 'BIGTIFF=IF_SAFER']
     # Now load any which are specified by environment variables, of the
     # form RIOS_DFLT_CREOPT_<drivername>
     driverOptVarPrefix = 'RIOS_DFLT_CREOPT_'
