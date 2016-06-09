@@ -62,5 +62,5 @@ RIOS honours the following environment variables which can be used to override d
 |RIOS_DFLT_AUTOCOLORTABLETYPE   | Enforces automatic color tables       | No automatic   | autoColorTableType    |
 |                               | on thematic output rasters. Value is  | color table    |                       |
 |                               | a string passed as autoColorTableType | generated      |                       |
-|                               | :func:`rios.rat.genColorTable()`      |                |                       |
+|                               | to :func:`rios.rat.genColorTable()`   |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
