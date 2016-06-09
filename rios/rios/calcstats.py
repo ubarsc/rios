@@ -296,40 +296,6 @@ def addStatistics(ds,progress,ignore=None):
         # set the data
         band.SetMetadata(tmpmeta)
 
-        # if it is thematic and there is no colour table
-        # add one because Imagine fails in weird ways otherwise
-        # we make a random colour table to make it obvious
-        if "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic':
-            # old way
-            if (not haveRFC40 or ratObj is None) and band.GetColorTable() is None:
-                import random # this also seeds on the time
-                colorTable = gdal.ColorTable()
-                alpha = 255 
-                for i in range(histnbins):
-                    c1 = int(random.random() * 255)
-                    c2 = int(random.random() * 255)
-                    c3 = int(random.random() * 255)
-                    entry = (c1, c2, c3, alpha)
-                    colorTable.SetColorEntry(i, entry)
-                band.SetColorTable(colorTable)
-            elif haveRFC40 and ratObj is not None:
-                # check all the columns
-                redIdx, redNew = findOrCreateColumn(ratObj, gdal.GFU_Red, "Red", gdal.GFT_Integer)
-                greenIdx, greenNew = findOrCreateColumn(ratObj, gdal.GFU_Green, "Green", gdal.GFT_Integer)
-                blueIdx, blueNew = findOrCreateColumn(ratObj, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
-                alphaIdx, alphaNew = findOrCreateColumn(ratObj, gdal.GFU_Alpha, "Alpha", gdal.GFT_Integer)
-                # were any of these not already existing?
-                if redNew or greenNew or blueNew or alphaNew:
-                    data = numpy.random.randint(0, 256, histnbins)
-                    ratObj.WriteArray(data, redIdx)
-                    data = numpy.random.randint(0, 256, histnbins)
-                    ratObj.WriteArray(data, greenIdx)
-                    data = numpy.random.randint(0, 256, histnbins)
-                    ratObj.WriteArray(data, blueIdx)
-                    data = numpy.empty(histnbins, dtype=numpy.int)
-                    data.fill(255)
-                    ratObj.WriteArray(data, alphaIdx)
-
         if haveRFC40 and ratObj is not None and not ratObj.ChangesAreWrittenToFile():
             # For drivers that require the in memory thing
             band.SetDefaultRAT(ratObj)
