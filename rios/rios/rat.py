@@ -504,7 +504,7 @@ def genColorTable(numEntries, colortype):
     elif colortype == "random":
         clrTbl = genColorTable_random(numEntries)
     else:
-        raise ColorTableGenerationError("Unknown colortype '{}'".format(colortype))
+        raise rioserrors.ColorTableGenerationError("Unknown colortype '{}'".format(colortype))
     return clrTbl
 
 
