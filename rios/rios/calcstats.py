@@ -109,7 +109,7 @@ def addPyramid(ds, progress,
     # make sure it goes to 100%
     progress.setProgress(100)
 
-def findOrCreateColumn(rat, usage, name, dtype):
+def findOrCreateColumn(ratObj, usage, name, dtype):
     """
     Returns the index of an existing column matched
     on usage. Creates it if not already existing using 
@@ -117,13 +117,13 @@ def findOrCreateColumn(rat, usage, name, dtype):
     Returns a tupe with index and a boolean specifying if 
     it is a new column or not
     """
-    ncols = rat.GetColumnCount()
+    ncols = ratObj.GetColumnCount()
     for col in range(ncols):
-        if rat.GetUsageOfCol(col) == usage:
+        if ratObj.GetUsageOfCol(col) == usage:
             return col, False
 
     # got here so can't exist
-    rat.CreateColumn(name, dtype, usage)
+    ratObj.CreateColumn(name, dtype, usage)
     # new one will be last col
     return ncols, True
 
