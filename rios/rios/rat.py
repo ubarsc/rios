@@ -27,6 +27,7 @@ interface where possible.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
+import os
 from osgeo import gdal
 import numpy
 from . import rioserrors
@@ -42,6 +43,9 @@ if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
     # we just use basestring
     basestring = str
+    
+# For supporting the automatic color table generation thing which Sam loves. 
+DEFAULT_AUTOCOLORTABLETYPE = os.getenv('RIOS_DFLT_AUTOCOLORTABLETYPE', default=None)
 
 def isColorColFromUsage(usage):
     "Tells if usage is one of the color column types"
@@ -440,15 +444,13 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     (numRows, numCols) = arrayShape
     # Handle the backwards-compatible case of a 4-column array
     if numCols == 4:
-        numCols = 5
-        arrayShape = (numRows, numCols)
-        colorTbl5cols = numpy.zeros(arrayShape, dtype=numpy.uint8)
-        colorTbl5cols[:, 0] = numpy.arange(numRows)
-        colorTbl5cols[:, 1:] = colorTblArray
-        colorTblArray = colorTbl5cols
-        
-    if numCols != 5:
-        raise rioserrors.ArrayShapeError("Color table array has %d columns, expecting 5"%numCols)
+        pixVals = numpy.arange(numRows)
+        colorTbl4cols = colorTblArray
+    elif numCols == 5:
+        pixVals = colorTblArray[:, 0]
+        colorTbl4cols = colorTblArray[:, 1:]
+    else:
+        raise rioserrors.ArrayShapeError("Color table array has %d columns, expecting 4 or 5"%numCols)
     
     # Open the image file and get the band object
     if isinstance(imgfile, gdal.Dataset):
@@ -459,7 +461,7 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     bandobj = ds.GetRasterBand(layernum)
     
     clrTbl = gdal.ColorTable()
-    maxPixVal = colorTblArray[:, 0].max()
+    maxPixVal = pixVals.max()
     i = 0
     # This loop sets an entry for every pixel value up to the largest given. Imagine
     # bitches if we don't do this. 
@@ -470,12 +472,12 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
         tblMaxVal = 255
         
     for pixVal in range(tblMaxVal+1):
-        while  i < numRows and colorTblArray[i, 0] < pixVal:
+        while  i < numRows and pixVals[i] < pixVal:
             i += 1
         if i < numRows:
-            tblPixVal = colorTblArray[i, 0]
+            tblPixVal = pixVals[i]
             if tblPixVal == pixVal:
-                colEntry = tuple(colorTblArray[i, 1:])
+                colEntry = tuple(colorTbl4cols[i])
             else:
                 colEntry = (0, 0, 0, 0)
         else:
