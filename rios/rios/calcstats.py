@@ -241,9 +241,9 @@ def addStatistics(ds,progress,ignore=None):
         # as some overflows will not result in negative counts. 
         histogramOverflow = (min(hist) < 0)
         
-        # we may use this rat reference for the colours below also
+        # we may use this ratObj reference for the colours below also
         # may be None if format does not support RATs
-        rat = band.GetDefaultRAT()
+        ratObj = band.GetDefaultRAT()
 
         if not histogramOverflow:
             # comes back as a list for some reason
@@ -267,12 +267,12 @@ def addStatistics(ds,progress,ignore=None):
             tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
             tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
 
-            if haveRFC40 and rat is not None:
-                histIndx, histNew = findOrCreateColumn(rat, gdal.GFU_PixelCount, 
+            if haveRFC40 and ratObj is not None:
+                histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount, 
                                         "Histogram", gdal.GFT_Real)
                 # write the hist in a single go
-                rat.SetRowCount(histnbins)
-                rat.WriteArray(hist, histIndx)
+                ratObj.SetRowCount(histnbins)
+                ratObj.WriteArray(hist, histIndx)
 
                 # The HFA driver still honours the STATISTICS_HISTOBINVALUES
                 # metadata item. If we are recalculating the histogram the old
@@ -301,7 +301,7 @@ def addStatistics(ds,progress,ignore=None):
         # we make a random colour table to make it obvious
         if "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic':
             # old way
-            if (not haveRFC40 or rat is None) and band.GetColorTable() is None:
+            if (not haveRFC40 or ratObj is None) and band.GetColorTable() is None:
                 import random # this also seeds on the time
                 colorTable = gdal.ColorTable()
                 alpha = 255 
@@ -312,27 +312,27 @@ def addStatistics(ds,progress,ignore=None):
                     entry = (c1, c2, c3, alpha)
                     colorTable.SetColorEntry(i, entry)
                 band.SetColorTable(colorTable)
-            elif haveRFC40 and rat is not None:
+            elif haveRFC40 and ratObj is not None:
                 # check all the columns
-                redIdx, redNew = findOrCreateColumn(rat, gdal.GFU_Red, "Red", gdal.GFT_Integer)
-                greenIdx, greenNew = findOrCreateColumn(rat, gdal.GFU_Green, "Green", gdal.GFT_Integer)
-                blueIdx, blueNew = findOrCreateColumn(rat, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
-                alphaIdx, alphaNew = findOrCreateColumn(rat, gdal.GFU_Alpha, "Alpha", gdal.GFT_Integer)
+                redIdx, redNew = findOrCreateColumn(ratObj, gdal.GFU_Red, "Red", gdal.GFT_Integer)
+                greenIdx, greenNew = findOrCreateColumn(ratObj, gdal.GFU_Green, "Green", gdal.GFT_Integer)
+                blueIdx, blueNew = findOrCreateColumn(ratObj, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
+                alphaIdx, alphaNew = findOrCreateColumn(ratObj, gdal.GFU_Alpha, "Alpha", gdal.GFT_Integer)
                 # were any of these not already existing?
                 if redNew or greenNew or blueNew or alphaNew:
                     data = numpy.random.randint(0, 256, histnbins)
-                    rat.WriteArray(data, redIdx)
+                    ratObj.WriteArray(data, redIdx)
                     data = numpy.random.randint(0, 256, histnbins)
-                    rat.WriteArray(data, greenIdx)
+                    ratObj.WriteArray(data, greenIdx)
                     data = numpy.random.randint(0, 256, histnbins)
-                    rat.WriteArray(data, blueIdx)
+                    ratObj.WriteArray(data, blueIdx)
                     data = numpy.empty(histnbins, dtype=numpy.int)
                     data.fill(255)
-                    rat.WriteArray(data, alphaIdx)
+                    ratObj.WriteArray(data, alphaIdx)
 
-        if haveRFC40 and rat is not None and not rat.ChangesAreWrittenToFile():
+        if haveRFC40 and ratObj is not None and not ratObj.ChangesAreWrittenToFile():
             # For drivers that require the in memory thing
-            band.SetDefaultRAT(rat)
+            band.SetDefaultRAT(ratObj)
 
         percent = percent + percentstep
         progress.setProgress(percent)
