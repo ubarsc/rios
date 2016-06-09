@@ -484,3 +484,90 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     
     bandobj.SetRasterColorTable(clrTbl)
 
+
+def genColorTable(numEntries, colortype):
+    """
+    Generate a colour table array. The type of colour table generated
+    is controled by colortype. Possible values are:
+    
+        * rainbow
+        * gray
+        * random
+    
+    See corresponding genColorTable_<colortype> function for details of each. 
+    
+    """
+    if colortype == "rainbow":
+        clrTbl = genColorTable_rainbow(numEntries)
+    elif colortype == "gray":
+        clrTbl = genColorTable_gray(numEntries)
+    elif colortype == "random":
+        clrTbl = genColorTable_random(numEntries)
+    else:
+        raise ColorTableGenerationError("Unknown colortype '{}'".format(colortype))
+    return clrTbl
+
+
+def genColorTable_random(numEntries):
+    """
+    Generate a color table array with the given number of entries by assigning 
+    random red/green/blue values. No attempt is made to always generate
+    unique colours, i.e. it is randomly possibly for different entries to
+    have the same colour. 
+
+    Returns the array as a 4 column array, suitable for use with the 
+    :func:`rios.rat.setColorTable` function. 
+    
+    """
+    colorTable = numpy.zeros((numEntries, 4), dtype=numpy.uint8)
+    # RGB entries, random numbers. 
+    colorTable[:, :3] = numpy.random.random_integers(0, 255, size=(numEntries, 3))
+    # Opacity
+    colorTable[:, 3] = 255
+    
+    return colorTable
+
+
+def genColorTable_rainbow(numEntries):
+    """
+    Generate a color table array with the given number of entries, with colors notionally
+    describing a rainbow (i.e. red-orange-yellow-green-blue-indigo-violet). Probably
+    not what a painter would call a rainbow, but it will do. 
+    
+    Returns the array as a 4 column array, suitable for use with the 
+    :func:`rios.rat.setColorTable` function. 
+
+    """
+    colorTable = numpy.zeros((numEntries, 4), dtype=numpy.uint32)
+    # RGB entries. Start at red, blend through to green, then through to blue, in linear steps
+    midNdx = numEntries // 2
+    # Red to green
+    colorTable[0:midNdx, 0] = numpy.mgrid[255:0:midNdx*1j].astype(numpy.uint8)
+    colorTable[0:midNdx, 1] = numpy.mgrid[0:255:midNdx*1j].astype(numpy.uint8)
+    # Green to blue
+    colorTable[midNdx:, 1] = numpy.mgrid[255:0:(numEntries-midNdx)*1j].astype(numpy.uint8)
+    colorTable[midNdx:, 2] = numpy.mgrid[0:255:(numEntries-midNdx)*1j].astype(numpy.uint8)
+    # Opacity
+    colorTable[:, 3] = 255
+    
+    return colorTable
+
+
+def genColorTable_gray(numEntries):
+    """
+    Generate a color table array with the given number of entries, with all 
+    colors being shades of grey. First entry is black, last entry is white. 
+    
+    Returns the array as a 4 column array, suitable for use with the 
+    :func:`rios.rat.setColorTable` function. 
+
+    """
+    colorTable = numpy.zeros((numEntries, 4), dtype=numpy.uint8)
+    # RGB entries. Start at black, blend through to white, in linear steps
+    colorTable[:, 0] = numpy.mgrid[0:255:numEntries*1j].astype(numpy.uint8)
+    colorTable[:, 1] = colorTable[:, 0]
+    colorTable[:, 2] = colorTable[:, 0]
+    # Opacity
+    colorTable[:, 3] = 255
+    
+    return colorTable
