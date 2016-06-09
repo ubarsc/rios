@@ -490,11 +490,11 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
 def genColorTable(numEntries, colortype):
     """
     Generate a colour table array. The type of colour table generated
-    is controled by colortype. Possible values are:
+    is controlled by the colortype string. Possible values are:
     
-        * rainbow
-        * gray
-        * random
+        * "rainbow"
+        * "gray"
+        * "random"
     
     See corresponding genColorTable_<colortype> function for details of each. 
     
