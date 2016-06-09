@@ -95,3 +95,7 @@ class IntersectionError(RiosError):
 
 class JobMgrError(RiosError):
     "Errors from Jobmanager class"
+
+class ColorTableGenerationError(RiosError):
+    "Error generating a color table"
+
