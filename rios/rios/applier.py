@@ -35,6 +35,7 @@ from . import rioserrors
 from . import vectorreader
 from . import cuiprogress
 from . import calcstats
+from . import rat
 from .parallel import jobmanager
 
 # All default values, etc., copied in from their appropriate rios modules. 
@@ -60,6 +61,9 @@ DEFAULT_MINOVERVIEWDIM = calcstats.DEFAULT_MINOVERVIEWDIM
 "Default minimum dimension of highest overview level calculated"
 DEFAULT_OVERVIEWAGGREGRATIONTYPE = calcstats.DEFAULT_OVERVIEWAGGREGRATIONTYPE
 "Default agregation type when using formats without LAYER_TYPE"
+
+# For supporting that automatic color table thing which Sam loves
+DEFAULT_AUTOCOLORTABLETYPE = rat.DEFAULT_AUTOCOLORTABLETYPE
 
 
 if sys.version_info[0] > 2:
@@ -136,6 +140,7 @@ class ApplierControls(object):
         * **resampleMethod**  String for resample method, when required (as per GDAL)
         * **numThreads**      Number of parallel threads used for processing each image block
         * **jobManagerType**  Which :class:`rios.parallel.jobmanager.JobManager` sub-class to use for parallel processing (by name)
+        * **autoColorTableType** Type of color table to be automatically added to thematic output rasters
     
     Options relating to vector input files
         * **burnvalue**       Value to burn into raster from vector
@@ -181,6 +186,7 @@ class ApplierControls(object):
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
         self.numThreads = 1
         self.jobManagerType = os.getenv('RIOS_DFLT_JOBMGRTYPE', default=None)
+        self.autoColorTableType = DEFAULT_AUTOCOLORTABLETYPE
 
         # Vector fields
         self.burnvalue = 1
@@ -519,6 +525,29 @@ class ApplierControls(object):
         
         """
         self.jobManagerType = jobMgrType
+    
+    def setAutoColorTableType(self, autoColorTableType, imagename=None):
+        """
+        If this option is set, then thematic raster outputs will have a
+        color table automatically generated and attached to them. The type is
+        passed to :func:`rios.rat.genColorTable` to determine what type of automatic
+        color table is generated. 
+        
+        The default type will be taken from $RIOS_DFLT_AUTOCOLORTABLETYPE if it
+        is set. If that is not set, then the default is not to automatically attached
+        any color table to thematic output rasters.
+        
+        In practise, it is probably simpler to explicitly set the color table using 
+        the :func:`rios.rat.setColorTable` function, after creating the file, but this
+        is an alternative. 
+        
+        Note that the imagename parameter can be given, in which case the autoColorTableType 
+        will only be applied to that raster. 
+        
+        None of this has any impact on athematic outputs. 
+        
+        """
+        self.setOptionForImagename('autoColorTableType', imagename, autoColorTableType)
 
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
@@ -671,7 +700,8 @@ def closeOutputImages(writerdict, outfiles, controls):
                 omitPyramids=controls.getOptionForImagename('omitPyramids', name),
                 overviewLevels=controls.getOptionForImagename('overviewLevels', name),
                 overviewMinDim=controls.getOptionForImagename('overviewMinDim', name), 
-                overviewAggType=controls.getOptionForImagename('overviewAggType', name))
+                overviewAggType=controls.getOptionForImagename('overviewAggType', name),
+                autoColorTableType=controls.getOptionForImagename('autoColorTableType', name))
 
 
 def updateProgress(controls, info, lastpercent):
