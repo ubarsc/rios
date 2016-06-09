@@ -36,8 +36,8 @@ if sys.version_info[0] > 2:
 
 DEFAULTFOOTPRINT = int(os.getenv('RIOS_DFLT_FOOTPRINT', 
                             default=imageio.INTERSECTION))
-DEFAULTWINDOWXSIZE = int(os.getenv('RIOS_DFLT_BLOCKXSIZE', default=200))
-DEFAULTWINDOWYSIZE = int(os.getenv('RIOS_DFLT_BLOCKYSIZE', default=200))
+DEFAULTWINDOWXSIZE = int(os.getenv('RIOS_DFLT_BLOCKXSIZE', default=256))
+DEFAULTWINDOWYSIZE = int(os.getenv('RIOS_DFLT_BLOCKYSIZE', default=256))
 DEFAULTOVERLAP = int(os.getenv('RIOS_DFLT_OVERLAP', default=0))
 DEFAULTLOGGINGSTREAM = sys.stdout
 
