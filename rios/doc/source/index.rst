@@ -48,7 +48,8 @@ See :doc:`applierexamples` for more information.
 
 Downloads
 ---------
-From `BitBucket <https://bitbucket.org/chchrsc/rios/downloads>`_.
+From `BitBucket <https://bitbucket.org/chchrsc/rios/downloads>`_. 
+Release notes by version can be viewed `here <https://bitbucket.org/chchrsc/rios/wiki/ReleaseNotes>`_.
 
 `Conda <http://conda.pydata.org/miniconda.html#miniconda>`_ packages are available under the 'conda-forge' channel.
 Once you have installed `Conda <http://conda.pydata.org/miniconda.html#miniconda>`_, run the following commands on the command line to install rios: ::
