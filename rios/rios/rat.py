@@ -321,8 +321,18 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
                 attrTbl.SetValueAsString(rowNum, colNum, val)
 
     if not isFileRAT:
-        # assume existing bands re-written    
-        gdalBand.SetDefaultRAT(attrTbl)
+        # assume existing bands re-written
+        # Use GDAL's exceptions to trap the error message which arises when 
+        # writing to a format which does not support it
+        usingExceptions = gdal.GetUseExceptions()
+        gdal.UseExceptions()
+        try:
+            gdalBand.SetDefaultRAT(attrTbl)
+        except Exception:
+            pass
+        if not usingExceptions:
+            gdal.DontUseExceptions()
+
 
 def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1, 
         colUsage=gdal.GFU_Generic):
