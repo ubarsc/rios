@@ -127,7 +127,10 @@ def testReduceRat(imgfile, imgfile3):
     outfiles = applier.FilenameAssociations()
     infiles.inimg = imgfile
     outfiles.outimg = imgfile3
-    applier.apply(rasterReduceFunc, infiles, outfiles)
+    # Make sure we use a format which actually supports RAT's
+    controls = applier.ApplierControls()
+    controls.setOutputDriverName('HFA')
+    applier.apply(rasterReduceFunc, infiles, outfiles, controls=controls)
     
     # Now use ratapplier to reduce the RAT
     inRats = ratapplier.RatAssociations()
