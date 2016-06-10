@@ -46,7 +46,9 @@ DEFAULTWINDOWYSIZE = imagereader.DEFAULTWINDOWYSIZE
 DEFAULTOVERLAP = imagereader.DEFAULTOVERLAP
 DEFAULTLOGGINGSTREAM = imagereader.DEFAULTLOGGINGSTREAM
 DEFAULTDRIVERNAME = imagewriter.DEFAULTDRIVERNAME
+# Use of DEFAULTCREATIONOPTIONS is now deprecated, in favour of dfltDriverOptions[driver]
 DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
+dfltDriverOptions = imagewriter.dfltDriverOptions
 INTERSECTION = imageio.INTERSECTION
 "Use the spatial intersection of inputs"
 UNION = imageio.UNION
