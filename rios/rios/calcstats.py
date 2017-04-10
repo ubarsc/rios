@@ -263,16 +263,20 @@ def addStatistics(ds,progress,ignore=None):
             else:
                 tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
 
-            tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
-            tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
-            tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
-
             if haveRFC40 and ratObj is not None:
                 histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount, 
                                         "Histogram", gdal.GFT_Real)
                 # write the hist in a single go
                 ratObj.SetRowCount(histnbins)
                 ratObj.WriteArray(hist, histIndx)
+
+                # TODO: some test that the SetLinearBinning function has been fixed
+                if True:
+                    ratObj.SetLinearBinning(histmin, (histCalcMax - histCalcMin) / histnbins)
+                else:
+                    tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
+                    tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
+                    tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
 
                 # The HFA driver still honours the STATISTICS_HISTOBINVALUES
                 # metadata item. If we are recalculating the histogram the old
@@ -282,6 +286,11 @@ def addStatistics(ds,progress,ignore=None):
             else:
                 # old method
                 tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr,hist)) + '|'
+
+                tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
+                tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
+                tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
+
 
             # estimate the median - bin with the middle number
             middlenum = hist.sum() / 2
