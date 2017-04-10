@@ -147,6 +147,12 @@ def addStatistics(ds,progress,ignore=None):
     progress.setProgress(0)
     percent = 0
     percentstep = 100.0 / (ds.RasterCount * 2) # 2 steps for each layer
+
+    # flush the cache. The ensures that any unwritten data is 
+    # written to file so we get the right stats. It also 
+    # makes sure any metdata is written on HFA. This means
+    # the LAYER_TYPE setting will be picked up by rat.SetLinearBinning()
+    ds.FlushCache()
   
     for bandnum in range(ds.RasterCount):
         band = ds.GetRasterBand(bandnum + 1)
