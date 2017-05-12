@@ -23,6 +23,7 @@ with any other format that supports pyramid layers and statistics
 import os
 import numpy
 from osgeo import gdal
+from distutils.version import LooseVersion
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError
 
@@ -32,6 +33,9 @@ if (os.getenv('RIOS_HISTOGRAM_IGNORE_RFC40') is None and
         hasattr(gdal.RasterAttributeTable, 'ReadAsArray')):
     haveRFC40 = True
 
+# test if https://trac.osgeo.org/gdal/ticket/6854 has been fixed
+# this allows us to use the rat.SetLinearBinning call rather than metadata
+haveLinearBinningFix = LooseVersion(gdal.__version__) >= LooseVersion('2.2.0')
 
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
@@ -56,7 +60,7 @@ def progressFunc(value,string,userdata):
     return not userdata.progress.wasCancelled()
   
 # make userdata object with progress and num bands
-class ProgressUserData:
+class ProgressUserData(object):
     pass
 
 def addPyramid(ds, progress, 
@@ -276,8 +280,9 @@ def addStatistics(ds,progress,ignore=None):
                 ratObj.SetRowCount(histnbins)
                 ratObj.WriteArray(hist, histIndx)
 
-                # TODO: some test that the SetLinearBinning function has been fixed
-                if True:
+                # Use SetLinearBinning function if it has been fixed
+                # in the current version of GDAL
+                if haveLinearBinningFix:
                     ratObj.SetLinearBinning(histmin, (histCalcMax - histCalcMin) / histnbins)
                 else:
                     tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
