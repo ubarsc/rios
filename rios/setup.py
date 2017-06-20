@@ -28,12 +28,23 @@ import glob
 
 import rios
 
+# Are we installing the command line scripts?
+# this is an experimental option for users who are
+# using the Python entry point feature of setuptools and Conda instead
+NO_INSTALL_CMDLINE = int(os.getenv('RIOS_NOCMDLINE', '0')) > 0
+
+if NO_INSTALL_CMDLINE:
+    # still install the scripts for the parallel processing to work properly
+    scripts_list = ['bin/rios_subproc.py', 'bin/rios_subproc_mpi.py']
+else:
+    scripts_list = glob.glob("bin/*.py")
+
 setup(name='rios',
       version=rios.RIOS_VERSION,
       description='Raster Input/Output Simplification',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
-      scripts=glob.glob("bin/*.py"),
+      scripts=scripts_list,
       packages=['rios', 'rios/parallel', 
                         'rios/riostests'],
       license='LICENSE.txt', 

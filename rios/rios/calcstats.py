@@ -21,6 +21,7 @@ with any other format that supports pyramid layers and statistics
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import sys
 import numpy
 import argparse
 from osgeo import gdal
@@ -337,6 +338,11 @@ def getCmdargs():
     p.add_argument("--ignore", "-i", type=float,
         help="Ignore given value when calculating statistics")
     cmdargs = p.parse_args()
+
+    if cmdargs.imgfile is None or len(cmdargs.imgfile) == 0:
+        p.print_help()
+        sys.exit(1)
+
     return cmdargs
 
 def main():
