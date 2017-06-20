@@ -22,7 +22,9 @@ with any other format that supports pyramid layers and statistics
 
 import os
 import numpy
+import argparse
 from osgeo import gdal
+gdal.UseExceptions()
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError
 
@@ -326,3 +328,26 @@ def calcStats(ds,progress=None,ignore=None,
     addPyramid(ds, progress, minoverviewdim=minoverviewdim, levels=levels, 
         aggregationType=aggregationType)
 
+def getCmdargs():
+    """
+    Get commandline arguments
+    """
+    p = argparse.ArgumentParser()
+    p.add_argument("imgfile", nargs='*', help="Name of input image file")
+    p.add_argument("--ignore", "-i", type=float,
+        help="Ignore given value when calculating statistics")
+    cmdargs = p.parse_args()
+    return cmdargs
+
+def main():
+    """
+    Main routine for calling from command line.
+    """
+    cmdargs = getCmdargs()
+    
+    for filename in cmdargs.imgfile:
+        print(filename, cmdargs.ignore)
+        ds = gdal.Open(filename, gdal.GA_Update)
+        calcStats(ds, ignore=cmdargs.ignore)
+        ds.FlushCache()
+    
