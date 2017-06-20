@@ -352,7 +352,6 @@ def main():
     cmdargs = getCmdargs()
     
     for filename in cmdargs.imgfile:
-        print(filename, cmdargs.ignore)
         ds = gdal.Open(filename, gdal.GA_Update)
         calcStats(ds, ignore=cmdargs.ignore)
         ds.FlushCache()
