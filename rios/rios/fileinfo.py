@@ -585,3 +585,5 @@ def main():
             
             print(outline)
 
+    # so entry points return success at command line
+    return 0
