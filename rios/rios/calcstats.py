@@ -355,4 +355,7 @@ def main():
         ds = gdal.Open(filename, gdal.GA_Update)
         calcStats(ds, ignore=cmdargs.ignore)
         ds.FlushCache()
+
+    # so entry points return success at command line
+    return 0
     
