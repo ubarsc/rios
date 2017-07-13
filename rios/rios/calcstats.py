@@ -21,9 +21,7 @@ with any other format that supports pyramid layers and statistics
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import sys
 import numpy
-import argparse
 from osgeo import gdal
 gdal.UseExceptions()
 from . import cuiprogress
@@ -329,33 +327,4 @@ def calcStats(ds,progress=None,ignore=None,
     addPyramid(ds, progress, minoverviewdim=minoverviewdim, levels=levels, 
         aggregationType=aggregationType)
 
-def getCmdargs():
-    """
-    Get commandline arguments
-    """
-    p = argparse.ArgumentParser()
-    p.add_argument("imgfile", nargs='*', help="Name of input image file")
-    p.add_argument("--ignore", "-i", type=float,
-        help="Ignore given value when calculating statistics")
-    cmdargs = p.parse_args()
-
-    if cmdargs.imgfile is None or len(cmdargs.imgfile) == 0:
-        p.print_help()
-        sys.exit(1)
-
-    return cmdargs
-
-def main():
-    """
-    Main routine for calling from command line.
-    """
-    cmdargs = getCmdargs()
-    
-    for filename in cmdargs.imgfile:
-        ds = gdal.Open(filename, gdal.GA_Update)
-        calcStats(ds, ignore=cmdargs.ignore)
-        ds.FlushCache()
-
-    # so entry points return success at command line
-    return 0
     

@@ -4,6 +4,6 @@ Use rios.calcstats to calculate statistics for the given image(s).
 
 """
 
-from rios import calcstats
+from rios.cmdline import rioscalcstats
 
-calcstats.main()
+rioscalcstats.main()
