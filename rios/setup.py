@@ -46,7 +46,7 @@ setup(name='rios',
       author_email='gillingham.sam@gmail.com',
       scripts=scripts_list,
       packages=['rios', 'rios/parallel', 
-                        'rios/riostests'],
+                        'rios/riostests', 'rios/cmdline'],
       license='LICENSE.txt', 
       url='https://bitbucket.org/chchrsc/rios'
      )

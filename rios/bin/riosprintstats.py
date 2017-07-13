@@ -4,6 +4,6 @@ Use rios.fileinfo to print the statistics for the given image(s).
 
 """
 
-from rios import fileinfo
+from rios.cmdline import riosprintstats
 
-fileinfo.main()
+riosprintstats.main()
