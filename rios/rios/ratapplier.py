@@ -152,6 +152,11 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
 
     numBlocks = int(numpy.ceil(float(rowCount) / controls.blockLen))
     
+    if controls.progress is not None:
+        controls.progress.setTotalSteps(100)
+        controls.progress.setProgress(0)
+    lastpercent = 0
+
     # Loop over all blocks in the RAT(s)
     for i in range(numBlocks):
         state.setBlock(i, controls.blockLen)
@@ -170,10 +175,18 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         # Clear block caches
         inBlocks.clearCache()
         outBlocks.clearCache()
+
+        if controls.progress is not None:
+            percent = int((i * 100) / numBlocks)
+            if percent != lastpercent:
+                controls.progress.setProgress(percent)
+                lastpercent = percent                
     
     outBlocks.finaliseRowCount(outputRatHandleNameList)
+
+    if controls.progress is not None:
+        controls.progress.setProgress(100)
     
-        
 
 class RatHandle(object):
     """
@@ -251,6 +264,7 @@ class RatApplierControls(object):
         self.outRowCountMethod = RCM_EQUALS_INPUT
         self.fixedOutRowCount = None
         self.rowCountIncrementSize = None
+        self.progress = None
     
     def setBlockLength(self, blockLen):
         "Change the number of rows used per block"
@@ -297,6 +311,12 @@ class RatApplierControls(object):
         self.fixedOutRowCount = totalsize
         self.rowCountIncrementSize = incrementsize
 
+    def setProgress(self, progress):
+        """
+        Set the progress display object. Default is no progress
+        object. 
+        """
+        self.progress = progress
 
 class OtherArguments(object):
     """
