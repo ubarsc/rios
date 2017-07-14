@@ -186,7 +186,37 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
 
     if controls.progress is not None:
         controls.progress.setProgress(100)
-    
+
+def copyRAT(input, output, progress=None):
+    """
+    Given an input and output filenames copies the RAT from 
+    the input and writes it to the output.
+    """
+    from .rat import getColumnNames
+    inRats = RatAssociations()
+    outRats = RatAssociations()
+        
+    inRats.inclass = RatHandle(input)
+    outRats.outclass = RatHandle(output)
+
+    controls = RatApplierControls()
+    controls.progress = progress
+
+    otherArgs = OtherArguments()
+    otherArgs.colNames = getColumnNames(input)
+    if len(otherArgs.colNames) > 0:
+        apply(internalCopyRAT, inRats, outRats, otherArgs, controls)
+
+def internalCopyRAT(info, inputs, outputs, otherArgs):
+    """
+    Called from copyRAT. Copies the RAT
+    """
+    for columnName in otherArgs.colNames:
+        data = getattr(inputs.inclass, columnName)
+        setattr(outputs.outclass, columnName, data)
+
+        usage = inputs.inclass.getUsage(columnName)
+        outputs.outclass.setUsage(columnName, usage)
 
 class RatHandle(object):
     """
