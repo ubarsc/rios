@@ -339,7 +339,7 @@ def calcStats(ds,progress=None,ignore=None,
     
     """
     if progress is None:
-        progress = cuiprogress.CUIProgressBar()
+        progress = cuiprogress.SilentProgress()
         
     addStatistics(ds,progress,ignore)
     
