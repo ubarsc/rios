@@ -35,10 +35,10 @@ if (os.getenv('RIOS_HISTOGRAM_IGNORE_RFC40') is None and
 
 # test if https://trac.osgeo.org/gdal/ticket/6854 has been fixed
 # this allows us to use the rat.SetLinearBinning call rather than metadata
-try:
+if hasattr(gdal, '__version__'):
     # Fail slightly less drastically when running from ReadTheDocs
     haveLinearBinningFix = LooseVersion(gdal.__version__) >= LooseVersion('2.2.0')
-except Exception:
+else:
     haveLinearBinningFix = False
 
 # When calculating overviews (i.e. pyramid layers), default behaviour
