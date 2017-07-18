@@ -37,9 +37,9 @@ if (os.getenv('RIOS_HISTOGRAM_IGNORE_RFC40') is None and
 # this allows us to use the rat.SetLinearBinning call rather than metadata
 if os.getenv('READTHEDOCS', default='False') != 'True':
     # Fail slightly less drastically when running from ReadTheDocs
-    haveLinearBinningFix = False
-else:
     haveLinearBinningFix = LooseVersion(gdal.__version__) >= LooseVersion('2.2.0')
+else:
+    haveLinearBinningFix = False
 
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
