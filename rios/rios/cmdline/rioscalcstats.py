@@ -21,6 +21,9 @@ program that can be turned into an entry point.
 
 import sys
 import argparse
+
+import gdal
+
 from rios import calcstats
 
 def getCmdargs():
