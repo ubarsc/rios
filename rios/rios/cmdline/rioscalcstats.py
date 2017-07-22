@@ -33,7 +33,8 @@ def getCmdargs():
     p = argparse.ArgumentParser()
     p.add_argument("imgfile", nargs='*', help="Name of input image file")
     p.add_argument("--ignore", "-i", type=float,
-        help="Ignore given value when calculating statistics")
+        help=("Ignore given value when calculating statistics. "+
+            "Default is whatever is already defined in image file"))
     cmdargs = p.parse_args()
 
     if cmdargs.imgfile is None or len(cmdargs.imgfile) == 0:
@@ -50,7 +51,15 @@ def main():
     
     for filename in cmdargs.imgfile:
         ds = gdal.Open(filename, gdal.GA_Update)
-        calcstats.calcStats(ds, ignore=cmdargs.ignore)
+        
+        # If no ignore value given, check if one is already defined in the file
+        if cmdargs.ignore is not None:
+            ignore = cmdargs.ignore
+        else:
+            b1 = ds.GetRasterBand(1)
+            ignore = b1.GetNoDataValue()
+        
+        calcstats.calcStats(ds, ignore=ignore)
         ds.FlushCache()
 
     # so entry points return success at command line
