@@ -33,7 +33,6 @@ from . import imagewriter
 from . import imageio
 from . import rioserrors
 from . import vectorreader
-from . import cuiprogress
 from . import calcstats
 from . import rat
 from .parallel import jobmanager
@@ -173,7 +172,7 @@ class ApplierControls(object):
         self.footprint = DEFAULTFOOTPRINT
         self.referenceImage = None
         self.referencePixgrid = None
-        self.progress = cuiprogress.SilentProgress()
+        self.progress = None
         self.creationoptions = None
         self.statscache = None
         self.statsIgnore = 0
