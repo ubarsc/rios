@@ -23,6 +23,7 @@ with any other format that supports pyramid layers and statistics
 import os
 import numpy
 from osgeo import gdal
+gdal.UseExceptions()
 from distutils.version import LooseVersion
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError
@@ -350,3 +351,4 @@ def calcStats(ds,progress=None,ignore=None,
     addPyramid(ds, progress, minoverviewdim=minoverviewdim, levels=levels, 
         aggregationType=aggregationType)
 
+    

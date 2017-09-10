@@ -305,7 +305,10 @@ class SubprocJobManager(JobManager):
         allInputs = (userFunc, jobInfo)
         allInputsPickled = cloudpickle.dumps(allInputs)
 
-        proc = subprocess.Popen(['rios_subproc.py'], stdin=subprocess.PIPE,
+        subproc = find_executable('rios_subproc.py')
+
+        # make sure we use sys.executable - safer on Windows
+        proc = subprocess.Popen([sys.executable, subproc], stdin=subprocess.PIPE,
             stdout=subprocess.PIPE)
         proc.stdin.write(allInputsPickled)
 

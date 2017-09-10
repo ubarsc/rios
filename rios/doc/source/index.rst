@@ -99,6 +99,7 @@ Internal
     rios_rioserrors
     rios_riostests
     rios_vectorreader
+    rios_cmdline
 
 * :ref:`modindex`
 * :ref:`search`
