@@ -8,7 +8,7 @@ Within RIOS, these are called from the :class:`rios.readerinfo.ReaderInfo`
 and :class:`rios.imagewriter.ImageWriter` classes.
 
 **Note:** It is recommended that the newer :mod:`rios.ratapplier` module be used instead of this
-interface where possible.
+interface for large tables where possible.
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
