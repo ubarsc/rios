@@ -185,6 +185,8 @@ def addStatistics(ds,progress,ignore=None):
                 maxval = ignore
                 meanval = ignore
                 stddevval = 0
+            else:
+                raise e
         if not useExceptions:
             gdal.DontUseExceptions()
 
