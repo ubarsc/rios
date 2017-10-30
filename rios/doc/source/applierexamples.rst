@@ -125,7 +125,10 @@ how many files are to be averaged. This could be written as follows::
     from rios import applier
 
     def doAverage(info, inputs, outputs):
-        "Called from RIOS. Average the input files"
+        """
+        Called from RIOS. Average the input files.
+        Assumes first image contains the totals for the input images.
+        """
         tot = inputs.imgs[0].astype(numpy.float32)
         for img in inputs.imgs[1:]:
             tot = tot + img
@@ -133,11 +136,44 @@ how many files are to be averaged. This could be written as follows::
         outputs.avg = avg.astype(img.dtype)
 
     infiles = applier.FilenameAssociations()
-    # names of imput images
+    # names of input images from command line
     infiles.imgs = sys.argv[1:-1]
-    # Last name given is the output
+
+    outfiles = applier.FilenameAssociations()
+    # Last name given on the command line is the output
     outfiles.avg = sys.argv[-1]
     applier.apply(doAverage, infiles, outfiles)
+
+Another example of this might be a function that takes one input file and 
+creates a new file for each layer that works regardless of the number of layers.::
+
+    import sys
+    import numpy
+    from rios import applier
+
+    def doSplit(info, inputs, outputs):
+        """
+        Splits the input file into a separate file for each layer.
+        """
+        outputList = []
+        for layer in range(inputs.img.shape[0]):
+            output = inputs.img[0]
+            output = numpy.expand_dims(output, axis=0) # convert single layer to 3d array
+            outputList.append(output)
+
+        outputs.outImages = outputList
+
+    infiles = applier.FilenameAssociations()
+    # name of input image is first on command line
+    infiles.img = sys.argv[1]
+
+    outfiles = applier.FilenameAssociations()
+    # the other names on the command line are the output images
+    outfiles.outImages = sys.argv[2:]
+
+    applier.apply(doSplit, infiles, outfiles)
+        
+If required, lists could be used for both input and output images.
 
 Filters and Overlap
 -------------------
