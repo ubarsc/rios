@@ -365,8 +365,15 @@ class InputCollection(object):
                 stderr=self.loggingstream)
 
         if returncode != 0:
-            msg = 'Error while running %s' % GDALWARP
-            raise rioserrors.GdalWarpError(msg)
+            if returncode < 0:
+                # From the subprocess.call help:
+                # A negative value -N indicates that the child was 
+                # terminated by signal N (POSIX only).
+                msg = '%s was terminated by signal %d' % (GDALWARP, abs(returncode))
+                raise rioserrors.GdalWarpError(msg)
+            else:
+                msg = 'Error while running %s' % GDALWARP
+                raise rioserrors.GdalWarpError(msg)
           
         # open the new temp file
         newds = gdal.Open(temp_image)
