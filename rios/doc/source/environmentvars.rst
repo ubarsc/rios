@@ -64,3 +64,8 @@ RIOS honours the following environment variables which can be used to override d
 |                               | a string passed as autoColorTableType | generated      |                       |
 |                               | to :func:`rios.rat.genColorTable()`   |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
+| RIOS_USE_VRT_FOR_RESAMPLING   | If set to '0' will mean that          | 1 = Use VRT    | Not in controls       |
+|                               | resampling with VRTs is disabled and  |                |                       |
+|                               | a temproary file in the output format |                |                       |
+|                               | will be used instead.                 |                |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
