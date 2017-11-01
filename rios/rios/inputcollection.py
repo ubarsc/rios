@@ -27,9 +27,13 @@ import subprocess
 from . import imageio
 from . import rioserrors
 from . import pixelgrid
+from .parallel.jobmanager import find_executable
 from osgeo import gdal
 
-GDALWARP = 'gdalwarp'
+if sys.platform == 'win32':
+    GDALWARP = 'gdalwarp.exe'
+else:
+    GDALWARP = 'gdalwarp'
 
 class InputIterator(object):
     """
@@ -291,9 +295,17 @@ class InputCollection(object):
         (fileh,temp_image) = tempfile.mkstemp(ext,dir=tempdir)
         os.close(fileh)
           
+        # see if gdalwarp actually exists on the system so we can 
+        # provide a separate error if we can't find it vs there was an error
+        # running it.
+        gdalwarp_path = find_executable(GDALWARP)
+        if gdalwarp_path is None:
+            msg = 'Unable to find %s executable on the system' % GDALWARP
+            raise rioserrors.GdalWarpNotFoundError(msg)
+
         # build the command line for gdalwarp
         # as a list for subprocess - also a bit easier to read
-        cmdList = [GDALWARP]
+        cmdList = [gdalwarp_path]
         
         # source projection prf file
         cmdList.append('-s_srs')
@@ -353,8 +365,8 @@ class InputCollection(object):
                 stderr=self.loggingstream)
 
         if returncode != 0:
-            msg = 'Unable to run gdalwarp'
-            raise rioserrors.GdalWarpNotFoundError(msg)
+            msg = 'Error while running %s' % GDALWARP
+            raise rioserrors.GdalWarpError(msg)
           
         # open the new temp file
         newds = gdal.Open(temp_image)
