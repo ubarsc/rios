@@ -168,7 +168,7 @@ creates a new file for each layer that works regardless of the number of layers.
     infiles.img = sys.argv[1]
 
     outfiles = applier.FilenameAssociations()
-    # the other names on the command line are the output images
+    # the other names on the command line are the output images (one for each layer of the input file)
     outfiles.outImages = sys.argv[2:]
 
     applier.apply(doSplit, infiles, outfiles)
