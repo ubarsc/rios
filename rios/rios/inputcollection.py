@@ -178,8 +178,17 @@ class InputCollection(object):
         """
         for f in self.filestoremove:
             if os.path.exists(f):
-                os.remove(f)
-        self.filestoremove = []        
+                try:
+                    os.remove(f)
+                except PermissionError:
+                    # ignore any 'file in use' errors on Windows
+                    # This is only a problem when useVRT=False as we are dealing
+                    # with an actual dataset that cannot be deleted (rather than a VRT
+                    # which can for some reason). Fixing this properly is going to be
+                    # quite hard (the info object and maybe others still hold the
+                    # dataset open) so let's ignore for now.
+                    pass
+        self.filestoremove = []
         
     def __len__(self):
         # see http://docs.python.org/reference/datamodel.html#emulating-container-types
