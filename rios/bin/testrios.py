@@ -22,7 +22,10 @@ of tests of some capabilities of RIOS.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from rios.riostests import riostestutils
+if __name__ == '__main__':
+    # the __name__ == '__main__' is required under Windows
+    # so they multiprocessing module works.
+    from rios.riostests import riostestutils
 
-riostestutils.testAll()
+    riostestutils.testAll()
 
