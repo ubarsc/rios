@@ -69,9 +69,9 @@ DEFAULT_AUTOCOLORTABLETYPE = rat.DEFAULT_AUTOCOLORTABLETYPE
 # For deciding if we resample using a VRT or not. VRT is the default
 # and should be used unless there is a real problem with gdalwarp
 # (ie GDAL 2.1.x and NZTM)
-USE_VRT_FOR_RESAMPLING = os.getenv('RIOS_USE_VRT_FOR_RESAMPLING', default='1') != '0'
+NO_VRT_FOR_RESAMPLING = os.getenv('RIOS_NO_VRT_FOR_RESAMPLING', default='0') != '0'
 """
-Whether to use VRTs for resampling inputs. Set by RIOS_USE_VRT_FOR_RESAMPLING
+Whether to use VRTs for resampling inputs. Set by RIOS_NO_VRT_FOR_RESAMPLING
 environment variable. Default is True.
 """
 
@@ -733,12 +733,12 @@ def handleInputResampling(infiles, controls, reader):
     if controls.referenceImage is not None:
         resampleDict = controls.makeResampleDict(infiles.__dict__)
         reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
-            resamplemethod=resampleDict, useVRT=USE_VRT_FOR_RESAMPLING)
+            resamplemethod=resampleDict, useVRT=(not NO_VRT_FOR_RESAMPLING))
     elif controls.referencePixgrid is not None:
         resampleDict = controls.makeResampleDict(infiles.__dict__)
         reader.allowResample(refPixgrid=controls.referencePixgrid, 
             tempdir=controls.tempdir, 
-            resamplemethod=resampleDict, useVRT=USE_VRT_FOR_RESAMPLING)
+            resamplemethod=resampleDict, useVRT=(not NO_VRT_FOR_RESAMPLING))
 
 
 def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
