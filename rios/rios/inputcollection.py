@@ -385,7 +385,7 @@ class InputCollection(object):
             else:
                 msg = ("Error while running %s. Try setting the "
                     + "RIOS_NO_VRT_FOR_RESAMPLING environment variable "
-                    + "to '1'" % GDALWARP)
+                    + "to '1'") % GDALWARP
                 raise rioserrors.GdalWarpError(msg)
           
         # open the new temp file
