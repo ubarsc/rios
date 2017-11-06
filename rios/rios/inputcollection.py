@@ -378,10 +378,14 @@ class InputCollection(object):
                 # From the subprocess.call help:
                 # A negative value -N indicates that the child was 
                 # terminated by signal N (POSIX only).
-                msg = '%s was terminated by signal %d' % (GDALWARP, abs(returncode))
+                msg = ("%s was terminated by signal %d. Try setting the "
+                    + "RIOS_NO_VRT_FOR_RESAMPLING environment variable "
+                    + "to '1'") % (GDALWARP, abs(returncode))
                 raise rioserrors.GdalWarpError(msg)
             else:
-                msg = 'Error while running %s' % GDALWARP
+                msg = ("Error while running %s. Try setting the "
+                    + "RIOS_NO_VRT_FOR_RESAMPLING environment variable "
+                    + "to '1'" % GDALWARP)
                 raise rioserrors.GdalWarpError(msg)
           
         # open the new temp file
