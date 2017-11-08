@@ -9,5 +9,5 @@ welcome to it. It is licensed under GPL 3, as given in the file LICENSE.txt.
 To download the code, click on the Downloads tab above, and select the latest tarball. 
 Sphinx documentation is available at [rioshome.org](http://rioshome.org/)
 
-Version release notes are also given here under the Wiki.
+Version release notes are also given [here in the Wiki](https://bitbucket.org/chchrsc/rios/wiki/ReleaseNotes).
 
