@@ -39,7 +39,8 @@ RIOS honours the following environment variables which can be used to override d
 |                               | histogram to ignore GDAL's RFC40      |                |                       |
 |                               | capabilities. Mostly helpful when     |                |                       |
 |                               | using HFA files, as RFC40 seems to    |                |                       |
-|                               | have some problems with them          |                |                       |
+|                               | have some problems with them in       |                |                       |
+|                               | versions of GDAL older than 2.2.0.    |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_JOBMGRTYPE           | See :mod:`rios.parallel.jobmanager`   |                |                       |
 |RIOS_PBSJOBMGR_QSUBOPTIONS     | for a description of these variables  |                |                       |
