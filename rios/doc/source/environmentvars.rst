@@ -67,6 +67,6 @@ RIOS honours the following environment variables which can be used to override d
 |RIOS_NO_VRT_FOR_RESAMPLING     | If set to '1' will mean that          | 0 = Use VRT    | Not in controls       |
 |                               | resampling with VRTs is disabled and  |                |                       |
 |                               | a temporary file in the output format |                |                       |
-|                               | will be used instead. Added in RIOS   |                |                       |                       |
+|                               | will be used instead. Added in RIOS   |                |                       |
 |                               | 1.4.5.                                |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
