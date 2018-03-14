@@ -1,6 +1,18 @@
 Release Notes
 =============
 
+Version 1.4.5 (2018-03-14)
+--------------------------
+
+New Features:
+  * Added $RIOS_USE_VRT_FOR_RESAMPLING environment variable to allow the use of VRTs in the resampling code to be disabled if needed (i.e. buggy GDAL versions).
+  
+Bug Fixes:
+  * Improve exception handling in calcstats.py
+  * Improve code that runs gdalwarp and report errors better.
+  * Update bundled cloudpickle code to latest version which fixes a problem with Python 3.6.
+  * Fix a problem with testing the multiprocessing code under Windows.
+
 Version 1.4.4 (2017-09-11)
 --------------------------
 
