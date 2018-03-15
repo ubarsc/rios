@@ -161,6 +161,8 @@ def reportStart(testName):
 def testAll():
     """
     Runs all the tests - called from testrios.py
+
+    Returns number of tests that fail
     """
     failureCount = 0
 
@@ -219,3 +221,5 @@ def testAll():
     print()
     print()
     report("ALL TESTS", "Completed, with %d failure(s)" % failureCount)
+
+    return failureCount
