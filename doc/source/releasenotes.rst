@@ -135,14 +135,14 @@ Version 1.1.6 (2013-11-07)
 Minor bug fixes and enhancements:
   * Added ReaderInfo.getPixRowColBlock() function, making it easier to run debugging of a single pixel
   * Notes in docstrings for getPixCoord(), getPixColRow() and getBlockBounds() to indicate that getBlockCoordArrays() is preferred. 
-  * Fixed bug in median calculation in calcstats, and added to tests of statistics calculation in testrios.py, along with note that it requires the GDAL bug fixes in tickets [[http://trac.osgeo.org/gdal/ticket/4750|#4750]] and [[http://trac.osgeo.org/gdal/ticket/5289|#5289]] in order to get the median and mode correct in all cases. 
+  * Fixed bug in median calculation in calcstats, and added to tests of statistics calculation in testrios.py, along with note that it requires the GDAL bug fixes in tickets `#4750 <http://trac.osgeo.org/gdal/ticket/4750>`_ and `#5289 <http://trac.osgeo.org/gdal/ticket/5289>`_ in order to get the median and mode correct in all cases. 
 
 Version 1.1.5 (2013-10-23)
 --------------------------
 
 Minor bug-fixes and enhancements: 
   * Fixed bug with rounding of coordinates. Depending on exact values of grid coordinates, this could sometimes result in incorrect calculation of grid alignments, etc. Reported by Jane Whitcomb (many thanks!). 
-  * Preparation for GDAL changes in GDAL's [[http://trac.osgeo.org/gdal/wiki/rfc40_enhanced_rat_support|RFC40]], for efficient raster attribute table handling
+  * Preparation for GDAL changes in GDAL's `RFC40 <http://trac.osgeo.org/gdal/wiki/rfc40_enhanced_rat_support>`_, for efficient raster attribute table handling
   * Some Python 3.3 string handling incompatibilities
   * Environment variables for some other default values - $RIOS_DFLT_FOOTPRINT, $RIOS_DFLT_BLOCKXSIZE, $RIOS_DFLT_BLOCKYSIZE, and $RIOS_DFLT_OVERLAP
   * Some improvements in handling of column usage and data types in the rios.rat module
