@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+Version 1.4.6 (2018-08-03)
+--------------------------
+
+Bug Fixes:
+  * In certain circumstances, when multiple resample methods were in use on different inputs, 
+    it was possible for these to get mixed and the wrong method used for some files. This
+    is now fixed. 
+
 Version 1.4.5 (2018-03-14)
 --------------------------
 
