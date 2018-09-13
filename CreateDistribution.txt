@@ -8,10 +8,12 @@ How to create a distribution of RIOS.
    DON'T FORGET TO COMMIT THIS, BEFORE THE NEXT STEP!!!!
 4. Use "hg tag" to add a version number tag, e.g.
     hg tag rios-1.1.1
-5. Create the distribution tarball, using
+5. Check out a clean copy of the repository into /tmp or
+   somewhere similar and 'cd' into it.
+6. Create the distribution tarball, using
     python setup.py sdist --formats=gztar,zip
    This creates both a tar.gz and a zip, under a subdirectory called dist
-6. Upload these to bitbucket, under the downloads tab. 
+7. Upload these to bitbucket, under the downloads tab. 
 
 
 Version Numbers.
