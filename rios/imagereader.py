@@ -23,7 +23,7 @@ import os
 import sys
 import copy
 import numpy
-from osgeo import gdal
+
 from . import imageio
 from . import inputcollection
 from . import readerinfo
