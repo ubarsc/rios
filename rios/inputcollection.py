@@ -24,6 +24,8 @@ of the inputs it has and deal with resampling.
 import os
 import sys
 import subprocess
+from distutils.version import LooseVersion
+
 from . import imageio
 from . import rioserrors
 from . import pixelgrid
@@ -315,6 +317,9 @@ class InputCollection(object):
         # build the command line for gdalwarp
         # as a list for subprocess - also a bit easier to read
         cmdList = [gdalwarp_path]
+        
+        if LooseVersion(gdal.__version__) >= LooseVersion('2.0'):
+            cmdList.extend(['-ovr', 'NONE'])
         
         # source projection prf file
         cmdList.append('-s_srs')
