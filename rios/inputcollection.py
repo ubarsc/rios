@@ -254,7 +254,8 @@ class InputCollection(object):
             raise rioserrors.ParameterError(msg)
             
 
-    def resampleToReference(self, ds, nullValList, workingRegion, resamplemethod, tempdir='.', useVRT=False):
+    def resampleToReference(self, ds, nullValList, workingRegion, resamplemethod, 
+            tempdir='.', useVRT=False, allowOverviewsGdalwarp=False):
         """
         Resamples any inputs that do not match the reference, to the 
         reference image. 
@@ -319,7 +320,8 @@ class InputCollection(object):
         cmdList = [gdalwarp_path]
         
         if LooseVersion(gdal.__version__) >= LooseVersion('2.0'):
-            cmdList.extend(['-ovr', 'NONE'])
+            if not allowOverviewsGdalwarp:
+                cmdList.extend(['-ovr', 'NONE'])
         
         # source projection prf file
         cmdList.append('-s_srs')
@@ -370,7 +372,8 @@ class InputCollection(object):
         self.filestoremove.append(temp_image)
         self.filestoremove.append(src_prf)
         self.filestoremove.append(dest_prf)
-          
+
+        print(' '.join(cmdList))
         # run the command using subprocess
         # send any output to our self.loggingstream
         # - this is the main advantage over os.system()
@@ -403,7 +406,8 @@ class InputCollection(object):
         return newds
         
             
-    def resampleAllToReference(self, footprint, resamplemethodlist, tempdir='.', useVRT=False):
+    def resampleAllToReference(self, footprint, resamplemethodlist, tempdir='.', useVRT=False,
+            allowOverviewsGdalwarp=False):
         """
         Reamples all datasets that don't match the reference to the
         same as the reference.
@@ -443,7 +447,8 @@ class InputCollection(object):
                 nullVals = self.nullValList[count]
 
                 resamplemethod = resamplemethodlist[count]
-                newds = self.resampleToReference(ds, nullVals, workingRegion, resamplemethod, tempdir, useVRT)
+                newds = self.resampleToReference(ds, nullVals, workingRegion, resamplemethod, 
+                    tempdir, useVRT, allowOverviewsGdalwarp)
                 
                 # stash the new temp dataset as our input item
                 self.datasetList[count] = newds
