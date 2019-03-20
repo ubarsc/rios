@@ -274,7 +274,7 @@ class ImageReader(object):
 
     def allowResample(self, resamplemethod="near", refpath=None, refgeotrans=None, 
             refproj=None, refNCols=None, refNRows=None, refPixgrid=None, 
-            tempdir='.', useVRT=False):
+            tempdir='.', useVRT=False, allowOverviewsGdalwarp=False):
         """
         By default, resampling is disabled (all datasets must
         match). Calling this enables it. 
@@ -334,7 +334,8 @@ class ImageReader(object):
 
         try:   
             # resample all in collection to reference
-            self.inputs.resampleAllToReference(self.footprint, resamplemethodlist, tempdir, useVRT)
+            self.inputs.resampleAllToReference(self.footprint, resamplemethodlist, tempdir, useVRT,
+                allowOverviewsGdalwarp)
         finally:
             # if the user interrupted, then ensure all temp
             # files removed.
