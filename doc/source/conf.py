@@ -40,7 +40,6 @@ for mod_name in MOCK_MODULES:
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
-    'sphinx.ext.pngmath',
     'sphinx.ext.viewcode',
 ]
 
