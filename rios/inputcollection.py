@@ -182,7 +182,7 @@ class InputCollection(object):
             if os.path.exists(f):
                 try:
                     os.remove(f)
-                except PermissionError:
+                except rioserrors.PermissionError:
                     # ignore any 'file in use' errors on Windows
                     # This is only a problem when useVRT=False as we are dealing
                     # with an actual dataset that cannot be deleted (rather than a VRT
