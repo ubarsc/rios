@@ -1,6 +1,16 @@
 Release Notes
 =============
 
+Version 1.4.7 (2019-03-21)
+--------------------------
+
+Bug Fixes:
+  * Allow vector null value to be given as integer datatype without upsetting GDAL
+  * Disable gdalwarp's use of overviews when resampling to lower resolution, by 
+    giving it the '-ovr NONE' switch. This behaviour started with GDAL 2.0, and 
+    should be considered unreliable, and therefore is not to be used by RIOS. 
+    An option is provided for those who wish to live dangerously. 
+
 Version 1.4.6 (2018-08-03)
 --------------------------
 
