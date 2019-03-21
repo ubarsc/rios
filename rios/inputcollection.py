@@ -373,7 +373,6 @@ class InputCollection(object):
         self.filestoremove.append(src_prf)
         self.filestoremove.append(dest_prf)
 
-        print(' '.join(cmdList))
         # run the command using subprocess
         # send any output to our self.loggingstream
         # - this is the main advantage over os.system()
