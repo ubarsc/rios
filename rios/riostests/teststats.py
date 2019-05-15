@@ -56,19 +56,19 @@ def run():
     # We repeat these tests on a number of different drivers, if they are available,
     # as some stats-related things may work fine on some drivers but not on others. 
     driverTestList = [
-        ('HFA', ['COMPRESS=YES']),
-        ('GTiff', ['COMPRESS=LZW', 'TILED=YES', 'INTERLEAVE=BAND']),
-        ('KEA', [])
+        ('HFA', ['COMPRESS=YES'], 'img'),
+        ('GTiff', ['COMPRESS=LZW', 'TILED=YES', 'INTERLEAVE=BAND'], 'tif'),
+        ('KEA', [], 'kea')
     ]
     # Remove any which current GDAL not suporting
-    driverTestList = [(drvrName, options) for (drvrName, options) in driverTestList
+    driverTestList = [(drvrName, options, ext) for (drvrName, options, ext) in driverTestList
         if gdal.GetDriverByName(drvrName) is not None]
     
     # Loop over all drivers
-    for (driverName, creationOptions) in driverTestList:
+    for (driverName, creationOptions, ext) in driverTestList:
         # Loop over all datatype tuples in the list
         for (fileDtype, arrDtype, scalefactor) in dataTypesList:
-            imgfile = 'test.img'
+            imgfile = 'test.' + ext
             ds = riostestutils.createTestFile(imgfile, dtype=fileDtype, driverName=driverName, 
                     creationOptions=creationOptions)
             rampArr = riostestutils.genRampArray().astype(arrDtype) * scalefactor
