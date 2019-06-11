@@ -54,6 +54,8 @@ DEFAULT_OVERVIEWAGGREGRATIONTYPE = os.getenv('RIOS_DFLT_OVERVIEWAGGTYPE',
     default="AVERAGE")
 
 
+
+
 def progressFunc(value,string,userdata):
     """
     Progress callback for BuildOverviews
@@ -138,7 +140,7 @@ def findOrCreateColumn(ratObj, usage, name, dtype):
 
 gdalLargeIntTypes = set([gdal.GDT_Int16, gdal.GDT_UInt16, gdal.GDT_Int32, gdal.GDT_UInt32])
 gdalFloatTypes = set([gdal.GDT_Float32, gdal.GDT_Float64])
-def addStatistics(ds,progress,ignore=None):
+def addStatistics(ds,progress,ignore=None, approx_ok=False):
     """
     Calculates statistics and adds them to the image
     
@@ -178,7 +180,10 @@ def addStatistics(ds,progress,ignore=None):
         useExceptions = gdal.GetUseExceptions()
         gdal.UseExceptions()
         try:
-            (minval,maxval,meanval,stddevval) = band.ComputeStatistics(False)
+            if approx_ok and tmpmeta["LAYER_TYPE"] == "thematic": 
+                print('WARNING: approx_ok specified for stats but image is thematic (this could be a bad idea)')
+
+            (minval,maxval,meanval,stddevval) = band.ComputeStatistics(approx_ok)
         except RuntimeError as e:
             if str(e).endswith('Failed to compute statistics, no valid pixels found in sampling.'):
                 minval = ignore
@@ -198,8 +203,13 @@ def addStatistics(ds,progress,ignore=None):
         tmpmeta["STATISTICS_MEAN"]    = repr(meanval)
         tmpmeta["STATISTICS_STDDEV"]  = repr(stddevval)
         # because we did at full res - these are the default anyway
-        tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
-        tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
+
+        if approx_ok:
+            tmpmeta["STATISTICS_APPROXIMATE"] = "YES"
+        else:
+            tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
+            tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
+        
 
         # create a histogram so we can do the mode and median
         if band.DataType == gdal.GDT_Byte:
@@ -252,7 +262,7 @@ def addStatistics(ds,progress,ignore=None):
       
         # get histogram and force GDAL to recalculate it
         hist = band.GetHistogram(histCalcMin, histCalcMax, histnbins, False, 
-                        False, progressFunc, userdata)
+                        approx_ok, progressFunc, userdata)
         
         # Check if GDAL's histogram code overflowed. This is not a fool-proof test,
         # as some overflows will not result in negative counts. 
@@ -339,18 +349,19 @@ def addStatistics(ds,progress,ignore=None):
 def calcStats(ds,progress=None,ignore=None,
         minoverviewdim=DEFAULT_MINOVERVIEWDIM, 
         levels=DEFAULT_OVERVIEWLEVELS,
-        aggregationType=None):
+        aggregationType=None,approx_ok=False):
     """
-    Does both the stats and pyramid layers. Calls addStatistics()
-    and addPyramid() functions. See their docstrings for details. 
+    Does both the stats and pyramid layers. Calls addPyramid()
+    and addStatistics() functions. See their docstrings for details. 
     
     """
     if progress is None:
         progress = cuiprogress.SilentProgress()
-        
-    addStatistics(ds,progress,ignore)
-    
+
     addPyramid(ds, progress, minoverviewdim=minoverviewdim, levels=levels, 
         aggregationType=aggregationType)
+
+    addStatistics(ds,progress,ignore,approx_ok=approx_ok)
+
 
     

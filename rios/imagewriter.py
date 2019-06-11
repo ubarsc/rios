@@ -386,7 +386,8 @@ class ImageWriter(object):
     def close(self, calcStats=False, statsIgnore=None, progress=None, omitPyramids=False,
             overviewLevels=calcstats.DEFAULT_OVERVIEWLEVELS,
             overviewMinDim=calcstats.DEFAULT_MINOVERVIEWDIM, 
-            overviewAggType=None, autoColorTableType=rat.DEFAULT_AUTOCOLORTABLETYPE):
+            overviewAggType=None, autoColorTableType=rat.DEFAULT_AUTOCOLORTABLETYPE,
+            approx_ok=False):
         """
         Closes the open dataset
         """
@@ -394,10 +395,12 @@ class ImageWriter(object):
             from .cuiprogress import SilentProgress
             if progress is None:
                 progress = SilentProgress()
-            calcstats.addStatistics(self.ds, progress, statsIgnore)
+            
             if not omitPyramids:
                 calcstats.addPyramid(self.ds, progress, minoverviewdim=overviewMinDim,
                     levels=overviewLevels, aggregationType=overviewAggType)
+
+            calcstats.addStatistics(self.ds, progress, statsIgnore, approx_ok=approx_ok) 
         
         self.ds.FlushCache()
         del self.ds
