@@ -206,6 +206,10 @@ def addStatistics(ds,progress,ignore=None, approx_ok=False):
 
         if approx_ok:
             tmpmeta["STATISTICS_APPROXIMATE"] = "YES"
+            if "STATISTICS_SKIPFACTORX" in tmpmeta:
+                del tmpmeta["STATISTICS_SKIPFACTORX"]
+            if "STATISTICS_SKIPFACTORY" in tmpmeta:
+                del tmpmeta["STATISTICS_SKIPFACTORY"]
         else:
             tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
             tmpmeta["STATISTICS_SKIPFACTORY"] = "1"

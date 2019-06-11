@@ -63,7 +63,7 @@ def main():
             b1 = ds.GetRasterBand(1)
             ignore = b1.GetNoDataValue()
         
-        calcstats.calcStats(ds, ignore=ignore, approx_ok=args.approx)
+        calcstats.calcStats(ds, ignore=ignore, approx_ok=cmdargs.approx)
         ds.FlushCache()
 
     # so entry points return success at command line
