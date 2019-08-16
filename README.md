@@ -7,4 +7,4 @@ that it might even be useful, but if anyone else is silly enough to want it, the
 welcome to it. It is licensed under GPL 3, as given in the file LICENSE.txt. 
 
 To download the code, click on the Downloads tab above, and select the latest tarball. 
-Sphinx documentation is available at [rioshome.org](http://rioshome.org/)
+Sphinx documentation is available at [www.rioshome.org](http://www.rioshome.org/)
