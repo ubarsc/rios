@@ -56,7 +56,7 @@ Once you have installed `Conda <http://conda.pydata.org/miniconda.html#miniconda
 
     conda config --add channels conda-forge 
     conda create -n myenv rios
-    source activate myenv # omit 'source' on Windows
+    conda activate myenv
 
 High level functions
 ---------------------
