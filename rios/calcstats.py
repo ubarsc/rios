@@ -21,6 +21,7 @@ with any other format that supports pyramid layers and statistics
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+import warnings
 import numpy
 from osgeo import gdal
 gdal.UseExceptions()
@@ -180,8 +181,8 @@ def addStatistics(ds,progress,ignore=None, approx_ok=False):
         useExceptions = gdal.GetUseExceptions()
         gdal.UseExceptions()
         try:
-            if approx_ok and tmpmeta["LAYER_TYPE"] == "thematic": 
-                print('WARNING: approx_ok specified for stats but image is thematic (this could be a bad idea)')
+            if approx_ok and "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == "thematic": 
+                warnings.warn('WARNING: approx_ok specified for stats but image is thematic (this could be a bad idea)')
 
             (minval,maxval,meanval,stddevval) = band.ComputeStatistics(approx_ok)
         except RuntimeError as e:
@@ -206,10 +207,6 @@ def addStatistics(ds,progress,ignore=None, approx_ok=False):
 
         if approx_ok:
             tmpmeta["STATISTICS_APPROXIMATE"] = "YES"
-            if "STATISTICS_SKIPFACTORX" in tmpmeta:
-                del tmpmeta["STATISTICS_SKIPFACTORX"]
-            if "STATISTICS_SKIPFACTORY" in tmpmeta:
-                del tmpmeta["STATISTICS_SKIPFACTORY"]
         else:
             tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
             tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
