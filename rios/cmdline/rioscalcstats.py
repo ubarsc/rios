@@ -36,6 +36,9 @@ def getCmdargs():
     p.add_argument("--ignore", "-i", type=float,
         help=("Ignore given value when calculating statistics. "+
             "Default is whatever is already defined in image file"))
+    p.add_argument("--approx", action="store_true", default=False,
+        help=("Do approximate stats calculation (much faster)"))
+
     cmdargs = p.parse_args()
 
     if cmdargs.imgfile is None or len(cmdargs.imgfile) == 0:
@@ -60,7 +63,7 @@ def main():
             b1 = ds.GetRasterBand(1)
             ignore = b1.GetNoDataValue()
         
-        calcstats.calcStats(ds, ignore=ignore)
+        calcstats.calcStats(ds, ignore=ignore, approx_ok=cmdargs.approx)
         ds.FlushCache()
 
     # so entry points return success at command line
