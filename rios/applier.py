@@ -587,8 +587,10 @@ class ApplierControls(object):
     
     def setApproxStats(self, approxStats):
         """
-         
-        
+        Set boolean value of approxStats attribute. This modifies the behaviour of
+        calcStats by forcing it to use the pyramid layers during stats generation
+        (much faster but only provides approximate values, not recommended for
+        thematic rasters)
         """
         self.approxStats = approxStats
 
