@@ -48,7 +48,7 @@ See :doc:`applierexamples` for more information.
 
 Downloads
 ---------
-From `BitBucket <https://bitbucket.org/chchrsc/rios/downloads>`_. 
+From `GitHub <https://github.com/ubarsc/rios/releases>`_. 
 Release notes by version can be viewed in :doc:`releasenotes`.
 
 `Conda <http://conda.pydata.org/miniconda.html#miniconda>`_ packages are available under the 'conda-forge' channel.

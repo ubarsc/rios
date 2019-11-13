@@ -48,5 +48,5 @@ setup(name='rios',
       packages=['rios', 'rios/parallel', 
                         'rios/riostests', 'rios/cmdline'],
       license='LICENSE.txt', 
-      url='https://bitbucket.org/chchrsc/rios'
+      url='https://www.rioshome.org'
      )
