@@ -40,6 +40,7 @@ if __name__ == "__main__":
 
         status, blockData = data
         if not status:
+            comm.Disconnect()
             break
 
         # wrap it with a BytesIO object so it can be treated
