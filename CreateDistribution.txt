@@ -6,19 +6,28 @@ How to create a distribution of RIOS.
 3. Update the release notes page at doc/source/releasenotes.rst, by going through the 
    change logs since the last release, and noting what has been done. 
    DON'T FORGET TO COMMIT THIS, BEFORE THE NEXT STEP!!!!
-4. Use "hg tag" to add a version number tag, e.g.
-    hg tag rios-1.1.1
-5. Push the changes to bitbucket with "hg push".
-6. Check out a clean copy of the repository into /tmp or
+4. Push the changes to github with "git push". 
+5. Check out a clean copy of the repository into /tmp or
    somewhere similar and 'cd' into it.
-7. Create the distribution tarball, using
+6. Create the distribution tarball, using
     python setup.py sdist --formats=gztar,zip
    This creates both a tar.gz and a zip, under a subdirectory called dist
-8. Upload these to bitbucket, under the downloads tab. 
+7. Create checksums of each of these, e.g.
+       sha256sum rios-1.2.3.tar.gz > rios-1.2.3.tar.gz.sha256
+       sha256sum rios-1.2.3.zip > rios-1.2.3.zip.sha256
+8. Go to the https://github.com/ubarsc/rios/releases page, and create a 
+   new release by pressing "Draft a new release". 
+   You should fill in the following:
+       Tag version: rios-A.B.C
+       Release Title: Version A.B.C
+       Upload files: Add the tar.gz and zip files, and their sha256 checksum files. 
+       Click "Publish release"
+       
 
 
 Version Numbers.
-The RIOS version number is structured as A.B.C. 
+The RIOS version number is structured as A.B.C. We follow the conventions 
+outlined in Semantic Versioning [https://semver.org]
 - The A number should change for major alterations, most particularly those 
   which break backward compatability, or which involve major restructuring of 
   code or data structures. 

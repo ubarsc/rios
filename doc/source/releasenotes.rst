@@ -1,6 +1,17 @@
 Release Notes
 =============
 
+Version 1.4.9 (2019-11-28)
+--------------------------
+
+New Features:
+  * Allow option for approximate stats calculation, to speed up on very large output files
+    (thanks to Ben Jolly)
+
+Bug Fixes:
+  * Update cloudpickle inclusion, to cope with changes in Python 3.8
+  * Cope with vagaries of newer OpenMPI clients
+
 Version 1.4.8 (2019-03-21)
 --------------------------
 
