@@ -192,9 +192,11 @@ class ImageInfo(object):
             outSR.ImportFromProj4(outPROJ4)
         else:
             outSR = None
+        preventGdal3axisSwap(outSR)
         
         if outSR is not None:
             inSR = osr.SpatialReference(wkt=self.projection)
+            preventGdal3axisSwap(inSR)
             t = osr.CoordinateTransformation(inSR, outSR)
             (ul_x, ul_y, z) = t.TransformPoint(self.xMin, self.yMax)
             (ll_x, ll_y, z) = t.TransformPoint(self.xMin, self.yMin)
@@ -553,3 +555,12 @@ class RatStats(object):
             if hasattr(stats, 'mean'):
                 setattr(self, columnName, stats)
 
+
+def preventGdal3axisSwap(sr):
+    """
+    Guard the given spatial reference object against axis swapping, when
+    running with GDAL 3. Does nothing if GDAL < 3. Modifies the
+    object in place.
+    """
+    if hasattr(sr, 'SetAxisMappingStrategy'):
+        sr.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
