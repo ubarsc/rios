@@ -423,32 +423,25 @@ class ImageWriter(object):
         imgInfo = fileinfo.ImageInfo(self.filename)
         if imgInfo.layerType == "thematic":
             imgStats = fileinfo.ImageFileStats(self.filename)
-            ds = None
-            if calcstats.haveRFC40:
-                ds = gdal.Open(self.filename, gdal.GA_Update)
+            ds = gdal.Open(self.filename, gdal.GA_Update)
 
             for i in range(imgInfo.rasterCount):
                 numEntries = imgStats[i].max + 1
                 clrTbl = rat.genColorTable(numEntries, autoColorTableType)
-                if not calcstats.haveRFC40:
-                    rat.setColorTable(self.filename, clrTbl, layernum=i+1)
-                else:
-                    # If we have the RFC40 facilities, then use them to write the colour table, 
-                    # because otherwise Sam will get cross with me. 
-                    band = ds.GetRasterBand(i+1)
-                    ratObj = band.GetDefaultRAT()
-                    redIdx, redNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Red, "Red", gdal.GFT_Integer)
-                    greenIdx, greenNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Green, "Green", gdal.GFT_Integer)
-                    blueIdx, blueNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
-                    alphaIdx, alphaNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Alpha, "Alpha", gdal.GFT_Integer)
-                    # were any of these not already existing?
-                    if redNew or greenNew or blueNew or alphaNew:
-                        ratObj.WriteArray(clrTbl[:, 0], redIdx)
-                        ratObj.WriteArray(clrTbl[:, 1], greenIdx)
-                        ratObj.WriteArray(clrTbl[:, 2], blueIdx)
-                        ratObj.WriteArray(clrTbl[:, 3], alphaIdx)
-                    if not ratObj.ChangesAreWrittenToFile():
-                        band.SetDefaultRAT(ratObj)
+                band = ds.GetRasterBand(i+1)
+                ratObj = band.GetDefaultRAT()
+                redIdx, redNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Red, "Red", gdal.GFT_Integer)
+                greenIdx, greenNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Green, "Green", gdal.GFT_Integer)
+                blueIdx, blueNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
+                alphaIdx, alphaNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Alpha, "Alpha", gdal.GFT_Integer)
+                # were any of these not already existing?
+                if redNew or greenNew or blueNew or alphaNew:
+                    ratObj.WriteArray(clrTbl[:, 0], redIdx)
+                    ratObj.WriteArray(clrTbl[:, 1], greenIdx)
+                    ratObj.WriteArray(clrTbl[:, 2], blueIdx)
+                    ratObj.WriteArray(clrTbl[:, 3], alphaIdx)
+                if not ratObj.ChangesAreWrittenToFile():
+                    band.SetDefaultRAT(ratObj)
 
     def doubleCheckCreationOptions(self, drivername, creationoptions):
         """

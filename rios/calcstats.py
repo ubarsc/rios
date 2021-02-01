@@ -29,12 +29,6 @@ from distutils.version import LooseVersion
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError
 
-# Test whether we have access to the GDAL RFC40 facilities
-haveRFC40 = False
-if (os.getenv('RIOS_HISTOGRAM_IGNORE_RFC40') is None and 
-        hasattr(gdal.RasterAttributeTable, 'ReadAsArray')):
-    haveRFC40 = True
-
 # test if https://trac.osgeo.org/gdal/ticket/6854 has been fixed
 # this allows us to use the rat.SetLinearBinning call rather than metadata
 if hasattr(gdal, '__version__'):
@@ -291,7 +285,7 @@ def addStatistics(ds,progress,ignore=None, approx_ok=False):
             else:
                 tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
 
-            if haveRFC40 and ratObj is not None:
+            if ratObj is not None:
                 histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount, 
                                         "Histogram", gdal.GFT_Real)
                 # write the hist in a single go
@@ -334,7 +328,7 @@ def addStatistics(ds,progress,ignore=None, approx_ok=False):
         # set the data
         band.SetMetadata(tmpmeta)
 
-        if haveRFC40 and ratObj is not None and not ratObj.ChangesAreWrittenToFile():
+        if ratObj is not None and not ratObj.ChangesAreWrittenToFile():
             # For drivers that require the in memory thing
             band.SetDefaultRAT(ratObj)
 

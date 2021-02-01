@@ -256,9 +256,8 @@ class ImageLayerStats(object):
 
         self.histoCounts = None
         # check the histo info - from RAT if available
-        # and we are using RFC40
         rat = bandObj.GetDefaultRAT()
-        if rat is not None and hasattr(rat, "ReadAsArray"):
+        if rat is not None:
             for col in range(rat.GetColumnCount()):
                 if rat.GetUsageOfCol(col) == gdal.GFU_PixelCount:
                     self.histoCounts = rat.ReadAsArray(col)
@@ -432,14 +431,9 @@ class ColumnStats(object):
         if histoColumnNdx == -1:
             histoColumnNdx = self.__findColumnNdx(gdalRat, "Histogram")
 
-        # Check if we have the features available in GDAL RFC40  
-        # See http://trac.osgeo.org/gdal/wiki/rfc40_enhanced_rat_support
-        haveRFC40 = hasattr(gdalRat, 'ReadAsArray')
         numRows = gdalRat.GetRowCount()
-        if not haveRFC40:
-            blocklen = numRows
-        else:
-            blocklen = 10000
+        blocklen = 10000
+        
         numBlocks = int(numpy.ceil(float(numRows) / blocklen))
         
         # Initialise sums and counters
@@ -450,14 +444,8 @@ class ColumnStats(object):
         for i in range(numBlocks):
             startrow = i * blocklen
             endrow = min(startrow + blocklen - 1, numRows-1)
-            if haveRFC40:
-                datablock = gdalRat.ReadAsArray(columnNdx, start=startrow, length=(endrow-startrow+1))
-                histoblock = gdalRat.ReadAsArray(histoColumnNdx, start=startrow, length=(endrow-startrow+1))
-            else:
-                # Without RFC40, we have no choice but to read the whole column
-                datablock = rat.readColumnFromBand(band, columnName)
-                histoColumnName = gdalRat.GetNameOfCol(histoColumnNdx)
-                histoblock = rat.readColumnFromBand(band, histoColumnName)
+            datablock = gdalRat.ReadAsArray(columnNdx, start=startrow, length=(endrow-startrow+1))
+            histoblock = gdalRat.ReadAsArray(histoColumnNdx, start=startrow, length=(endrow-startrow+1))
         
             imgNullVal = band.GetNoDataValue()
             if not includeImageNull and imgNullVal is not None:

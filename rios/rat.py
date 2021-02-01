@@ -32,13 +32,6 @@ from osgeo import gdal
 import numpy
 from . import rioserrors
 
-# use turborat if available
-try:
-    from turbogdal import turborat
-    HAVE_TURBORAT = True
-except ImportError:
-    HAVE_TURBORAT = False
-
 if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
     # we just use basestring
@@ -74,48 +67,9 @@ def readColumnFromBand(gdalBand, colName):
     # loop thru the columns looking for the right one
     for col in range(numCols):
         if rat.GetNameOfCol(col) == colName:
-            # found it - create the output array
-            # and fill in the values
+            # found it - read the values
 
-            # use RFC40 function if available
-            if hasattr(rat, "ReadAsArray"):
-                colArray = rat.ReadAsArray(col)
-
-            elif HAVE_TURBORAT:
-                # if turborat is available use that
-                colArray = turborat.readColumn(rat, col)
-            else:
-                # do it the slow way
-                dtype = rat.GetTypeOfCol(col)
-                if dtype == gdal.GFT_Integer:
-                    colArray = numpy.zeros(numRows,int)
-                elif dtype == gdal.GFT_Real:
-                    colArray = numpy.zeros(numRows,float)
-                elif dtype == gdal.GFT_String:
-                    # for string attributes, create a list - convert later
-                    colArray = []
-                else:
-                    msg = "Can't interpret data type of attribute"
-                    raise rioserrors.AttributeTableTypeError(msg)
-            
-        
-                # do it checking the type outside the loop for maximum speed
-                if dtype == gdal.GFT_Integer:
-                    for row in range(numRows):
-                        val = rat.GetValueAsInt(row,col)
-                        colArray[row] = val
-                elif dtype == gdal.GFT_Real:
-                    for row in range(numRows):
-                        val = rat.GetValueAsDouble(row,col)
-                        colArray[row] = val
-                else:
-                    for row in range(numRows):
-                        val = rat.GetValueAsString(row,col)
-                        colArray.append(val)
-
-                if isinstance(colArray, list):
-                    # convert to array - numpy can handle this now it can work out the lengths
-                    colArray = numpy.array(colArray)
+            colArray = rat.ReadAsArray(col)
 
             # one last little hack - if is a colour column, but type
             # was float, multiply by 255. This is so that HFA etc that stores values
@@ -222,30 +176,20 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
         msg = "coltype must be a valid gdal column type"
         raise rioserrors.AttributeTableTypeError(msg)
 
-    # things get a bit weird here as we need different
-    # behaviour depending on whether we have an RFC40
-    # RAT or not.
-    if hasattr(gdal.RasterAttributeTable, "WriteArray"):
-        # new behaviour
-        attrTbl = gdalBand.GetDefaultRAT()
-        if attrTbl is None:
-            # some formats eg ENVI return None
-            # here so we need to be able to cope
-            attrTbl = gdal.RasterAttributeTable()
-            isFileRAT = False
-        else:
-
-            isFileRAT = True
-
-            # but if it doesn't support dynamic writing
-            # we still ahve to call SetDefaultRAT
-            if not attrTbl.ChangesAreWrittenToFile():
-                isFileRAT = False
-
-    else:
-        # old behaviour
+    attrTbl = gdalBand.GetDefaultRAT()
+    if attrTbl is None:
+        # some formats eg ENVI return None
+        # here so we need to be able to cope
         attrTbl = gdal.RasterAttributeTable()
         isFileRAT = False
+    else:
+
+        isFileRAT = True
+
+        # but if it doesn't support dynamic writing
+        # we still ahve to call SetDefaultRAT
+        if not attrTbl.ChangesAreWrittenToFile():
+            isFileRAT = False
 
     # thanks to RFC40 we need to ensure colname doesn't already exist
     colExists = False
@@ -268,8 +212,6 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
     # color table handling.
     # we assume that the column has already been created
     # of the right type appropriate for the format (maybe by calcstats)
-    # Note: this only works post RFC40 when we have an actual reference
-    # to the RAT rather than a new one so we can ask GetTypeOfCol
     usage = attrTbl.GetUsageOfCol(colNum)
     if (isColorColFromUsage(usage) and 
             attrTbl.GetTypeOfCol(colNum) == gdal.GFT_Real and
@@ -277,48 +219,8 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
         sequence = numpy.array(sequence, dtype=numpy.float)
         sequence = sequence / 255.0
 
-    if hasattr(attrTbl, "WriteArray"):
-        # if GDAL > 1.10 has these functions
-        # thanks to RFC40
-        attrTbl.SetRowCount(rowsToAdd)
-        attrTbl.WriteArray(sequence, colNum)
-
-    elif HAVE_TURBORAT:
-        # use turborat to write values to RAT if available
-        if not isinstance(sequence, numpy.ndarray):
-            # turborat.writeColumn needs an array
-            sequence = numpy.array(sequence)
-            
-        # If the dtype of the array is some unicode type, then convert to simple string type,
-        # as turborat does not cope with the unicode variant. 
-        if 'U' in str(sequence.dtype):
-            sequence = sequence.astype(numpy.character)
-            
-        turborat.writeColumn(attrTbl, colNum, sequence, rowsToAdd)
-    else:
-        defaultValues = {gdal.GFT_Integer:0, gdal.GFT_Real:0.0, gdal.GFT_String:''}
-
-        # go thru and set each value into the RAT
-        for rowNum in range(rowsToAdd):
-            if rowNum >= len(sequence):
-                # they haven't given us enough values - fill in with default
-                val = defaultValues[colType]
-            else:
-                val = sequence[rowNum]
-
-            if colType == gdal.GFT_Integer:
-                # appears that swig cannot convert numpy.int64
-                # to the int type required by SetValueAsInt
-                # so we need to cast. 
-                # This is a problem as readColumn returns numpy.int64 
-                # for integer columns. 
-                # Seems fine converting numpy.float64 to 
-                # float however for SetValueAsDouble.
-                attrTbl.SetValueAsInt(rowNum, colNum, int(val))
-            elif colType == gdal.GFT_Real:
-                attrTbl.SetValueAsDouble(rowNum, colNum, float(val))
-            else:
-                attrTbl.SetValueAsString(rowNum, colNum, val)
+    attrTbl.SetRowCount(rowsToAdd)
+    attrTbl.WriteArray(sequence, colNum)
 
     if not isFileRAT:
         # assume existing bands re-written
