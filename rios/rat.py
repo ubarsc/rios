@@ -191,7 +191,7 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
         if not attrTbl.ChangesAreWrittenToFile():
             isFileRAT = False
 
-    # thanks to RFC40 we need to ensure colname doesn't already exist
+    # We need to ensure colname doesn't already exist
     colExists = False
     for n in range(attrTbl.GetColumnCount()):
         if attrTbl.GetNameOfCol(n) == colName:
@@ -304,17 +304,16 @@ def getColorTable(imgFile, bandNumber=1):
         ds = imgFile
 
     gdalBand = ds.GetRasterBand(bandNumber)
-    colorTable = gdalBand.GetColorTable()
-    if colorTable is None:
-        raise rioserrors.AttributeTableColumnError("Image has no color table")
 
-    count = colorTable.GetCount()
-    # count could be any size so we have to go with int
-    colorArray = numpy.zeros((count, 5), dtype=numpy.int)
-    for index in range(count):
-        colorEntry = colorTable.GetColorEntry(index)
-        arrayEntry = [index] + list(colorEntry)
-        colorArray[index] = numpy.array(arrayEntry)
+    colorList = []
+    for name in ["Red", "Green", "Blue", "Alpha"]:
+        data = readColumnFromBand(name)
+        colorList.append(data)
+        
+    count = colorList[0].size
+    colorArray = numpy.empty((count, 4), dtype=numpy.int)
+    for n in range(len(colorList)):
+        colorArray[:, n] = colorList[n]
 
     return colorArray
 
@@ -325,11 +324,10 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     the imgfile as either a filename string or a gdal.Dataset object. The
     layer number defaults to 1, i.e. the first layer in the file. 
     
-    The color table is given as a numpy array of 5 columns. There is one row 
+    The color table is given as a numpy array of 4 columns. There is one row 
     (i.e. first array index) for every value to be set, and the columns
     are:
 
-        * pixelValue
         * Red
         * Green
         * Blue
@@ -339,30 +337,14 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     color, and the opacity is in the range 0-255, with 255 meaning fully 
     opaque. 
     
-    The pixels values in the first column must be in ascending order, but do 
-    not need to be a complete set (i.e. you don't need to supply a color for 
-    every possible pixel value - any not given will default to transparent black).
-    It does not even need to be contiguous. 
-    
-    For reasons of backwards compatability, a 4-column array will also be accepted, 
-    and will be treated as though the row index corresponds to the pixelValue (i.e. 
-    starting at zero). 
-    
     """
     arrayShape = colorTblArray.shape
     if len(arrayShape) != 2:
         raise rioserrors.ArrayShapeError("ColorTableArray must be 2D. Found shape %s instead"%arrayShape)
         
     (numRows, numCols) = arrayShape
-    # Handle the backwards-compatible case of a 4-column array
-    if numCols == 4:
-        pixVals = numpy.arange(numRows)
-        colorTbl4cols = colorTblArray
-    elif numCols == 5:
-        pixVals = colorTblArray[:, 0]
-        colorTbl4cols = colorTblArray[:, 1:]
-    else:
-        raise rioserrors.ArrayShapeError("Color table array has %d columns, expecting 4 or 5"%numCols)
+    if numCols != 4:
+        raise rioserrors.ArrayShapeError("Color table array has %d columns, expecting 4"%numCols)
     
     # Open the image file and get the band object
     if isinstance(imgfile, gdal.Dataset):
@@ -372,33 +354,15 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
     
     bandobj = ds.GetRasterBand(layernum)
     
-    clrTbl = gdal.ColorTable()
-    maxPixVal = pixVals.max()
-    i = 0
-    # This loop sets an entry for every pixel value up to the largest given. Imagine
-    # bitches if we don't do this. 
-    tblMaxVal = maxPixVal
-    if bandobj.DataType == gdal.GDT_Byte:
-        # For Byte files, we always add rows for entries up to 255. Imagine gets 
-        # confused if we don't
-        tblMaxVal = 255
-        
-    for pixVal in range(tblMaxVal+1):
-        while  i < numRows and pixVals[i] < pixVal:
-            i += 1
-        if i < numRows:
-            tblPixVal = pixVals[i]
-            if tblPixVal == pixVal:
-                colEntry = tuple(colorTbl4cols[i])
-            else:
-                colEntry = (0, 0, 0, 0)
-        else:
-            colEntry = (0, 0, 0, 0)
-        clrTbl.SetColorEntry(pixVal, colEntry)
+    writeColumnToBand(bandobj, "Red", colorTblArray[:, 0], 
+                gdal.GFT_Integer, gdal.GFU_Red)
+    writeColumnToBand(bandobj, "Green", colorTblArray[:, 0], 
+                gdal.GFT_Integer, gdal.GFU_Green)
+    writeColumnToBand(bandobj, "Blue", colorTblArray[:, 0], 
+                gdal.GFT_Integer, gdal.GFU_Blue)
+    writeColumnToBand(bandobj, "Alpha", colorTblArray[:, 0], 
+                gdal.GFT_Integer, gdal.GFU_Alpha)
     
-    bandobj.SetRasterColorTable(clrTbl)
-
-
 def genColorTable(numEntries, colortype):
     """
     Generate a colour table array. The type of colour table generated
