@@ -29,14 +29,6 @@ from distutils.version import LooseVersion
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError
 
-# test if https://trac.osgeo.org/gdal/ticket/6854 has been fixed
-# this allows us to use the rat.SetLinearBinning call rather than metadata
-if hasattr(gdal, '__version__'):
-    # Fail slightly less drastically when running from ReadTheDocs
-    haveLinearBinningFix = LooseVersion(gdal.__version__) >= LooseVersion('2.2.0')
-else:
-    haveLinearBinningFix = False
-
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
 dfltOverviewLvls = os.getenv('RIOS_DFLT_OVERVIEWLEVELS')
@@ -292,14 +284,7 @@ def addStatistics(ds,progress,ignore=None, approx_ok=False):
                 ratObj.SetRowCount(histnbins)
                 ratObj.WriteArray(hist, histIndx)
 
-                # Use SetLinearBinning function if it has been fixed
-                # in the current version of GDAL
-                if haveLinearBinningFix:
-                    ratObj.SetLinearBinning(histmin, (histCalcMax - histCalcMin) / histnbins)
-                else:
-                    tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
-                    tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
-                    tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
+                ratObj.SetLinearBinning(histmin, (histCalcMax - histCalcMin) / histnbins)
 
                 # The HFA driver still honours the STATISTICS_HISTOBINVALUES
                 # metadata item. If we are recalculating the histogram the old
