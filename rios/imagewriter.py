@@ -426,7 +426,7 @@ class ImageWriter(object):
             ds = gdal.Open(self.filename, gdal.GA_Update)
 
             for i in range(imgInfo.rasterCount):
-                numEntries = imgStats[i].max + 1
+                numEntries = int(imgStats[i].max + 1)
                 clrTbl = rat.genColorTable(numEntries, autoColorTableType)
                 band = ds.GetRasterBand(i+1)
                 ratObj = band.GetDefaultRAT()
