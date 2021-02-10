@@ -194,6 +194,14 @@ def testAll():
     ok = testrat.run()
     if not ok: failureCount += 1
 
+    from . import testcolortable
+    ok = testcolortable.run()
+    if not ok: failureCount += 1
+
+    from . import testratcolortable
+    ok = testratcolortable.run()
+    if not ok: failureCount += 1
+
     from . import testratstats
     ok = testratstats.run()
     if not ok: failureCount += 1

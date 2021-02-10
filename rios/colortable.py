@@ -8,7 +8,7 @@ The more general :mod:`rios.ratapplier` and :mod:`rios.ratapplier`
 modules can be used for reading and writing generic Raster 
 Attribute Table Columns. 
 
-The getTableNames() and genTable() functions access the built in
+The getRampNames() and genTable() functions access the built in
 color ramps (mainly derived from https://colorbrewer2.org/ - see
 this website for more information about the ramps and when to use
 them).
@@ -166,9 +166,9 @@ if sys.version_info[0] > 2:
 class ColorTableException(Exception):
     "Exception for errors related to color table access"
 
-def getTableNames():
+def getRampNames():
     """
-    Get a list of names of the available color tables
+    Get a list of names of the available color ramps
     """
     names = list(RAMP.keys())
     names.append(RANDOM_NAME)
