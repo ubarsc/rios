@@ -52,7 +52,7 @@ def run():
     if sys.version_info.major < 3:
         columnList.append(("String", numpy.dtype('S10')))
     
-    allOk = True
+    allOK = True
     for (colName, arrayDtype) in columnList:
         # Write the array into the file, with the given datatype
         ratValues_type = ratValues.astype(arrayDtype)
@@ -62,7 +62,7 @@ def run():
         ratValues_fromFile = rat.readColumn(imgfile, colName)[:nValues].astype(ratValues.dtype)
         if not (ratValues_fromFile == ratValues).all():
             riostestutils.report(TESTNAME, "Value mis-match for column %s"%(colName))
-            allOk = False
+            allOK = False
     
     if os.path.exists(imgfile):
         os.remove(imgfile)
@@ -70,7 +70,7 @@ def run():
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
 
-    return allOk
+    return allOK
 
 
 

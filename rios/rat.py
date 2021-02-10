@@ -28,6 +28,7 @@ interface for large tables where possible.
 
 import sys
 import os
+import warnings
 from osgeo import gdal
 import numpy
 from . import rioserrors
@@ -39,6 +40,9 @@ if sys.version_info[0] > 2:
     
 # For supporting the automatic color table generation thing which Sam loves. 
 DEFAULT_AUTOCOLORTABLETYPE = os.getenv('RIOS_DFLT_AUTOCOLORTABLETYPE', default=None)
+
+# longer tables than this we point user to rios.colortable
+MAX_RECOMMENDED_COLOR_TABLE = 256
 
 def isColorColFromUsage(usage):
     "Tells if usage is one of the color column types"
@@ -354,6 +358,12 @@ def setColorTable(imgfile, colorTblArray, layernum=1):
         raise rioserrors.ArrayShapeError("ColorTableArray must be 2D. Found shape %s instead"%arrayShape)
         
     (numRows, numCols) = arrayShape
+    
+    if numRows > MAX_RECOMMENDED_COLOR_TABLE:
+        msg = "We recommend using the rios.colortable for large color tables. "
+        msg += "Large tables may be very slow with this function"
+        warnings.warn(msg, DeprecationWarning)
+    
     # Handle the backwards-compatible case of a 4-column array
     if numCols == 4:
         pixVals = numpy.arange(numRows)
