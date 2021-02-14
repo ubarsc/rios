@@ -337,6 +337,9 @@ def calcStats(ds,progress=None,ignore=None,
     """
     if progress is None:
         progress = cuiprogress.SilentProgress()
+    
+    if ignore is not None:
+        setNullValue(ds, ignore)
 
     addPyramid(ds, progress, minoverviewdim=minoverviewdim, levels=levels, 
         aggregationType=aggregationType)
@@ -344,4 +347,10 @@ def calcStats(ds,progress=None,ignore=None,
     addStatistics(ds,progress,ignore,approx_ok=approx_ok)
 
 
-    
+def setNullValue(ds, nullValue):
+    """
+    Set the given null value on all bands of the given Dataset
+    """
+    for i in range(ds.RasterCount):
+        band = ds.GetRasterBand(i+1)
+        band.SetNoDataValue(float(nullValue))

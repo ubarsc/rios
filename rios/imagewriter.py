@@ -391,6 +391,11 @@ class ImageWriter(object):
         """
         Closes the open dataset
         """
+        if statsIgnore is not None:
+            # This also gets set inside addStatistics. That is a 
+            # historical anomaly. This is the correct place to do it. 
+            calcstats.setNullValue(self.ds, statsIgnore)
+
         if calcStats:
             from .cuiprogress import SilentProgress
             if progress is None:
