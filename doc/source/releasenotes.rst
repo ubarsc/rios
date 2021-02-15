@@ -1,6 +1,24 @@
 Release Notes
 =============
 
+Version 1.4.11 (2021-02-16)
+---------------------------
+
+Bug Fixes:
+  * When calculating stats and/or overviews (pyramid layers), set the 
+    NoDataValue before both, and independently of them. Previously,
+    it was set after calculating overviews, which meant that for continuous
+    data (i.e. using averaging to calculate overviews), the overviews 
+    would contain pixels contaminated by the null value. No impact on the 
+    full-resolution data, but it meant that overviews were not as reliable
+    as they should be. The NoDataValue can now also be set even when 
+    statistics are not being calculated. 
+
+New Features:
+  * Use GDAL RFC40 attribute table methods for handling histogram
+    and color tables. Much faster for very large number of entries. 
+  * Removed support for GDAL versions < 2.2. 
+
 Version 1.4.10 (2019-11-29)
 --------------------------
 
