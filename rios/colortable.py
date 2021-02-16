@@ -4,7 +4,7 @@ tables. This module uses the Raster Attribute Table functions
 which are the fastest method to access the color table that
 GDAL provides. 
 
-The more general :mod:`rios.ratapplier` and :mod:`rios.ratapplier`  
+The more general :mod:`rios.rat` and :mod:`rios.ratapplier`  
 modules can be used for reading and writing generic Raster 
 Attribute Table Columns. 
 
@@ -179,7 +179,7 @@ def genTable(numEntries, colorType, ignoreVal=None):
     Generate the named color table for use with setTable().
     
     colorType should be one of the names returned from 
-    getTableNames(). 
+    getRampNames(). 
     
     numEntries is the size of the table that is generated
     and should correspond to the range of data you have 

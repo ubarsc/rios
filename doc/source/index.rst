@@ -78,6 +78,7 @@ Low level functions
     rios_imagewriter
     rios_parallel
     rios_rat
+    rios_colortable
     rios_readerinfo
 
 Utilities
