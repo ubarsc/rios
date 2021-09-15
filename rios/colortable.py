@@ -438,4 +438,4 @@ def setTable(imgFile, colorTable, bandNumber=1):
         attrTbl.WriteArray(colorTable[idx], colNum)
         
     if not isFileRAT:
-        attrTbl.SetDefaultRAT(attrTbl)
+        gdalBand.SetDefaultRAT(attrTbl)
