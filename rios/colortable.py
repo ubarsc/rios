@@ -277,6 +277,27 @@ if sys.version_info[0] > 2:
 
 class ColorTableException(Exception):
     "Exception for errors related to color table access"
+    
+def addRamp(name, red, green, blue):
+    """
+    Add a new ramp to the internal list of color ramps so that it can 
+    be used with genTable() etc. 
+    
+    red, green and blue must be strings with the values, space separated.
+    These values should be 0-255 and have the same number of values for 
+    each color.
+    
+    """
+    if name in RAMP:
+        msg = 'Ramp {} already exists'.format(name)
+        raise ColorTableException(msg)
+        
+    if (not isinstance(red, basestring) or not isinstance(green, basestring) 
+            or not isinstance(blue, basestring)):
+        msg = "Colour values must be a space separated string"
+        raise ColorTableException(msg)
+        
+    RAMP[name] = {'description': {'red': red, 'green': green, 'blue': blue}}
 
 def getRampNames():
     """
