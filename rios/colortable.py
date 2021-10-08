@@ -389,6 +389,8 @@ def getTable(imgFile, bandNumber=1):
     The returned colour table is a numpy array, described in detail
     in the docstring for colortable.setTable(). 
     
+    If there is no color table, returns None.
+    
     """
     if isinstance(imgFile, basestring):
         ds = gdal.Open(str(imgFile))
@@ -397,6 +399,8 @@ def getTable(imgFile, bandNumber=1):
 
     gdalBand = ds.GetRasterBand(bandNumber)
     attrTbl = gdalBand.GetDefaultRAT()
+    if attrTbl is None:
+        return None
     
     numEntries = attrTbl.GetRowCount()
     ct = numpy.empty((4, numEntries), dtype=numpy.uint8)
