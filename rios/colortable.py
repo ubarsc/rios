@@ -277,6 +277,8 @@ if sys.version_info[0] > 2:
 
 class ColorTableException(Exception):
     "Exception for errors related to color table access"
+class ColorTableMissingException(ColorTableException):
+    "Exception for errors related to errors reading color table"
     
 def addRamp(name, red, green, blue):
     """
@@ -401,12 +403,12 @@ def getTable(imgFile, bandNumber=1):
     attrTbl = gdalBand.GetDefaultRAT()
     if attrTbl is None:
         msg = 'Color table has zero rows'
-        raise ColorTableException(msg)
+        raise ColorTableMissingException(msg)
     
     numEntries = attrTbl.GetRowCount()
     if numEntries == 0:
         msg = 'Color table has zero rows'
-        raise ColorTableException(msg)
+        raise ColorTableMissingException(msg)
     
     ct = numpy.empty((4, numEntries), dtype=numpy.uint8)
     
@@ -415,7 +417,7 @@ def getTable(imgFile, bandNumber=1):
         colNum = attrTbl.GetColOfUsage(usage)
         if colNum == -1:
             msg = 'Cannot find color table columns in file'
-            raise ColorTableException(msg)
+            raise ColorTableMissingException(msg)
             
         ct[idx] = attrTbl.ReadAsArray(colNum)
         
