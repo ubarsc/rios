@@ -400,16 +400,21 @@ def getTable(imgFile, bandNumber=1):
     gdalBand = ds.GetRasterBand(bandNumber)
     attrTbl = gdalBand.GetDefaultRAT()
     if attrTbl is None:
-        return None
+        msg = 'Color table has zero rows'
+        raise ColorTableException(msg)
     
     numEntries = attrTbl.GetRowCount()
+    if numEntries == 0:
+        msg = 'Color table has zero rows'
+        raise ColorTableException(msg)
+    
     ct = numpy.empty((4, numEntries), dtype=numpy.uint8)
     
     colorUsages = [gdal.GFU_Red, gdal.GFU_Green, gdal.GFU_Blue, gdal.GFU_Alpha]
     for idx, usage in enumerate(colorUsages):
         colNum = attrTbl.GetColOfUsage(usage)
         if colNum == -1:
-            msg = 'Cannot find color table in file'
+            msg = 'Cannot find color table columns in file'
             raise ColorTableException(msg)
             
         ct[idx] = attrTbl.ReadAsArray(colNum)
