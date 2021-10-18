@@ -277,6 +277,8 @@ if sys.version_info[0] > 2:
 
 class ColorTableException(Exception):
     "Exception for errors related to color table access"
+class ColorTableMissingException(ColorTableException):
+    "Exception for errors related to errors reading color table"
     
 def addRamp(name, red, green, blue):
     """
@@ -307,7 +309,7 @@ def getRampNames():
     names.append(RANDOM_NAME)
     return names
 
-def genTable(numEntries, colorType, ignoreVal=None):
+def genTable(numEntries, colorType, ignoreVal=None, colorPoints=None):
     """
     Generate the named color table for use with setTable().
     
@@ -322,6 +324,11 @@ def genTable(numEntries, colorType, ignoreVal=None):
     row is set to 0 - ie totally transparent. Use this for
     preparing images for display so images underneath in a 
     viewer show through where the ignoreVal is set.
+    
+    If colorPoints is set it should be a sequence of entry numbers
+    to use for the points on the color ramp. If not given the points
+    on the color ramp are evenly spread 0-numEntries. Actual colors
+    for points between are interpolated.
 
     The returned colour table is a numpy array, described in detail
     in the docstring for colortable.setTable(). 
@@ -346,14 +353,21 @@ def genTable(numEntries, colorType, ignoreVal=None):
             # turn it into a list of floats
             # numpy.interp() needs floats
             colList = [float(x) for x in colstr.split()]
-            # the x-values of the observations
-            # evenly spaced 0-255 with len(colList) obs
-            xobs = numpy.linspace(0, 255, len(colList))
+            if colorPoints is not None:
+                # use what they've given us
+                if len(colorPoints) != len(colList):
+                    msg = 'colorPoints needs to have same number as selected ramp'
+                    raise ColorTableException(msg)
+                xobs = colorPoints
+            else:
+                # the x-values of the observations
+                # evenly spaced 0-numEntries with len(colList) obs
+                xobs = numpy.linspace(0, numEntries, len(colList))
             # create an array from our list
             yobs = numpy.array(colList)
-            # values to interpolate at 0-255
+            # values to interpolate at 0-numEntries
             # same size as the lut
-            xinterp = numpy.linspace(0, 255, numEntries)
+            xinterp = numpy.linspace(0, numEntries, numEntries)
             # do the interp
             yinterp = numpy.interp(xinterp, xobs, yobs)
             # put into color table
@@ -377,6 +391,8 @@ def getTable(imgFile, bandNumber=1):
     The returned colour table is a numpy array, described in detail
     in the docstring for colortable.setTable(). 
     
+    If there is no color table, returns None.
+    
     """
     if isinstance(imgFile, basestring):
         ds = gdal.Open(str(imgFile))
@@ -385,16 +401,23 @@ def getTable(imgFile, bandNumber=1):
 
     gdalBand = ds.GetRasterBand(bandNumber)
     attrTbl = gdalBand.GetDefaultRAT()
+    if attrTbl is None:
+        msg = 'Color table has zero rows'
+        raise ColorTableMissingException(msg)
     
     numEntries = attrTbl.GetRowCount()
+    if numEntries == 0:
+        msg = 'Color table has zero rows'
+        raise ColorTableMissingException(msg)
+    
     ct = numpy.empty((4, numEntries), dtype=numpy.uint8)
     
     colorUsages = [gdal.GFU_Red, gdal.GFU_Green, gdal.GFU_Blue, gdal.GFU_Alpha]
     for idx, usage in enumerate(colorUsages):
         colNum = attrTbl.GetColOfUsage(usage)
         if colNum == -1:
-            msg = 'Cannot find color table in file'
-            raise ColorTableException(msg)
+            msg = 'Cannot find color table columns in file'
+            raise ColorTableMissingException(msg)
             
         ct[idx] = attrTbl.ReadAsArray(colNum)
         
