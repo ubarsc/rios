@@ -23,7 +23,7 @@ with Python.
 
 import os
 import sys
-from setuptools import setup
+from numpy.distutils.core import setup
 import glob
 
 import rios
