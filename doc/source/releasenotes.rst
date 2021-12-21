@@ -1,6 +1,25 @@
 Release Notes
 =============
 
+Version 1.4.12 (2021-12-22)
+---------------------------
+
+Bug Fixes:
+  * Remove dependency on the distutils module which is now deprecated
+    in Python. Use numpy.distutils instead as we do in the other ubarsc
+    projects.
+  * Remove file system existence check in fileinfo.ImageInfo as this
+    did not work for /vsi files.
+  * Fix colortable module to work with GTiff and various other small fixes 
+    and improvements.
+
+New Features:
+  * All colorbrewer2.org ramps are now available in the colortable module
+    and other ramps can be added programmatically.
+  * Allow the points to apply a color ramp at to specified to 
+    colortable.genTable().
+
+
 Version 1.4.11 (2021-02-16)
 ---------------------------
 
