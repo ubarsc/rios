@@ -23,7 +23,7 @@ of the inputs it has and deal with resampling.
 
 import os
 import sys
-import subprocess
+import tempfile
 
 from . import imageio
 from . import rioserrors
@@ -283,9 +283,9 @@ class InputCollection(object):
         os.close(fileh)
         
         
-        overviewLevel = 'AUTO'
-        if not allowOverviewsGdalwarp:
-            overviewLevel = 'NONE'
+        overviewLevel = 'NONE'
+        if allowOverviewsGdalwarp:
+            overviewLevel = 'AUTO'
             
         if useVRT:
             driverName = 'VRT'
@@ -295,7 +295,7 @@ class InputCollection(object):
         nullValues = self.makeWarpNullOptions(nullValList)
             
         warpOptions = gdal.WarpOptions(overviewLevel=overviewLevel,
-            srsSRS=self.specialProjFixes(ds.GetProjection()),
+            srcSRS=self.specialProjFixes(ds.GetProjection()),
             dstSRS=self.referencePixGrid.projection,
             outputBounds=[workingRegion.xMin, workingRegion.yMin, 
                         workingRegion.xMax, workingRegion.yMax],
@@ -308,15 +308,12 @@ class InputCollection(object):
         self.filestoremove.append(temp_image)
 
         try:
-            gdal.Warp(ds, temp_image, options=warpOptions)
+            newds = gdal.Warp(temp_image, ds, options=warpOptions)
         except Exception as e:
-            raise rioserrors.GdalWarpError(str(e))
-        
-        # open the new temp file
-        newds = gdal.Open(temp_image)
-        if newds is None:
-            msg = 'Unable to Open %s' % temp_image
-            raise rioserrors.ImageOpenError(msg)
+            msg = ("Error while running gdal.Warp(): {}. Try setting the "
+                    + "RIOS_NO_VRT_FOR_RESAMPLING environment variable "
+                    + "to '1'").format(str(e))
+            raise rioserrors.GdalWarpError(msg)
         
         # return the new dataset
         return newds
@@ -420,7 +417,7 @@ class InputCollection(object):
             if nullVal is None:
                 haveNone = True
         if haveNone:
-            optionList = None
+            allNulls = None
         else:
             nullValStrList = [str(n) for n in nullValList]
             allNulls = ' '.join(nullValStrList)
