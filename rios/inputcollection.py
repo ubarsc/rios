@@ -29,7 +29,6 @@ from . import imageio
 from . import rioserrors
 from . import pixelgrid
 from osgeo import gdal
-gdal.UseExceptions()
 
 class InputIterator(object):
     """
@@ -307,6 +306,8 @@ class InputCollection(object):
         # control does not always return
         self.filestoremove.append(temp_image)
 
+        usingExceptions = gdal.GetUseExceptions()
+        gdal.UseExceptions()
         try:
             newds = gdal.Warp(temp_image, ds, options=warpOptions)
         except Exception as e:
@@ -314,7 +315,9 @@ class InputCollection(object):
                     + "RIOS_NO_VRT_FOR_RESAMPLING environment variable "
                     + "to '1'").format(str(e))
             raise rioserrors.GdalWarpError(msg)
-        
+        if not usingExceptions:
+            gdal.DontUseExceptions()
+
         # return the new dataset
         return newds
         
