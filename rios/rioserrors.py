@@ -39,9 +39,6 @@ class ResampleNeededError(RiosError):
 class OutsideImageBoundsError(RiosError):
     "Requested Block is not available"
     
-class GdalWarpNotFoundError(RiosError):
-    "Unable to find gdalwarp"
-
 class GdalWarpError(RiosError):
     "Error while running gdalwarp"
     
