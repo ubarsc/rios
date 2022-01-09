@@ -315,8 +315,9 @@ class InputCollection(object):
                     + "RIOS_NO_VRT_FOR_RESAMPLING environment variable "
                     + "to '1'").format(str(e))
             raise rioserrors.GdalWarpError(msg)
-        if not usingExceptions:
-            gdal.DontUseExceptions()
+        finally:
+            if not usingExceptions:
+                gdal.DontUseExceptions()
 
         # return the new dataset
         return newds
