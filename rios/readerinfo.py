@@ -249,7 +249,7 @@ class ReaderInfo(object):
         be what one wants. 
         
         """
-        (tl, br) = (self.blocktl, self.blockbr)
+        (tl, _) = (self.blocktl, self.blockbr)
         (nCols, nRows) = self.getBlockSize()
         nCols += 2*self.overlap
         nRows += 2*self.overlap

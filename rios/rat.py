@@ -62,7 +62,6 @@ def readColumnFromBand(gdalBand, colName):
 
     # get the size of the RAT  
     numCols = rat.GetColumnCount()
-    numRows = rat.GetRowCount()
   
     # if this is still None at the end
     # we didn't find the column
