@@ -1,4 +1,4 @@
-name: Python application
+name: Run tests
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
     - name: Lint with pyflakes
       shell: bash -l {0}
       run: |
-        pyflakes pyshepseg
+        pyflakes rios
     - name: Test with testrios.py
       shell: bash -l {0}
       run: |
