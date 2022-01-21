@@ -23,12 +23,7 @@ import sys
 import numpy
 
 from rios import rat
-from rios import calcstats
-from rios import cuiprogress
 from rios.riostests import riostestutils
-
-from rios import ratapplier
-from rios import applier
 
 TESTNAME = 'TESTRAT'
 

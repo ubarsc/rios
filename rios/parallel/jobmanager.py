@@ -103,9 +103,7 @@ from __future__ import print_function
 
 import os
 import sys
-import math
 import abc
-import copy
 import subprocess
 import tempfile
 import time
@@ -113,8 +111,6 @@ try:
     import cPickle as pickle        # For Python 2.x
 except ImportError:
     import pickle
-
-import numpy
 
 from .. import rioserrors
 # Import a pickler which can pickle functions, with their dependencies, as well

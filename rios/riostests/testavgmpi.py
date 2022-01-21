@@ -27,8 +27,6 @@ Steals heavily from testavg
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function
 import os
-import sys
-import subprocess
 import numpy
 from osgeo import gdal
 from rios import applier

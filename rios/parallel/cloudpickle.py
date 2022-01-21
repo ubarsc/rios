@@ -43,7 +43,6 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import print_function
 
 import dis
-from functools import partial
 import io
 import itertools
 import logging
@@ -53,7 +52,6 @@ import pickle
 import platform
 import struct
 import sys
-import traceback
 import types
 import weakref
 import uuid
