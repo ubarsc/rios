@@ -27,6 +27,7 @@ from rios.riostests import riostestutils
 
 TESTNAME = 'TESTRAT'
 
+
 def run():
     """
     Run tests of the rios.rat functions
@@ -68,7 +69,6 @@ def run():
     return allOK
 
 
-
 def makeTestFile(imgfile, withRat=True):
     # Make a test image with a simple RAT
     nRows = 100
@@ -84,7 +84,7 @@ def makeTestFile(imgfile, withRat=True):
     del ds
     
     # Note that the RAT has a row for lots of values which have no corresponding pixel
-    ratValues = (numpy.mgrid[0:nRows]+10).astype(numpy.int32)
+    ratValues = (numpy.mgrid[0:nRows] + 10).astype(numpy.int32)
     ratValues[0] = 500
 
     return ratValues
