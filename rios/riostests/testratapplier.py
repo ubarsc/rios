@@ -31,6 +31,7 @@ from rios import applier
 
 TESTNAME = 'TESTRATAPPLIER'
 
+
 def run():
     """
     Run tests of the ratapplier
@@ -42,19 +43,23 @@ def run():
     makeTestFile(imgfile)
     
     ok = testOutputSameFile(imgfile)
-    if not ok: allOK = False
+    if not ok:
+        allOK = False
     
     imgfile2 = "test2.img"
     ok = testDifferentOutput(imgfile, imgfile2)
-    if not ok: allOK = False
+    if not ok:
+        allOK = False
     
     imgfile3 = "test3.img"
     ok = testReduceRat(imgfile, imgfile3)
-    if not ok: allOK = False
+    if not ok:
+        allOK = False
     
     imgfile4 = "test4.img"
     ok = testNewRat(imgfile4)
-    if not ok: allOK = False
+    if not ok:
+        allOK = False
     
     for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4]:
         os.remove(tmpfile)
@@ -63,8 +68,7 @@ def run():
         riostestutils.report(TESTNAME, "Passed")
 
     return allOK
-    
-    
+
 
 def testOutputSameFile(imgfile):
     # Now test the ratapplier
@@ -85,6 +89,7 @@ def testOutputSameFile(imgfile):
         riostestutils.report(TESTNAME, "sqrd incorrect, in sameFile output")
         ok = False
     return ok
+
 
 def myFunc(info, inputs, outputs):
     outputs.img.sqrd = inputs.img.Value ** 2
@@ -110,6 +115,7 @@ def testDifferentOutput(imgfile, imgfile2):
         riostestutils.report(TESTNAME, "sqrd incorrect, in differentFile output")
         ok = False
     return ok
+
 
 def myFuncDiffFile(info, inputs, outputs):
     outputs.outimg.sqrd = inputs.img.Value ** 2
@@ -152,12 +158,15 @@ def testReduceRat(imgfile, imgfile3):
         ok = False
     return ok
 
+
 def rasterReduceFunc(info, inputs, outputs):
     outputs.outimg = inputs.inimg // 2
+
 
 def ratReduceFunc(info, inputs, outputs):
     evenMask = (((info.inputRowNumbers // 2) * 2) == info.inputRowNumbers)
     outputs.outimg.Value = inputs.img.Value[evenMask]
+
 
 def testNewRat(imgfile4):
     makeTestFile(imgfile4, withRat=False)
@@ -179,8 +188,10 @@ def testNewRat(imgfile4):
         riostestutils.report(TESTNAME, "New RAT incorrect: %s, %s"%(col, colIntended))
     return ok
 
+
 def myFuncNewRat(info, inputs, outputs):
     outputs.outimg.newCol = numpy.arange(info.blockLen, dtype=numpy.uint32) + info.startrow
+
 
 def makeTestFile(imgfile, withRat=True):
     # Make a test image with a simple RAT
@@ -197,7 +208,7 @@ def makeTestFile(imgfile, withRat=True):
     calcstats.calcStats(ds, ignore=nullDN, progress=cuiprogress.SilentProgress())
     columnName = 'Value'
     # Note that the RAT has a row for lots of values which have no corresponding pixel
-    ratValues = (numpy.mgrid[0:nRows]+10).astype(numpy.int32)
+    ratValues = (numpy.mgrid[0:nRows] + 10).astype(numpy.int32)
     ratValues[0] = 500
     if withRat:
         rat.writeColumnToBand(band, columnName, ratValues)
