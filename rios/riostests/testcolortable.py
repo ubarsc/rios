@@ -30,6 +30,7 @@ from . import riostestutils
 
 TESTNAME = "TESTCOLORTABLE"
 
+
 def run():
     """
     Run the color table test
