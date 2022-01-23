@@ -28,6 +28,7 @@ from . import riostestutils
 
 TESTNAME = 'TESTRATSTATS'
 
+
 def run():
     """
     Run a test of RAT statistics calculation
