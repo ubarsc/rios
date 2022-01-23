@@ -25,7 +25,6 @@ from __future__ import print_function
 from mpi4py import MPI
 from rios.parallel import subproc
 
-import sys
 from io import BytesIO
 
 if __name__ == "__main__":
