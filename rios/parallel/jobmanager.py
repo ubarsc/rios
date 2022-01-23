@@ -122,10 +122,12 @@ except ImportError:
     # Import from our own local copy. This is what will usually happen. 
     from . import cloudpickle
 
+
 class BlockAssociations(object):
     """
     Dummy class, to mimic applier.BlockAssociations, while avoiding circular imports. 
     """
+
 
 class JobInfo(object):
     """
@@ -156,6 +158,7 @@ class JobInfo(object):
         Return the parameter(s) that were modified
         by the function so they can be returned.
         """
+
 
 class JobManager(object):
     """
@@ -384,7 +387,7 @@ class PbsJobManager(JobManager):
         scriptCmdList.append("rios_subproc.py %s %s"%(inputsfile, outputsfile))
         scriptStr = '\n'.join(scriptCmdList)
         
-        open(scriptfile, 'w').write(scriptStr+'\n')
+        open(scriptfile, 'w').write(scriptStr + '\n')
         open(inputsfile, 'wb').write(allInputsPickled)
         
         submitCmdWords = ["qsub", scriptfile]
@@ -403,7 +406,7 @@ class PbsJobManager(JobManager):
         # something bad happened, so we pass it on to the user in the form of
         # an exception. 
         if len(stderr) > 0:
-            msg = "Error from qsub. Message:\n"+stderr
+            msg = "Error from qsub. Message:\n" + stderr
             raise rioserrors.JobMgrError(msg)
         
         return (pbsJobID, outputsfile, logfile)
@@ -467,8 +470,8 @@ class PbsJobManager(JobManager):
                 logfileContents = 'No logfile found'
                 if os.path.exists(logfile):
                     logfileContents = open(logfile).read()
-                msg = ("Error collecting output from PBS sub-job. Exception message:\n"+str(e)+
-                    "\nPBS Logfile:\n"+logfileContents)
+                msg = ("Error collecting output from PBS sub-job. Exception message:\n" + str(e) +
+                    "\nPBS Logfile:\n" + logfileContents)
                 raise rioserrors.JobMgrError(msg)
             outputBlocksList.append(outputObj)
             os.remove(logfile)
@@ -524,7 +527,7 @@ class SlurmJobManager(JobManager):
         scriptCmdList.append("rios_subproc.py %s %s"%(inputsfile, outputsfile))
         scriptStr = '\n'.join(scriptCmdList)
         
-        open(scriptfile, 'w').write(scriptStr+'\n')
+        open(scriptfile, 'w').write(scriptStr + '\n')
         open(inputsfile, 'wb').write(allInputsPickled)
         
         submitCmdWords = ["sbatch", scriptfile]
@@ -548,7 +551,7 @@ class SlurmJobManager(JobManager):
         # something bad happened, so we pass it on to the user in the form of
         # an exception. 
         if slurmJobID is None or len(stderr) > 0:
-            msg = "Error from sbatch. Message:\n"+stderr
+            msg = "Error from sbatch. Message:\n" + stderr
             raise rioserrors.JobMgrError(msg)
         
         return (slurmJobID, outputsfile, logfile)
@@ -612,12 +615,13 @@ class SlurmJobManager(JobManager):
                 logfileContents = 'No logfile found'
                 if os.path.exists(logfile):
                     logfileContents = open(logfile).read()
-                msg = ("Error collecting output from SLURM sub-job. Exception message:\n"+str(e)+
-                    "\nSLURM Logfile:\n"+logfileContents)
+                msg = ("Error collecting output from SLURM sub-job. Exception message:\n" + str(e) +
+                    "\nSLURM Logfile:\n" + logfileContents)
                 raise rioserrors.JobMgrError(msg)
             outputBlocksList.append(outputObj)
             os.remove(logfile)
         return outputBlocksList
+
 
 def find_executable(executable):
     """
@@ -635,6 +639,7 @@ def find_executable(executable):
         if os.path.isfile(f):
             return f
     return None
+
     
 class MpiJobManager(JobManager):
     """
@@ -660,7 +665,7 @@ class MpiJobManager(JobManager):
         # base class does one job in current process so we don't
         # need to create processes for each job
         self.comm = MPI.COMM_SELF.Spawn(sys.executable, [subproc],
-                            maxprocs=(numSubJobs-1))
+                            maxprocs=(numSubJobs - 1))
 
         # call base class implementation
         JobManager.__init__(self, numSubJobs)
@@ -669,7 +674,7 @@ class MpiJobManager(JobManager):
         # check constructor succeeded
         if hasattr(self, 'numSubJobs'):
             # tell all the sub jobs to exit
-            for dest in range(self.numSubJobs-1):
+            for dest in range(self.numSubJobs - 1):
                 self.comm.send([False, 0], dest=dest)
 
             self.comm.Disconnect()
@@ -726,6 +731,7 @@ class MpiJobManager(JobManager):
 
         return outputBlocks
 
+
 def multiUserFunc(userFunc, jobInfo):
     """
     This function is run by the MultiJobManager to run
@@ -739,6 +745,7 @@ def multiUserFunc(userFunc, jobInfo):
 
     result = jobInfo.getFunctionResult(params)
     return result
+
     
 class MultiJobManager(JobManager):
     """
@@ -812,6 +819,7 @@ class MultiJobManager(JobManager):
             outputBlocks.append(output)
 
         return outputBlocks
+
 
 # This mechanism for selecting which job manager sub-class to use is important in 
 # order to allow an application to run without modification on different systems.
