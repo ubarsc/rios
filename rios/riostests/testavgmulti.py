@@ -31,11 +31,11 @@ import os
 import numpy
 from osgeo import gdal
 from rios import applier
+from . import riostestutils
 
 TESTNAME = "TESTAVGMULTI"
 TEST_NCPUS = 2
 
-from . import riostestutils
 
 def run():
     """
@@ -112,8 +112,8 @@ def checkResult(avgfile):
     if avg.shape != riosavg.shape:
         riostestutils.report(TESTNAME, "Shape mis-match: %s != %s"%(avg.shape, riosavg.shape))
         ok = False
-    elif (riosavg-avg).any():
-        riostestutils.report(TESTNAME, "Incorrect result. Average difference = %s"%(riosavg-avg).mean())
+    elif (riosavg - avg).any():
+        riostestutils.report(TESTNAME, "Incorrect result. Average difference = %s"%(riosavg - avg).mean())
         ok = False
     else:
         riostestutils.report(TESTNAME, "Passed")
