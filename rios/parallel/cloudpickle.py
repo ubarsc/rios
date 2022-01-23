@@ -862,7 +862,7 @@ class CloudPickler(Pickler):
         The name of this method is somewhat misleading: all types get
         dispatched here.
         """
-        if obj is type(None):
+        if obj is type(None):       # noqa
             return self.save_reduce(type, (None,), obj=obj)
         elif obj is type(Ellipsis):
             return self.save_reduce(type, (Ellipsis,), obj=obj)
