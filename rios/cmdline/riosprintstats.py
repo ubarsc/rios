@@ -22,6 +22,7 @@ point.
 import argparse
 from rios import fileinfo
 
+
 def getCmdargs():
     """
     Get commandline arguments
