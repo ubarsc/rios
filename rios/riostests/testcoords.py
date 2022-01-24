@@ -51,14 +51,14 @@ TSTPT_Y = YSTART - OFFSET_2ND_IMAGE - 10.5 * PIX
 TSTPIX_1FILE_NOOVERLAP = [(110, 110)]
 TSTPIX_1FILE_OVERLAP2 = [(112, 112)]
 TSTPIX_2FILE_OVERLAP2 = [(12, 12)]
-NUMBLOCKSX = int(math.ceil(riostestutils.DEFAULT_COLS /  applier.DEFAULTWINDOWXSIZE))
-NUMBLOCKSY = int(math.ceil(riostestutils.DEFAULT_ROWS /  applier.DEFAULTWINDOWYSIZE))
+NUMBLOCKSX = int(math.ceil(riostestutils.DEFAULT_COLS / applier.DEFAULTWINDOWXSIZE))
+NUMBLOCKSY = int(math.ceil(riostestutils.DEFAULT_ROWS / applier.DEFAULTWINDOWYSIZE))
 CENTRES_1FILE_NOOVERLAP = [(XSTART + j * STEP + HALFPIX, YSTART - i * STEP - HALFPIX) 
     for i in range(NUMBLOCKSY) for j in range(NUMBLOCKSX)]
 CENTRES_1FILE_OVERLAP2 = [(XSTART + j * STEP + HALFPIX - MARGIN, YSTART - i * STEP - HALFPIX + MARGIN) 
     for i in range(NUMBLOCKSY) for j in range(NUMBLOCKSX)]
-NUMBLOCKSX_WITHOFFSET = int(math.ceil((riostestutils.DEFAULT_COLS - 2 * OFFSET_PIXELS)/  applier.DEFAULTWINDOWXSIZE))
-NUMBLOCKSY_WITHOFFSET = int(math.ceil((riostestutils.DEFAULT_ROWS - 2 * OFFSET_PIXELS)/  applier.DEFAULTWINDOWYSIZE))
+NUMBLOCKSX_WITHOFFSET = int(math.ceil((riostestutils.DEFAULT_COLS - 2 * OFFSET_PIXELS)/ applier.DEFAULTWINDOWXSIZE))
+NUMBLOCKSY_WITHOFFSET = int(math.ceil((riostestutils.DEFAULT_ROWS - 2 * OFFSET_PIXELS)/ applier.DEFAULTWINDOWYSIZE))
 CENTRES_2FILE_OVERLAP2 = [(XSTART + OFFSET_2ND_IMAGE+ j * STEP + HALFPIX - MARGIN, 
     YSTART - OFFSET_2ND_IMAGE- i * STEP - HALFPIX + MARGIN) 
     for i in range(NUMBLOCKSY_WITHOFFSET) for j in range(NUMBLOCKSX_WITHOFFSET)]
@@ -93,7 +93,8 @@ def run():
     otherargs.centresList = []
     applier.apply(getCoords, infiles, outfiles, otherargs, controls=controls)
     ok = checkCoords('1 file, overlap=0', otherargs, TSTPIX_1FILE_NOOVERLAP, CENTRES_1FILE_NOOVERLAP)
-    if not ok: allOK = False
+    if not ok:
+        allOK = False
 
     # Single input file, with an overlap set
     otherargs.tstPixList = []
@@ -101,7 +102,8 @@ def run():
     controls.setOverlap(OLAP)
     applier.apply(getCoords, infiles, outfiles, otherargs, controls=controls)
     ok = checkCoords('1 file, overlap=2', otherargs, TSTPIX_1FILE_OVERLAP2, CENTRES_1FILE_OVERLAP2)
-    if not ok: allOK = False
+    if not ok:
+        allOK = False
 
     # Two input files, with an overlap set
     infiles.img = [ramp1, ramp2]
@@ -110,7 +112,8 @@ def run():
     controls.setOverlap(OLAP)
     applier.apply(getCoords, infiles, outfiles, otherargs, controls=controls)
     ok = checkCoords('2 files, overlap=2', otherargs, TSTPIX_2FILE_OVERLAP2, CENTRES_2FILE_OVERLAP2)
-    if not ok: allOK = False
+    if not ok:
+        allOK = False
     
     # Clean up
     for filename in [ramp1, ramp2]:
@@ -119,7 +122,6 @@ def run():
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
 
-    
     return allOK
 
 
@@ -129,7 +131,7 @@ def getCoords(info, inputs, outputs, otherargs):
     of each block, expressed in a variety of ways
     """
     (x, y) = info.getBlockCoordArrays()
-    otherargs.centresList.append((x[0,0], y[0,0]))
+    otherargs.centresList.append((x[0, 0], y[0, 0]))
     
     (r, c) = info.getPixRowColBlock(TSTPT_X, TSTPT_Y)
     if r is not None and c is not None:

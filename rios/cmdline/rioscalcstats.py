@@ -23,9 +23,11 @@ import sys
 import argparse
 
 from osgeo import gdal
+from rios import calcstats
+
+
 gdal.UseExceptions()
 
-from rios import calcstats
 
 def getCmdargs():
     """
@@ -46,6 +48,7 @@ def getCmdargs():
         sys.exit(1)
 
     return cmdargs
+
 
 def main():
     """

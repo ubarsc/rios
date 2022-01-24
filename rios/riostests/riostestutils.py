@@ -40,10 +40,11 @@ DEFAULT_XLEFT = 500000
 DEFAULT_YTOP = 7000000
 DEFAULT_EPSG = 28355
 
+
 def createTestFile(filename, numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS, 
-    dtype=DEFAULT_DTYPE, numBands=1, epsg=28355, xLeft=DEFAULT_XLEFT, 
-    yTop=DEFAULT_YTOP, xPix=DEFAULT_PIXSIZE, yPix=DEFAULT_PIXSIZE, 
-    driverName='HFA', creationOptions=['COMPRESS=YES']):
+        dtype=DEFAULT_DTYPE, numBands=1, epsg=28355, xLeft=DEFAULT_XLEFT, 
+        yTop=DEFAULT_YTOP, xPix=DEFAULT_PIXSIZE, yPix=DEFAULT_PIXSIZE, 
+        driverName='HFA', creationOptions=['COMPRESS=YES']):
     """
     Create a simple test file, on a standard footprint. Has some fairly arbitrary
     default values for all the relevant characteristics, which can be
@@ -76,7 +77,7 @@ def genRampArray(nRows=DEFAULT_ROWS, nCols=DEFAULT_COLS):
     Generate a simple 2-d linear ramp. Returns a numpy array of the data
     """
     (x, y) = numpy.mgrid[:nRows, :nCols]
-    ramp = ((x + y) * 100.0 / (nRows-1 + nCols-1)).astype(numpy.uint8)
+    ramp = ((x + y) * 100.0 / (nRows - 1 + nCols - 1)).astype(numpy.uint8)
     return ramp
 
 
@@ -151,12 +152,14 @@ def report(testName, message):
     fullMessage = "%s: %s" % (testName, message)
     print(fullMessage)
 
+
 def reportStart(testName):
     """
     Report the beginning of a given test
     """
     print("\n####################")
     print("Starting test:", testName)
+
 
 def testAll():
     """
@@ -168,60 +171,74 @@ def testAll():
 
     from . import testavg
     ok = testavg.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testresample
     ok = testresample.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testcolortable
     ok = testcolortable.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testvector
     ok = testvector.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testcoords
     ok = testcoords.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import teststats
     ok = teststats.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
     
     from . import testrat
     ok = testrat.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testcolortable
     ok = testcolortable.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testratcolortable
     ok = testratcolortable.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testratstats
     ok = testratstats.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testratapplier
     ok = testratapplier.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
     
     from . import testlayerselection
     ok = testlayerselection.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     from . import testavgmulti
     ok = testavgmulti.run()
-    if not ok: failureCount += 1
+    if not ok:
+        failureCount += 1
 
     try:
         from . import testavgmpi
         ok = testavgmpi.run()
-        if not ok: failureCount += 1
+        if not ok:
+            failureCount += 1
     except ImportError:
         print("Skipped MPI test due to failed import - mpi4py needed")
 

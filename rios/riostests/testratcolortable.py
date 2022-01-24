@@ -30,6 +30,7 @@ TESTNAME = 'TESTRATCOLORTABLE'
 NUMENTRIES = 1000
 RAMPNAME = 'inferno'
 
+
 def run():
     """
     Run tests of the rios.colortable functions
@@ -69,13 +70,12 @@ def run():
     return allOK
 
 
-
 def makeTestFile(imgfile):
     # Make a test image with a ramp of values
     nRows = 100
     nCols = 100
     
-    imgArray = numpy.linspace(0, NUMENTRIES, nRows*nCols)
+    imgArray = numpy.linspace(0, NUMENTRIES, nRows * nCols)
     imgArray = numpy.reshape(imgArray, (nCols, nRows))
     
     ds = riostestutils.createTestFile(imgfile, numRows=nRows, numCols=nCols,

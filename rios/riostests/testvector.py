@@ -33,6 +33,7 @@ from . import riostestutils
 
 TESTNAME = "TESTVECTOR"
 
+
 def run():
     """
     Run the simple vector test
@@ -95,8 +96,7 @@ def calcMeanWithRios(imgfile, vecfile):
         vals = block[mask]
         count += len(vals)
         total += vals.astype(numpy.float32).sum()
-    
-    
+
     if count > 0:
         meanVal = total / count
     else:
@@ -152,6 +152,6 @@ def calcMeanWithNumpy():
     minCol = 11
     maxCol = minCol + squareSize - 1
     
-    subArr = rampArr[minRow:maxRow+1, minCol:maxCol+1]
+    subArr = rampArr[minRow:maxRow + 1, minCol:maxCol + 1]
     meanVal = subArr.mean()
     return meanVal

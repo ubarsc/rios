@@ -29,6 +29,7 @@ from . import riostestutils
 
 TESTNAME = "TESTRESAMPLE"
 
+
 def run():
     """
     Run the test
@@ -111,8 +112,8 @@ def checkResult(avgfile):
     if avg.shape != riosavg.shape:
         riostestutils.report(TESTNAME, "Shape mis-match: %s != %s"%(avg.shape, riosavg.shape))
         ok = False
-    elif (riosavg-avg).any():
-        riostestutils.report(TESTNAME, "Incorrect result. Average difference = %s"%(riosavg-avg).mean())
+    elif (riosavg - avg).any():
+        riostestutils.report(TESTNAME, "Incorrect result. Average difference = %s"%(riosavg - avg).mean())
         ok = False
     else:
         riostestutils.report(TESTNAME, "Passed")

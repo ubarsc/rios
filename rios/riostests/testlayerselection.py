@@ -14,6 +14,7 @@ from rios import applier
 
 TESTNAME = "TESTLAYERSELECT"
 
+
 def run():
     """
     Run the test
@@ -29,7 +30,7 @@ def run():
     lyrList = []
     for i in range(numBands):
         lyr = (onelayerArr + 1)
-        band = ds.GetRasterBand(i+1)
+        band = ds.GetRasterBand(i + 1)
         band.WriteArray(lyr)
         lyrList.append(lyr)
     del ds
@@ -38,7 +39,7 @@ def run():
 
     # Sum of all pixels in bands 2 & 4
     layerList = [2, 4]
-    correctSum = sum([(stack[i-1].astype(numpy.float64)).sum() for i in layerList])
+    correctSum = sum([(stack[i - 1].astype(numpy.float64)).sum() for i in layerList])
     
     # Now do it using RIOS
     infiles = applier.FilenameAssociations()

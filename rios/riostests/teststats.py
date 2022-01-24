@@ -27,6 +27,7 @@ from . import riostestutils
 
 TESTNAME = 'TESTSTATS'
 
+
 def run():
     """
     Run a test of statistics calculation
@@ -74,7 +75,7 @@ def run():
             rampArr = riostestutils.genRampArray().astype(arrDtype) * scalefactor
             (nRows, nCols) = rampArr.shape
             # Set half of it to null
-            rampArr[:, :nCols//2] = nullVal
+            rampArr[:, :nCols // 2] = nullVal
             band = ds.GetRasterBand(1)
             band.WriteArray(rampArr)
             del ds

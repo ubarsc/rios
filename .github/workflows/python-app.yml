@@ -24,7 +24,7 @@ jobs:
     - name: Lint with flake8
       shell: bash -l {0}
       run: |
-        flake8 --ignore=E,W rios
+        flake8 rios
     - name: Test with testrios.py
       shell: bash -l {0}
       run: |
