@@ -30,6 +30,7 @@ from . import rioserrors
 from . import pixelgrid
 from osgeo import gdal
 
+
 class InputIterator(object):
     """
     Class to allow iteration across an InputCollection instance.
@@ -46,10 +47,10 @@ class InputIterator(object):
     for each iteration
     
     """
-    def __init__(self,collection):
+    def __init__(self, collection):
         # collection = an InputCollection instance
         self.collection = collection
-        self.index = 0 # start at first one
+        self.index = 0  # start at first one
         
     def __iter__(self):
         # For iteration support - just return self.
@@ -93,7 +94,7 @@ class InputCollection(object):
     Use checkAllMatch() to see if resampling is necessary.
     
     """
-    def __init__(self,imageList,loggingstream=sys.stdout):
+    def __init__(self, imageList, loggingstream=sys.stdout):
         """
         Constructor. imageList is a list of file names that 
         need to be opened. An ImageOpenException() is raised
@@ -109,9 +110,9 @@ class InputCollection(object):
         self.imageList = []
         self.datasetList = []
         self.pixgridList = []
-        self.nullValList = [] # NB: a list of lists
-        self.dataTypeList = [] # numpy types
-        self.filestoremove = [] # any temp resampled files
+        self.nullValList = []  # NB: a list of lists
+        self.dataTypeList = []  # numpy types
+        self.filestoremove = []  # any temp resampled files
     
         # go thru each image
         for image in imageList:
@@ -128,7 +129,7 @@ class InputCollection(object):
             # Stash the null values for each band
             dsNullValList = []
             for i in range(ds.RasterCount):
-                nullVal = ds.GetRasterBand(i+1).GetNoDataValue()
+                nullVal = ds.GetRasterBand(i + 1).GetNoDataValue()
                 dsNullValList.append(nullVal)
                 
             # get the datatype of band 1
@@ -162,8 +163,7 @@ class InputCollection(object):
             del ds
         self.datasetList = []
         self.cleanup()
-        
-        
+
     def cleanup(self):
         """
         Removes any temp files. To be called from destructor?
@@ -189,7 +189,7 @@ class InputCollection(object):
         # see http://docs.python.org/reference/datamodel.html#emulating-container-types
         return len(self.datasetList)
         
-    def __getitem__(self,key):
+    def __getitem__(self, key):
         # see http://docs.python.org/reference/datamodel.html#emulating-container-types
         # for indexing, returns:
         # imagename, dataset, pixgrid,nullValList, datatype 
@@ -200,7 +200,7 @@ class InputCollection(object):
         pixgrid = self.pixgridList[key]
         nullValList = self.nullValList[key]
         datatype = self.dataTypeList[key]
-        return (image,ds,pixgrid,nullValList,datatype)
+        return (image, ds, pixgrid, nullValList, datatype)
         
     def __iter__(self):
         # see http://docs.python.org/reference/datamodel.html#emulating-container-types
@@ -245,7 +245,6 @@ class InputCollection(object):
         else:
             msg = 'Must pass either refpath or refPixgrid or all the other params'
             raise rioserrors.ParameterError(msg)
-            
 
     def resampleToReference(self, ds, nullValList, workingRegion, resamplemethod, 
             tempdir='.', useVRT=False, allowOverviewsGdalwarp=False):
@@ -278,10 +277,9 @@ class InputCollection(object):
             if gdal.DMD_EXTENSION in drivermeta:
                 ext = '.' + drivermeta[gdal.DMD_EXTENSION]
 
-        (fileh,temp_image) = tempfile.mkstemp(ext, dir=tempdir)
+        (fileh, temp_image) = tempfile.mkstemp(ext, dir=tempdir)
         os.close(fileh)
-        
-        
+
         overviewLevel = 'NONE'
         if allowOverviewsGdalwarp:
             overviewLevel = 'AUTO'
@@ -311,9 +309,9 @@ class InputCollection(object):
         try:
             newds = gdal.Warp(temp_image, ds, options=warpOptions)
         except Exception as e:
-            msg = ("Error while running gdal.Warp(): {}. Try setting the "
-                    + "RIOS_NO_VRT_FOR_RESAMPLING environment variable "
-                    + "to '1'").format(str(e))
+            msg = ("Error while running gdal.Warp(): {}. Try setting the " +
+                "RIOS_NO_VRT_FOR_RESAMPLING environment variable " +
+                "to '1'").format(str(e))
             raise rioserrors.GdalWarpError(msg)
         finally:
             if not usingExceptions:
@@ -321,8 +319,7 @@ class InputCollection(object):
 
         # return the new dataset
         return newds
-        
-            
+
     def resampleAllToReference(self, footprint, resamplemethodlist, tempdir='.', useVRT=False,
             allowOverviewsGdalwarp=False):
         """
@@ -349,7 +346,7 @@ class InputCollection(object):
                 (self.referencePixGrid.xRes, pixGrid.xRes, self.referencePixGrid.yRes, pixGrid.yRes))
                 allEqual = False
             elif not self.referencePixGrid.equalProjection(pixGrid):
-                self.loggingstream.write("Coordinate systems don't match %s %s\n"  % 
+                self.loggingstream.write("Coordinate systems don't match %s %s\n" % 
                 (self.referencePixGrid.projection, pixGrid.projection))
                 allEqual = False
             elif not self.referencePixGrid.alignedWith(pixGrid):
@@ -377,8 +374,7 @@ class InputCollection(object):
                 # close the original dataset - just using temp 
                 # resampled one from now.
                 del ds
-        
-    
+
     def checkAllMatch(self):
         """
         Returns whether any resampling necessary to match
