@@ -22,7 +22,6 @@ with Python.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import sys
 from numpy.distutils.core import setup
 import glob
 
@@ -49,4 +48,4 @@ setup(name='rios',
                         'rios/riostests', 'rios/cmdline'],
       license='LICENSE.txt', 
       url='https://www.rioshome.org'
-     )
+      )
