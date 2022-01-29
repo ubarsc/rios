@@ -57,7 +57,7 @@ def run():
         for filename in [ramp1, ramp2, outfile]:
             if os.path.exists(filename):
                 try:
-                    os.remove(filename)
+                    riostestutils.removeRasterFile(filename)
                 except Exception:
                     pass
     

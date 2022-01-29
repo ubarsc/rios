@@ -18,7 +18,6 @@
 """
 Test the ratapplier functionality
 """
-import os
 import numpy
 
 from rios import rat
@@ -62,7 +61,7 @@ def run():
         allOK = False
     
     for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4]:
-        os.remove(tmpfile)
+        riostestutils.removeRasterFile(tmpfile)
 
     if allOK:
         riostestutils.report(TESTNAME, "Passed")

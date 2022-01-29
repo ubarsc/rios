@@ -6,7 +6,6 @@ Generates a multi-band image, then applies a RIOS function which only reads
 two of the layers. Checks that it gets the correct answer for adding them together. 
 
 """
-import os
 import numpy
 
 from rios.riostests import riostestutils
@@ -63,7 +62,7 @@ def run():
         riostestutils.report(TESTNAME, "Passed")
         ok = True
     
-    os.remove(tstfile)
+    riostestutils.removeRasterFile(tstfile)
     
     return ok
 

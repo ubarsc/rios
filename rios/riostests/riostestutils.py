@@ -161,6 +161,26 @@ def reportStart(testName):
     print("Starting test:", testName)
 
 
+def removeRasterFile(filename):
+    """
+    Remove the given GDAL raster file, using the appropriate driver.
+    Mainly called to remove temporary files created by the tests. 
+    """
+    drvr = gdal.IdentifyDriver(filename)
+    if drvr is not None:
+        drvr.Delete(filename)
+
+
+def removeVectorFile(filename):
+    """
+    Remove the given OGR vector file, using the appropriate driver. 
+    """
+    ds = ogr.Open(filename)
+    drvr = ds.GetDriver()
+    del ds
+    drvr.DeleteDataSource(filename)
+
+
 def testAll():
     """
     Runs all the tests - called from testrios.py

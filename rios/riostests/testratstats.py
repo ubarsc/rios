@@ -92,6 +92,8 @@ def run():
             (repr(ratStats.Value.max), repr(trueMax)))
         allOK = False
 
+    riostestutils.removeRasterFile(imgfile)
+
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
     

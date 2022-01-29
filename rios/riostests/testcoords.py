@@ -24,7 +24,6 @@ these behave as expected, in a range of circumstances.
 """
 from __future__ import division
 
-import os
 import math
 
 from rios import applier
@@ -117,7 +116,7 @@ def run():
     
     # Clean up
     for filename in [ramp1, ramp2]:
-        os.remove(filename)
+        riostestutils.removeRasterFile(filename)
     
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
