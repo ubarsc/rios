@@ -21,7 +21,6 @@ put there.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
 import numpy
 
 from rios import rat
@@ -61,6 +60,6 @@ def run():
         riostestutils.report(TESTNAME, 'Retrieved color table not equal to that written')
         ok = False
 
-    os.remove(filename)
+    riostestutils.removeRasterFile(filename)
 
     return ok

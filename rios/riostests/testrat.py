@@ -61,7 +61,7 @@ def run():
             allOK = False
     
     if os.path.exists(imgfile):
-        os.remove(imgfile)
+        riostestutils.removeRasterFile(imgfile)
 
     if allOK:
         riostestutils.report(TESTNAME, "Passed")

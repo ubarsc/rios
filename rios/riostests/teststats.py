@@ -104,7 +104,7 @@ def run():
             del ds
 
         if os.path.exists(imgfile):
-            os.remove(imgfile)
+            riostestutils.removeRasterFile(imgfile)
     
     if ok:
         riostestutils.report(TESTNAME, "Passed")

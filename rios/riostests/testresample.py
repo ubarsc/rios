@@ -18,8 +18,6 @@ the two, allowing a resample.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-
 import numpy
 from osgeo import gdal
 from rios import applier
@@ -52,7 +50,7 @@ def run():
     
     # Clean up
     for filename in [ramp1, ramp2, outfile]:
-        os.remove(filename)
+        riostestutils.removeRasterFile(filename)
     
     return ok
 

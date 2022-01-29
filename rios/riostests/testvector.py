@@ -21,8 +21,6 @@ area. Does the same thing with straight numpy, and checks the results.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-
 import numpy
 
 from rios import applier
@@ -63,9 +61,8 @@ def run():
         ok = False
     
     # Cleanup
-    os.remove(imgfile)
-    for ext in ['shp', 'shx', 'dbf', 'prj']:
-        os.remove(vecfile.replace('shp', ext))
+    riostestutils.removeRasterFile(imgfile)
+    riostestutils.removeVectorFile(vecfile)
     
     return ok
 

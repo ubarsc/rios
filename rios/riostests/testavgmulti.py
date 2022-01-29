@@ -56,7 +56,7 @@ def run():
     # Clean up
     for filename in [ramp1, ramp2, outfile]:
         if os.path.exists(filename):
-            os.remove(filename)
+            riostestutils.removeRasterFile(filename)
     
     return ok
 
