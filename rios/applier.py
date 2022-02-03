@@ -897,10 +897,11 @@ def opensAsRaster(filename):
         ds = gdal.Open(filename)
     except Exception:
         ds = None
+    finally:
+        if not usingExceptions:
+            gdal.DontUseExceptions()
+
     opensOK = (ds is not None)
-    
-    if not usingExceptions:
-        gdal.DontUseExceptions()
     return opensOK
 
 

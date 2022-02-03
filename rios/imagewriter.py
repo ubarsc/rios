@@ -269,6 +269,10 @@ class ImageWriter(object):
                 ds = gdal.Open(str(filename))
             except RuntimeError:
                 ds = None
+            finally:
+                # Restore exception-use state
+                if not usingExceptions:
+                    gdal.DontUseExceptions()
 
             if ds is not None:
                 # It is apparently a valid GDAL file, so get the driver appropriate for it.
@@ -281,10 +285,6 @@ class ImageWriter(object):
                 # directly. 
                 os.remove(filename)
 
-            # Restore exception-use state
-            if not usingExceptions:
-                gdal.DontUseExceptions()
-            
     def getGDALDataset(self):
         """
         Returns the underlying GDAL dataset object
