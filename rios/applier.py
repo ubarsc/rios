@@ -889,18 +889,17 @@ def opensAsRaster(filename):
     """
     Return True if filename opens as a GDAL raster, False otherwise
     """
-    usingExceptions = False
-    if hasattr(gdal, 'GetUseExceptions'):
-        usingExceptions = gdal.GetUseExceptions()
+    usingExceptions = gdal.GetUseExceptions()
     gdal.UseExceptions()
     try:
         ds = gdal.Open(filename)
     except Exception:
         ds = None
+    finally:
+        if not usingExceptions:
+            gdal.DontUseExceptions()
+
     opensOK = (ds is not None)
-    
-    if not usingExceptions:
-        gdal.DontUseExceptions()
     return opensOK
 
 

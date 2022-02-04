@@ -240,8 +240,9 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
             gdalBand.SetDefaultRAT(attrTbl)
         except Exception:
             pass
-        if not usingExceptions:
-            gdal.DontUseExceptions()
+        finally:
+            if not usingExceptions:
+                gdal.DontUseExceptions()
 
 
 def writeColumn(imgFile, colName, sequence, colType=None, bandNumber=1, 

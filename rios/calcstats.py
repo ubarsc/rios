@@ -27,10 +27,6 @@ from osgeo import gdal
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError
 
-
-gdal.UseExceptions()
-
-
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
 dfltOverviewLvls = os.getenv('RIOS_DFLT_OVERVIEWLEVELS')
@@ -172,7 +168,7 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             tmpmeta["STATISTICS_EXCLUDEDVALUES"] = repr(ignore)  # doesn't seem to do anything
       
         # get GDAL to calculate statistics - force recalculation. Trap errors 
-        useExceptions = gdal.GetUseExceptions()
+        usingExceptions = gdal.GetUseExceptions()
         gdal.UseExceptions()
         try:
             if approx_ok and "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == "thematic": 
@@ -187,8 +183,9 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
                 stddevval = 0
             else:
                 raise e
-        if not useExceptions:
-            gdal.DontUseExceptions()
+        finally:
+            if not usingExceptions:
+                gdal.DontUseExceptions()
 
         percent = percent + percentstep
         progress.setProgress(percent)
