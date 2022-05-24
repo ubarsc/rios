@@ -126,7 +126,10 @@ def findOrCreateColumn(ratObj, usage, name, dtype):
 
 
 gdalLargeIntTypes = set([gdal.GDT_Int16, gdal.GDT_UInt16, gdal.GDT_Int32, gdal.GDT_UInt32])
-
+# hack for GDAL 3.5 and later which suppport 64 bit ints
+if hasattr(gdal, 'GDT_Int64'):
+    gdalLargeIntTypes.add(gdal.GDT_Int64)
+    gdalLargeIntTypes.add(gdal.GDT_UInt64)
 
 gdalFloatTypes = set([gdal.GDT_Float32, gdal.GDT_Float64])
 
