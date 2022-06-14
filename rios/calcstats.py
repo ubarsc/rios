@@ -359,4 +359,4 @@ def setNullValue(ds, nullValue):
     """
     for i in range(ds.RasterCount):
         band = ds.GetRasterBand(i + 1)
-        band.SetNoDataValue(float(nullValue))
+        band.SetNoDataValue(nullValue)
