@@ -72,6 +72,11 @@ dataTypeMapping = [
     (numpy.float, gdalconst.GDT_Float64)
 ]
 
+# hack for GDAL 3.5 and later which suppport 64 bit ints
+if hasattr(gdalconst, 'GDT_Int64'):
+    dataTypeMapping.append((numpy.int64, gdalconst.GDT_Int64))
+    dataTypeMapping.append((numpy.uint64, gdalconst.GDT_UInt64))
+
 
 def GDALTypeToNumpyType(gdaltype):
     """
