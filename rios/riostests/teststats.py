@@ -21,7 +21,7 @@ import os
 import numpy
 from osgeo import gdal
 
-from rios import calcstats, cuiprogress
+from rios import calcstats, cuiprogress, imageio
 
 from . import riostestutils
 
@@ -43,32 +43,50 @@ def run():
     # the range 25-100 (after clobbering half the array as nulls, to ensure that
     # the nulls are enough to make a difference). 
     dataTypesList = [
-        (gdal.GDT_Byte, numpy.uint8, 1),
-        (gdal.GDT_UInt16, numpy.uint16, 1),
-        (gdal.GDT_Int16, numpy.int16, 300),
-        (gdal.GDT_UInt16, numpy.uint16, 300),
-        (gdal.GDT_Int32, numpy.int32, 30000),
-        (gdal.GDT_UInt32, numpy.uint32, 30000),
-        (gdal.GDT_Float32, numpy.float32, 1), 
-        (gdal.GDT_Float32, numpy.float32, 100), 
-        (gdal.GDT_Float32, numpy.float32, 0.01) 
+        (gdal.GDT_Byte, 1),
+        (gdal.GDT_UInt16, 1),
+        (gdal.GDT_Int16, 300),
+        (gdal.GDT_UInt16, 300),
+        (gdal.GDT_Int32, 30000),
+        (gdal.GDT_UInt32, 30000),
+        (gdal.GDT_Float32, 1),
+        (gdal.GDT_Float32, 100),
+        (gdal.GDT_Float32, 0.01),
+        (gdal.GDT_Float64, 1),
+        (gdal.GDT_Float64, 100),
+        (gdal.GDT_Float64, 0.01)
     ]
+    # Include 64-bit int types, if supported
+    if hasattr(gdal, 'GDT_UInt64'):
+        dataTypesList.append((gdal.GDT_Int64, 30000))
+        dataTypesList.append((gdal.GDT_UInt64, 30000))
     
     # We repeat these tests on a number of different drivers, if they are available,
     # as some stats-related things may work fine on some drivers but not on others. 
     driverTestList = [
-        ('HFA', ['COMPRESS=YES'], 'img'),
-        ('GTiff', ['COMPRESS=LZW', 'TILED=YES', 'INTERLEAVE=BAND'], 'tif'),
-        ('KEA', [], 'kea')
+        ('HFA', ['COMPRESS=YES']),
+        ('GTiff', ['COMPRESS=LZW', 'TILED=YES', 'INTERLEAVE=BAND']),
+        ('KEA', [])
     ]
-    # Remove any which current GDAL not suporting
-    driverTestList = [(drvrName, options, ext) for (drvrName, options, ext) in driverTestList
+    # Remove any drivers not supported by current GDAL
+    driverTestList = [(drvrName, options) for (drvrName, options) in driverTestList
         if gdal.GetDriverByName(drvrName) is not None]
     
     # Loop over all drivers
-    for (driverName, creationOptions, ext) in driverTestList:
+    for (driverName, creationOptions) in driverTestList:
+        drvr = gdal.GetDriverByName(driverName)
+        # File extension for this driver
+        ext = drvr.GetMetadataItem('DMD_EXTENSION')
+
+        # Restrict to datatypes supported by this driver
+        supportedTypeNames = drvr.GetMetadataItem('DMD_CREATIONDATATYPES').split()
+        supportedTypes = set([gdal.GetDataTypeByName(tn) for tn in supportedTypeNames])
+        dataTypesForDriver = [(gdt, scale) for (gdt, scale) in dataTypesList
+            if gdt in supportedTypes]
+
         # Loop over all datatype tuples in the list
-        for (fileDtype, arrDtype, scalefactor) in dataTypesList:
+        for (fileDtype, scalefactor) in dataTypesForDriver:
+            arrDtype = imageio.GDALTypeToNumpyType(fileDtype)
             imgfile = 'test.' + ext
             ds = riostestutils.createTestFile(imgfile, dtype=fileDtype, driverName=driverName, 
                     creationOptions=creationOptions)
