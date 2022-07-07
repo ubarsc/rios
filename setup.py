@@ -2,8 +2,6 @@
 """
 The setup script for RIOS. Creates the module, installs
 the scripts. 
-Good idea to use 'install --prefix=/opt/xxxxx' so not installed
-with Python.
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -22,7 +20,7 @@ with Python.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-from numpy.distutils.core import setup
+from setuptools import setup
 import glob
 
 import rios
