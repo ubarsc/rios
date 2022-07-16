@@ -21,7 +21,7 @@ import os
 import numpy
 from osgeo import gdal
 
-from rios import calcstats, cuiprogress, imageio
+from rios import calcstats, cuiprogress, imageio, VersionObj
 
 from . import riostestutils
 
@@ -57,7 +57,7 @@ def run():
         (gdal.GDT_Float64, 0.01)
     ]
     # Include 64-bit int types, if supported
-    if hasattr(gdal, 'GDT_UInt64'):
+    if VersionObj(gdal.__version__) >= VersionObj('3.5.2'):
         dataTypesList.append((gdal.GDT_Int64, 30000))
         dataTypesList.append((gdal.GDT_UInt64, 30000))
     
