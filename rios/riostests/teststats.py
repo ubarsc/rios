@@ -21,7 +21,7 @@ import os
 import numpy
 from osgeo import gdal
 
-from rios import calcstats, cuiprogress, imageio
+from rios import calcstats, cuiprogress, imageio, VersionObj
 
 from . import riostestutils
 
@@ -38,7 +38,7 @@ def run():
     
     # We repeat the basic test for a number of different GDAL datatypes, with different
     # ranges of data. Each element of the following list is a tuple of
-    #    (gdalDataType, numpyDataType, scalefactor)
+    #    (gdalDataType, scalefactor)
     # for which the test is run. The original data being scaled is in 
     # the range 25-100 (after clobbering half the array as nulls, to ensure that
     # the nulls are enough to make a difference). 
@@ -56,8 +56,9 @@ def run():
         (gdal.GDT_Float64, 100),
         (gdal.GDT_Float64, 0.01)
     ]
-    # Include 64-bit int types, if supported
-    if hasattr(gdal, 'GDT_UInt64'):
+    # Include 64-bit int types, if supported. Int64/UInt64 were not fully
+    # supported until 3.5.2 - see https://github.com/OSGeo/gdal/pull/6059
+    if VersionObj(gdal.__version__) >= VersionObj('3.5.2'):
         dataTypesList.append((gdal.GDT_Int64, 30000))
         dataTypesList.append((gdal.GDT_UInt64, 30000))
     
