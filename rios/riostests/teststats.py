@@ -38,7 +38,7 @@ def run():
     
     # We repeat the basic test for a number of different GDAL datatypes, with different
     # ranges of data. Each element of the following list is a tuple of
-    #    (gdalDataType, numpyDataType, scalefactor)
+    #    (gdalDataType, scalefactor)
     # for which the test is run. The original data being scaled is in 
     # the range 25-100 (after clobbering half the array as nulls, to ensure that
     # the nulls are enough to make a difference). 
