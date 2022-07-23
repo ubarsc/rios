@@ -1,31 +1,40 @@
-Simple installation instructions for RIOS. 
+Simple installation instructions for RIOS.
 
-Requirements. 
+Requirements.
 -------------
-    Numpy. 
-    GDAL. This must include its python bindings. 
+    Numpy.
+    GDAL. This must include its python bindings.
 
-RIOS Installation steps, for Linux and similar. 
+RIOS Installation steps, for Linux and similar.
 -----------------------------------------------
-    1. Decide where you are going to install RIOS. This will be referred 
-       to here as riosRoot. 
-    2. tar xfz rios-m.n.tar.gz
-    3. cd rios-m.n
-    4. python setup.py install --prefix=riosRoot
-    5. Add to your environment as follows
-            Add riosRoot/bin to $PATH
-            Add riosRoot/lib/pythonA.B/site-packages to $PYTHONPATH
-       where pythonA.B refers to the version of python you are running. 
+    1. tar xfz rios-m.n.tar.gz
+    2. cd rios-m.n
+    3. Install configuration is provided within the setup.py script.
+       The best way to run this is now to use pip to execute it.
+       To install within the default location (perhaps within a virtual
+       env or similar), use
+           pip install .
+       To install in a different location, use the --prefix option on
+       the pip command
+    4. Add to your environment as follows
+            Add <prefix>/bin to $PATH
+            Add <prefix>/lib/pythonA.B/site-packages to $PYTHONPATH
+       where pythonA.B refers to the version of python you are running.
 
-    6. Test the installation by executing the command 
-           testrios.py
+    5. Test the installation by executing the command
+            cd someTempDirectory
+            testrios.py
+       This will report any test failures.
 
 Environment Variables
 ---------------------
     All of these environment variables can be left un-set, as they all have sensible
     default values in the code. These are used to over-ride these defaults globally. 
     All values can also be over-ridden on a per-application basis, using the 
-    applier controls object. 
+    applier controls object.
+
+    Full details are provied at the RIOS home page
+        https://www.rioshome.org/
     
     If you wish to use a default GDAL driver other than HFA, then set
     the environment variables, which are then given to GDAL
