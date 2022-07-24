@@ -1,10 +1,24 @@
-Raster I/O Simplification. A set of python modules which makes it easy to write raster 
-processing code in Python. Built on top of GDAL, it handles the details of opening and 
-closing files, checking alignment of projection and raster grid, stepping through the 
-raster in small blocks, etc., allowing the programmer to concentrate on the processing 
-involved. RIOS was written for our own use, and comes without any warranty, or assurance 
-that it might even be useful, but if anyone else is silly enough to want it, they are 
-welcome to it. It is licensed under GPL 3, as given in the file LICENSE.txt. 
+# RIOS - Raster I/O Simplification
+A set of Python modules which makes it easy to write raster processing code in Python. It is built on top of [GDAL](http://www.gdal.org).
 
-To download the code, click on the Downloads tab above, and select the latest tarball. 
+## Features
+- Handles the details of opening and closing files.
+- Checks alignment of projection and raster grid.
+- Steps through the raster in small blocks to reduce memory requirements.
+- *and more...*
+
+This allows the programmer to concentrate on the processing involved.
+
+RIOS was written for our own use, and comes without any warranty or assurance 
+that it might even be useful. But if anyone else is silly enough to want it, they are 
+welcome to use it. 
+
+## Download
+- Click on the Downloads tab above
+- Select the latest tarball
+
+## Documentation
 Sphinx documentation is available at [www.rioshome.org](http://www.rioshome.org/)
+
+## License
+GPL 3, *see LICENSE.txt* 
