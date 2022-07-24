@@ -28,5 +28,5 @@ jobs:
     - name: Test with testrios.py
       shell: bash -l {0}
       run: |
-        python3 setup.py install
+        pip install .
         testrios.py
