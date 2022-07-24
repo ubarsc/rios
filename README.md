@@ -15,8 +15,8 @@ that it might even be useful. But if anyone else is silly enough to want it,
 they are welcome to use it. 
 
 ## Download
-- Click on the Downloads tab above
-- Select the latest tarball
+- Click on the Releases link and select the latest tarball
+- Also available from conda-forge
 
 ## Documentation
 Sphinx documentation is available at [www.rioshome.org](https://www.rioshome.org/)
