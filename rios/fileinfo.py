@@ -36,7 +36,7 @@ from . import rat
 # is a bit obscure and cryptic.....
 GDALdatatypeNames = ['Unknown', 'UnsignedByte', 'UnsignedInt16', 'SignedInt16', 
     'UnsignedInt32', 'SignedInt32', 'Float32', 'Float64', 'ComplexInt16', 'ComplexInt32', 
-    'ComplexFloat32', 'ComplexFloat64']
+    'ComplexFloat32', 'ComplexFloat64', 'SignedInt64', 'UnsignedInt64']
 
 
 class ImageInfo(object):
