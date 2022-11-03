@@ -23,6 +23,7 @@ writing modules
 
 import numpy
 from osgeo import gdalconst
+from osgeo import gdal
 
 from . import rioserrors
 
@@ -40,21 +41,14 @@ class Coord:
 
 def wld2pix(transform, geox, geoy):
     """converts a set of map coords to pixel coords"""
-    x = (transform[0] * transform[5] - 
-        transform[2] * transform[3] + transform[2] * geoy - 
-        transform[5] * geox) / (transform[2] * transform[4] - transform[1] * transform[5])
-
-    y = (transform[1] * transform[3] - transform[0] * transform[4] -
-        transform[1] * geoy + transform[4] * geox) / (transform[2] * transform[4] - transform[1] * transform[5])
-
+    inv_transform = gdal.InvGeoTransform(transform)
+    x, y = gdal.ApplyGeoTransform(inv_transform, geox, geoy)
     return Coord(x, y)
 
 
 def pix2wld(transform, x, y):
     """converts a set of pixels coords to map coords"""
-    geox = transform[0] + transform[1] * x + transform[2] * y
-    geoy = transform[3] + transform[4] * x + transform[5] * y
-
+    geox, geoy = gdal.ApplyGeoTransform(transform, x, y)
     return Coord(geox, geoy)
 
 
