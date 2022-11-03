@@ -31,13 +31,6 @@ from osgeo import osr
 from . import rioserrors
 from . import rat
 
-# List of datatype names corresponding to GDAL datatype numbers. 
-# The index of this list corresponds to the gdal datatype number. Not sure if this 
-# is a bit obscure and cryptic.....
-GDALdatatypeNames = ['Unknown', 'UnsignedByte', 'UnsignedInt16', 'SignedInt16', 
-    'UnsignedInt32', 'SignedInt32', 'Float32', 'Float64', 'ComplexInt16', 'ComplexInt32', 
-    'ComplexFloat32', 'ComplexFloat64']
-
 
 class ImageInfo(object):
     """
@@ -109,7 +102,7 @@ class ImageInfo(object):
         
         # Pixel datatype, stored as a GDAL enum value. 
         self.dataType = ds.GetRasterBand(1).DataType
-        self.dataTypeName = GDALdatatypeNames[self.dataType]
+        self.dataTypeName = gdal.GetDataTypeName(self.dataType)
         
         del ds
 
