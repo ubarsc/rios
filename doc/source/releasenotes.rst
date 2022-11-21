@@ -5,7 +5,7 @@ Version 1.4.13 (2022-11-22)
 ---------------------------
 
 Bug Fixes:
-  * Use driver.Delete in test suite to ensure all temproary files deleted.
+  * Use driver.Delete in test suite to ensure all temporary files deleted.
   * Ensure GDAL Exception state is maintained
 
 Improvements:
