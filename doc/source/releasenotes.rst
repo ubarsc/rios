@@ -1,6 +1,24 @@
 Release Notes
 =============
 
+Version 1.4.13 (2022-11-22)
+---------------------------
+
+Bug Fixes:
+  * Use driver.Delete in test suite to ensure all temporary files deleted.
+  * Ensure GDAL Exception state is maintained
+
+Improvements:
+  * Use gdal.Warp() rather than the command line gdalwarp program
+  * Add CI run and support for flake8
+  * Add support for 64 bit ints introduced in GDAL 3.5.0
+  * Introduce VersionObj as our own version comparison class and use where needed.
+  * Use setuptools for installation and update instructions to use "pip install".
+  * Use GDAL gdal.GetDataTypeName() call for converting data type to a string 
+    instead of our own version
+  * Use gdal.ApplyGeoTransform in pix2wld and wld2pix instead of our own versions
+  
+
 Version 1.4.12 (2021-12-22)
 ---------------------------
 
