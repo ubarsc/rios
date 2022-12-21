@@ -71,6 +71,12 @@ if hasattr(gdalconst, 'GDT_Int64'):
     dataTypeMapping.append((numpy.int64, gdalconst.GDT_Int64))
     dataTypeMapping.append((numpy.uint64, gdalconst.GDT_UInt64))
 
+# With GDAL 3.7, there is a plan to introduce GDT_Int8, so try to cope with it.
+# Hopefully OK, because we did not previously have anything to cope with arrays
+# of type numpy.int8.
+if hasattr(gdalconst, 'GDT_Int8'):
+    dataTypeMapping.append((numpy.int8, gdalconst.GDT_Int8))
+
 
 def GDALTypeToNumpyType(gdaltype):
     """
