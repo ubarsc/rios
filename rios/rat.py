@@ -321,7 +321,7 @@ def getColorTable(imgFile, bandNumber=1):
 
     count = colorTable.GetCount()
     # count could be any size so we have to go with int
-    colorArray = numpy.zeros((count, 5), dtype=numpy.int)
+    colorArray = numpy.zeros((count, 5), dtype=int)
     for index in range(count):
         colorEntry = colorTable.GetColorEntry(index)
         arrayEntry = [index] + list(colorEntry)
