@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+Version 1.4.13 (2022-12-22)
+---------------------------
+
+Bug Fixes:
+  * Numpy-1.24 release removes deprecated type symbols like numpy.bool. We
+    still had some of these which needed to be updated.
+
+
 Version 1.4.13 (2022-11-22)
 ---------------------------
 
