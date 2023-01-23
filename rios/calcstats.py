@@ -158,6 +158,13 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
     # makes sure any metdata is written on HFA. This means
     # the LAYER_TYPE setting will be picked up by rat.SetLinearBinning()
     ds.FlushCache()
+
+    # The GDAL HFA driver has a bug in its SetLinearBinning function,
+    # which was introduced as part of the RFC40 changes. Until
+    # this is fixed and widely distributed, we should disable the use
+    # of RFC40-style techniques for HFA files.
+    driverName = ds.GetDriver().ShortName
+    disableRFC40 = (driverName == 'HFA')
   
     for bandnum in range(ds.RasterCount):
         band = ds.GetRasterBand(bandnum + 1)
@@ -284,7 +291,7 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             else:
                 tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
 
-            if ratObj is not None:
+            if ratObj is not None and not disableRFC40:
                 histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount, 
                                         "Histogram", gdal.GFT_Real)
                 # write the hist in a single go
@@ -299,7 +306,8 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
                 if "STATISTICS_HISTOBINVALUES" in tmpmeta:
                     del tmpmeta["STATISTICS_HISTOBINVALUES"]
             else:
-                # old method
+                # Use GDAL's original metadata interface, for drivers which
+                # don't support the more modern approach
                 tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr, hist)) + '|'
 
                 tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
