@@ -261,8 +261,9 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
         userdata.nbands = ds.RasterCount * 2
         userdata.curroffset = percent
       
-        # get histogram and force GDAL to recalculate it
-        hist = band.GetHistogram(histCalcMin, histCalcMax, histnbins, False, 
+        # Get histogram and force GDAL to recalculate it. Note that we use include_out_of_range=True,
+        # which is safe because we have calculated the histCalcMin/Max from the data. 
+        hist = band.GetHistogram(histCalcMin, histCalcMax, histnbins, True,
                         approx_ok, progressFunc, userdata)
         
         # Check if GDAL's histogram code overflowed. This is not a fool-proof test,
