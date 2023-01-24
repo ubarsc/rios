@@ -1,6 +1,24 @@
 Release Notes
 =============
 
+Version 1.4.15 (2023-01-25)
+---------------------------
+
+Bug Fixes:
+  * Disable the use of SetLinearBinning when writing stats & histogram to
+    output HFA images. This re-enables an earlier disable mechanism
+    which had been removed in version 1.4.11, and thus avoids a bug
+    in GDAL's HFA driver which always sets the HFA binFunctionType to
+    "direct". The GDAL bug should be fixed, but this prevents it from
+    affecting RIOS. The bug only affected 16 & 32 bit athematic images,
+    when displaying in ERDAS Imagine.
+    https://github.com/ubarsc/rios/pull/54
+  * Fix a minor problem with the final histogram bin of 16 and 32 bit
+    athematic images. The last bin was being omitted. Has very little
+    visible effect, as on athematic images that bin usually contains
+    only a few pixels.
+    https://github.com/ubarsc/rios/pull/55
+
 Version 1.4.14 (2022-12-22)
 ---------------------------
 
