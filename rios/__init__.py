@@ -24,7 +24,7 @@ classes, respectively.
 # Used to fill in the rest of the comparison methods
 from functools import total_ordering
 
-RIOS_VERSION = '1.4.14'
+RIOS_VERSION = '1.4.15'
 __version__ = RIOS_VERSION
 
 
