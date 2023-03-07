@@ -26,72 +26,6 @@ import math
 import numpy
 
 from . import imageio
-from . import rat
-
-
-class StatisticsCache(object):
-    """
-    Allows global statistics for all the files used to be cached
-    Statistics are stored here associated with the filename
-    so if there are multiple calls to global_stats for one
-    file the statistics will only get calculated once. 
-    """
-    def __init__(self):
-        self.stats = {}
-
-    def getStats(self, fname, band, ignore):
-        """
-        Returns tuple with (min,max,mean,stddev) if 
-        previously cached, None otherwise.
-        """
-        if ignore is None:
-            key = '%s %d' % (fname, band)
-        else:
-            key = '%s %d %f' % (fname, band, ignore)
-        if key in self.stats:
-            return self.stats[key]
-        else:
-            return None
-
-    def setStats(self, fname, band, ignore, stats):
-        """
-        Sets tuple with (min,max,mean,stddev) in cache
-        """
-        if ignore is None:
-            key = '%s %d' % (fname, band)
-        else:
-            key = '%s %d %f' % (fname, band, ignore)
-        self.stats[key] = stats
-
-
-class AttributeTableCache(object):
-    """
-    Allows attribute columns to be cached. This means
-    that an attribute column can be requested for each
-    block through the image, but the actual column data
-    will only be read the first time and cached for 
-    subsequent calls.
-    """
-    def __init__(self):
-        self.rats = {}
-
-    def getColumn(self, fname, band, colName):
-        """
-        Returns the column if previously cached, otherwise
-        None.
-        """
-        key = '%s %d %s' % (fname, band, colName)
-        if key in self.rats:
-            return self.rats[key]
-        else:
-            return None
-
-    def setColumn(self, fname, band, colName, column):
-        """
-        Puts the column into the cache
-        """
-        key = '%s %d %s' % (fname, band, colName)
-        self.rats[key] = column
 
 
 class ReaderInfo(object):
@@ -100,7 +34,7 @@ class ReaderInfo(object):
     read and info on the current block
     
     """
-    def __init__(self, workingGrid, statscache, ratcache, 
+    def __init__(self, workingGrid, 
             windowxsize, windowysize, overlap, loggingstream):
                     
         self.loggingstream = loggingstream
@@ -121,12 +55,6 @@ class ReaderInfo(object):
         # total number of blocks
         self.xtotalblocks = int(math.ceil(float(self.xsize) / self.windowxsize))
         self.ytotalblocks = int(math.ceil(float(self.ysize) / self.windowysize))
-        
-        # save the statistics cache. 
-        self.statscache = statscache
-
-        # save the RAT cache
-        self.ratcache = ratcache
         
         # The feilds below apply to a particular block
         # and are filled in after this object is copied 
@@ -407,68 +335,3 @@ class ReaderInfo(object):
                     float(self.xtotalblocks * self.ytotalblocks) * 100)
         return percent
 
-    def getAttributeColumn(self, block, colName, band=1):
-        """
-        Gets the attribute for the given block and column name
-        Caches columns so only first call actually extracts data
-        """
-        (ds, fname) = self.blocklookup[id(block)]
-
-        column = self.ratcache.getColumn(fname, band, colName)
-        if column is None:
-            column = rat.readColumn(ds, colName, band)
-            self.ratcache.setColumn(fname, band, colName, column)
-        
-        return column
-        
-    def global_stats(self, block, band=1, ignore=None):
-        """
-        Returns the (min,max,mean,stddev) for the whole band
-        """
-        fname = self.getFilenameFor(block)
-        
-        # see if we have the stats in our cache
-        values = self.statscache.getStats(fname, band, ignore)
-        
-        if values is None:
-            # no, get the gdal band
-            bandhandle = self.getGDALBandFor(block, band)
-            
-            # set ignore value if specified so that 
-            # GDAL ignores it when calculating stats
-            if ignore is not None:
-                bandhandle.SetNoDataValue(ignore)
-                
-            self.loggingstream.write("Calculating global statistics...\n")
-                
-            # get GDAL to calc the stats
-            values = bandhandle.GetStatistics(False, True)
-            
-            # set it back in our cache for next time
-            self.statscache.setStats(fname, band, ignore, values)
-            
-        return values
-
-    def global_min(self, block, band=1, ignore=None):
-        """
-        Returns the min for the whole band
-        """
-        return self.global_stats(block, band, ignore)[0]
-
-    def global_max(self, block, band=1, ignore=None):
-        """
-        Returns the max for the whole band
-        """
-        return self.global_stats(block, band, ignore)[1]
-
-    def global_mean(self, block, band=1, ignore=None):
-        """
-        Returns the mean for the whole band
-        """
-        return self.global_stats(block, band, ignore)[2]
-
-    def global_stddev(self, block, band=1, ignore=None):
-        """
-        Returns the stddev for the whole band
-        """
-        return self.global_stats(block, band, ignore)[3]

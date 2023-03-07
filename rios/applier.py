@@ -143,7 +143,6 @@ class ApplierControls(object):
         * **loggingstream**   file-like for logging of messages
         * **progress**        progress object
         * **statsIgnore**     global stats ignore value for output (i.e. null value)
-        * **statscache**      stats cache if pre-calculated
         * **calcStats**       True/False to signal calculate statistics and pyramids
         * **omitPyramids**    True/False to omit pyramids when doing stats
         * **overviewLevels**  List of level factors used when calculating output image overviews
@@ -188,7 +187,6 @@ class ApplierControls(object):
         self.referencePixgrid = None
         self.progress = None
         self.creationoptions = None
-        self.statscache = None
         self.statsIgnore = 0
         self.calcStats = True
         self.omitPyramids = False
@@ -346,10 +344,6 @@ class ApplierControls(object):
         
         """
         self.setOptionForImagename('creationoptions', imagename, creationoptions)
-        
-    def setStatsCache(self, statscache, imagename=None):
-        "Set the stats cache, if statistics are known from some other source."
-        self.setOptionForImagename('statscache', imagename, statscache)
         
     def setStatsIgnore(self, statsIgnore, imagename=None):
         """
@@ -659,7 +653,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     inputImageLayerSelection = makeInputImageLayerSelection(imagefiles, controls)
     reader = imagereader.ImageReader(imagefiles.__dict__, 
         controls.footprint, controls.windowxsize, controls.windowysize, 
-        controls.overlap, controls.statscache, loggingstream=controls.loggingstream,
+        controls.overlap, loggingstream=controls.loggingstream,
         layerselection=inputImageLayerSelection)
 
     vecreader = None
