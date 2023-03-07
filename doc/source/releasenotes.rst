@@ -1,6 +1,50 @@
 Release Notes
 =============
 
+Version 1.4.15 (2023-01-25)
+---------------------------
+
+Bug Fixes:
+  * Disable the use of SetLinearBinning when writing stats & histogram to
+    output HFA images. This re-enables an earlier disable mechanism
+    which had been removed in version 1.4.11, and thus avoids a bug
+    in GDAL's HFA driver which always sets the HFA binFunctionType to
+    "direct". The GDAL bug should be fixed, but this prevents it from
+    affecting RIOS. The bug only affected 16 & 32 bit athematic images,
+    when displaying in ERDAS Imagine.
+    https://github.com/ubarsc/rios/pull/54
+  * Fix a minor problem with the final histogram bin of 16 and 32 bit
+    athematic images. The last bin was being omitted. Has very little
+    visible effect, as on athematic images that bin usually contains
+    only a few pixels.
+    https://github.com/ubarsc/rios/pull/55
+
+Version 1.4.14 (2022-12-22)
+---------------------------
+
+Bug Fixes:
+  * Numpy-1.24 release removes deprecated type symbols like numpy.bool. We
+    still had some of these which needed to be updated.
+
+
+Version 1.4.13 (2022-11-22)
+---------------------------
+
+Bug Fixes:
+  * Use driver.Delete in test suite to ensure all temporary files deleted.
+  * Ensure GDAL Exception state is maintained
+
+Improvements:
+  * Use gdal.Warp() rather than the command line gdalwarp program
+  * Add CI run and support for flake8
+  * Add support for 64 bit ints introduced in GDAL 3.5.0
+  * Introduce VersionObj as our own version comparison class and use where needed.
+  * Use setuptools for installation and update instructions to use "pip install".
+  * Use GDAL gdal.GetDataTypeName() call for converting data type to a string 
+    instead of our own version
+  * Use gdal.ApplyGeoTransform in pix2wld and wld2pix instead of our own versions
+  
+
 Version 1.4.12 (2021-12-22)
 ---------------------------
 

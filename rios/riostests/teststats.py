@@ -35,6 +35,7 @@ def run():
     riostestutils.reportStart(TESTNAME)
     
     nullVal = 0
+    ok = True
     
     # We repeat the basic test for a number of different GDAL datatypes, with different
     # ranges of data. Each element of the following list is a tuple of
@@ -119,7 +120,12 @@ def run():
             # size of the numbers in question (thus it depends on the scalefactor). 
             # Please do not make it any larger unless you have a really solid reason. 
             relativeTolerance = 0.1 * scalefactor
-            ok = compareStats(stats1, stats2, iterationName, relativeTolerance)
+            statsOK = compareStats(stats1, stats2, iterationName, relativeTolerance)
+            ok = ok and statsOK
+
+            histOK = checkHistogram(band, rampArr, nullVal, iterationName)
+            ok = ok and histOK
+
             del ds
 
         if os.path.exists(imgfile):
@@ -127,12 +133,7 @@ def run():
     
     if ok:
         riostestutils.report(TESTNAME, "Passed")
-    else:
-        riostestutils.report(TESTNAME, 
-            ("Note that the mode and median tests will fail in GDAL < 2.0, "+
-                "unless the GDAL fixes suggested in tickets "+
-                "http://trac.osgeo.org/gdal/ticket/4750 and " +
-                "http://trac.osgeo.org/gdal/ticket/5289 are applied"))
+
     return ok
 
 
@@ -252,6 +253,45 @@ def compareStats(stats1, stats2, dtypeName, relativeTolerance):
         ok = False
         riostestutils.report(TESTNAME, 
             'Datatype=%s\n%s'%(dtypeName, '\n'.join(msgList)))
+    return ok
+
+
+def checkHistogram(band, imgArr, nullVal, iterationName):
+    """
+    Do simple check(s) on the histogram
+    """
+    metadata = band.GetMetadata()
+    if "STATISTICS_HISTOBINVALUES" in metadata:
+        histValsStr = metadata["STATISTICS_HISTOBINVALUES"]
+        if histValsStr[-1] == '|':
+            # Remove trailing '|'
+            histValsStr = histValsStr[:-1]
+        histVals = numpy.array([int(v) for v in histValsStr.split('|')])
+    else:
+        # Must be KEA, so we have to use the RAT to read the histogram.
+        tbl = band.GetDefaultRAT()
+        (histVals, histColNdx) = (None, None)
+        for i in range(tbl.GetColumnCount()):
+            if tbl.GetNameOfCol(i) == "Histogram":
+                histColNdx = i
+        if histColNdx is not None:
+            histVals = tbl.ReadAsArray(histColNdx)
+
+    ok = True
+    msgList = []
+    if histVals is not None:
+        totalCount = histVals.sum()
+        trueTotalCount = numpy.count_nonzero(imgArr != nullVal)
+        if totalCount != trueTotalCount:
+            ok = False
+            msgList.append("Histogram total count error: {} != {}".format(totalCount, trueTotalCount))
+    else:
+        ok = False
+        msgList.append("Histogram not found, so could not be checked")
+
+    if not ok:
+        riostestutils.report(TESTNAME, 'Iteration=%s\n%s'%(iterationName, '\n'.join(msgList)))
+
     return ok
 
 

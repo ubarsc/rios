@@ -57,19 +57,25 @@ def pix2wld(transform, x, y):
 # is the one chosen. 
 dataTypeMapping = [
     (numpy.uint8, gdalconst.GDT_Byte),
-    (numpy.bool, gdalconst.GDT_Byte),
+    (bool, gdalconst.GDT_Byte),
     (numpy.int16, gdalconst.GDT_Int16),
     (numpy.uint16, gdalconst.GDT_UInt16),
     (numpy.int32, gdalconst.GDT_Int32),
     (numpy.uint32, gdalconst.GDT_UInt32),
-    (numpy.single, gdalconst.GDT_Float32),
-    (numpy.float, gdalconst.GDT_Float64)
+    (numpy.float32, gdalconst.GDT_Float32),
+    (numpy.float64, gdalconst.GDT_Float64)
 ]
 
 # hack for GDAL 3.5 and later which suppport 64 bit ints
 if hasattr(gdalconst, 'GDT_Int64'):
     dataTypeMapping.append((numpy.int64, gdalconst.GDT_Int64))
     dataTypeMapping.append((numpy.uint64, gdalconst.GDT_UInt64))
+
+# With GDAL 3.7, there is a plan to introduce GDT_Int8, so try to cope with it.
+# Hopefully OK, because we did not previously have anything to cope with arrays
+# of type numpy.int8.
+if hasattr(gdalconst, 'GDT_Int8'):
+    dataTypeMapping.append((numpy.int8, gdalconst.GDT_Int8))
 
 
 def GDALTypeToNumpyType(gdaltype):
