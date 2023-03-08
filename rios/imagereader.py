@@ -109,7 +109,7 @@ class ImageReader(object):
     def __init__(self, imageContainer,
             footprint=DEFAULTFOOTPRINT,
             windowxsize=DEFAULTWINDOWXSIZE, windowysize=DEFAULTWINDOWYSIZE,
-            overlap=DEFAULTOVERLAP, statscache=None,
+            overlap=DEFAULTOVERLAP, 
             loggingstream=sys.stdout, layerselection=None):
         """
         imageContainer is a filename or list or dictionary that contains
@@ -125,13 +125,6 @@ class ImageReader(object):
         
         overlap specifies the number of pixels to overlap
         between each block
-        
-        statscache if specified, should be an instance of 
-        readerinfo.StatisticsCache. If None, cache is
-        created per instance of this class. If doing
-        multiple reads on same datasets, consider having 
-        a single instance of statscache between all instances
-        of this class.
         
         Set loggingstream to a file like object if you wish
         logging about resampling to be sent somewhere else
@@ -205,13 +198,6 @@ class ImageReader(object):
         self.windowxsize = windowxsize
         self.windowysize = windowysize
         self.overlap = overlap
-        self.statscache = statscache
-        # just create a new instance of the AttributeTableCache
-        # possibly this should be passed in like statscache so the
-        # attributes can be cached between instances of ImageReader
-        # but considering retrieving an attribute nowhere as expensive
-        # as getting global statistics, probably overkill.
-        self.ratcache = readerinfo.AttributeTableCache()
         self.loggingstream = loggingstream
         
         # these are None until prepare() is called
@@ -365,16 +351,9 @@ class ImageReader(object):
             # user supplied
             self.workingGrid = workingGrid
         
-        # create a statscache if not passed to constructor.
-        # Created once per dataset so stats
-        # only have to be calculated once per image - it
-        # returns cached value for subsequent calls.
-        if self.statscache is None:
-            self.statscache = readerinfo.StatisticsCache()
-        
         # create a ReaderInfo class with the info it needs
         # a copy of this class is passed with each iteration
-        self.info = readerinfo.ReaderInfo(self.workingGrid, self.statscache, self.ratcache,
+        self.info = readerinfo.ReaderInfo(self.workingGrid, 
                         self.windowxsize, self.windowysize, self.overlap, self.loggingstream)
         
     def readBlock(self, nblock):
@@ -405,8 +384,6 @@ class ImageReader(object):
         # wont clobber the per block info, and user 
         # writing back into the object wont stuff up
         # the system 
-        # because it is a shallow copy, statscache should
-        # still be pointing to a single object
         info = copy.copy(self.info)
         
         # get the size of the are we are to read
