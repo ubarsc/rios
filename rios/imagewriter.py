@@ -24,7 +24,6 @@ from __future__ import print_function, division
 import os
 import math
 
-import numpy
 from osgeo import gdal
 
 from . import imageio
