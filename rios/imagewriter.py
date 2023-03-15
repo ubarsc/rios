@@ -24,7 +24,6 @@ from __future__ import print_function, division
 import os
 import math
 
-import numpy
 from osgeo import gdal
 
 from . import imageio
@@ -306,15 +305,6 @@ class ImageWriter(object):
             band = self.ds.GetRasterBand(i)
             band.SetMetadataItem('LAYER_TYPE', 'thematic')
                         
-    def setColorTable(self, colortable, band=1):
-        """
-        Sets the output color table. Pass a list
-        of sequences of colors, or a 2d array, as per the
-        docstring for rat.setColorTable(). 
-        """
-        colorTableArray = numpy.array(colortable)
-        rat.setColorTable(self.ds, colorTableArray, layernum=band)
-        
     def setLayerNames(self, names):
         """
         Sets the output layer names. Pass a list
@@ -373,13 +363,6 @@ class ImageWriter(object):
                 
             bh.WriteArray(outblock, xcoord, ycoord)
 
-    def setAttributeColumn(self, colName, sequence, colType=None, bandNumber=1):
-        """
-        Puts the sequence into colName in the output file. See rios.rat.writeColumn
-        for more information. You probably also want to call setThematic().
-        """
-        rat.writeColumn(self.ds, colName, sequence, colType, bandNumber)
-    
     def reset(self):
         """
         Resets the location pointer so that the next
