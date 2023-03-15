@@ -303,7 +303,7 @@ def getColorTable(imgFile, bandNumber=1):
     """
     Given either an open gdal dataset, or a filename,
     reads the color table as an array that can be passed
-    to ImageWriter.setColorTable() or rat.setColorTable()
+    to rat.setColorTable()
     
     The returned colour table is a numpy array, described in detail
     in the docstring for rat.setColorTable(). 
