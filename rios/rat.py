@@ -4,7 +4,7 @@ This module contains routines for reading and writing Raster
 Attribute Tables (RATs). These are designed to be able to 
 be called from outside of RIOS.
 
-Within RIOS, these are called from the :class:`rios.readerinfo.ReaderInfo` 
+Within RIOS, these are called from the :class:`rios.imagewriter.ImageWriter 
 and :class:`rios.fileinfo.ImageInfo` classes.
 
 **Note:** It is recommended that the newer :mod:`rios.ratapplier` module be used instead of this
