@@ -5,7 +5,7 @@ Attribute Tables (RATs). These are designed to be able to
 be called from outside of RIOS.
 
 Within RIOS, these are called from the :class:`rios.readerinfo.ReaderInfo` 
-and :class:`rios.imagewriter.ImageWriter` classes.
+and :class:`rios.fileinfo.ImageInfo` classes.
 
 **Note:** It is recommended that the newer :mod:`rios.ratapplier` module be used instead of this
 interface for large tables where possible.
