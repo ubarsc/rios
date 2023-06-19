@@ -14,6 +14,7 @@
 # serve to show the default.
 
 import sys
+import os
 
 # Set up 'mock' modules, needed to build docs if numpy, gdal etc., aren't installed
 import mock
