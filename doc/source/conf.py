@@ -14,10 +14,14 @@
 # serve to show the default.
 
 import sys
-import rios  # for version info
+import os
 
 # Set up 'mock' modules, needed to build docs if numpy, gdal etc., aren't installed
 import mock
+
+sys.path.insert(0, os.path.abspath('../..'))
+# for version info
+import rios          # noqa: E402
 
 MOCK_MODULES = ['numpy', 'osgeo', 'gdal', 'osgeo.gdal', 'cloud',
                 'cloud.serialization']
