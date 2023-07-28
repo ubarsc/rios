@@ -1,0 +1,199 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'RIOS with AWS Batch using CloudFormation'
+Parameters:
+  AZ_1:
+    Type: String
+    Default: ap-southeast-2a
+  AZ_2:
+    Type: String
+    Default: ap-southeast-2b
+  AZ_3:
+    Type: String
+    Default: ap-southeast-2c
+  ECR_Name:
+    Type: String
+    Default: RIOS_ECR
+  VCPUS:
+    Type: Number
+    Default: 1
+  MaxMemory:
+    Type: Number
+    Default: 4000
+  MaxJobs:
+    Type: Number
+    Default: 32
+    
+Resources:
+  BatchVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: 'false'
+  BatchSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: BatchVPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: !Ref AZ_1
+  BatchSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: BatchVPC
+      CidrBlock: 10.0.0.1/24
+      AvailabilityZone: !Ref AZ_2
+  BatchSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId:
+        Ref: BatchVPC
+      CidrBlock: 10.0.0.2/24
+      AvailabilityZone: !Ref AZ_3
+  BatchSecurityGroup:
+    Type: Type: AWS::EC2::SecurityGroup
+    GroupName: "RIOS Security Group"
+      VpcId:
+        Ref: BatchVPC
+    
+  BatchRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Ref ECR_Name
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+                {
+                    "rulePriority": 1,
+                    "description": "Expire images older than 1 day",
+                    "selection": {
+                        "tagStatus": "untagged",
+                        "countType": "sinceImagePushed",
+                        "countUnit": "days",
+                        "countNumber": 1
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                }
+            ]
+        }
+        
+  BatchInQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "RIOSInQueue"
+
+  BatchOutQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: "RIOSOutQueue"
+      
+  BatchBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: RIOS_Bucket
+      
+  BatchServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: batch.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+      - Ref: EcsInstanceRole
+  EcsInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2008-10-17'
+        Statement:
+        - Sid: ''
+          Effect: Allow
+          Principal:
+            Service: ec2.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+      - arn:aws:iam::aws:policy/AmazonS3FullAccess
+      - arn:aws:iam::aws:policy/CloudWatchFullAccess
+  BatchProcessingJobDefinition:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      Type: container
+      JobDefinitionName: OziusBiomeJobDefinition
+      ContainerProperties:
+        Image:
+          Fn::Join:
+          - ''
+          - - !GetAtt: BatchRepository.RepositoryUri
+            - ":latest"
+        Vcpus: !Ref VCPUS
+        Memory: !Ref MaxMemory
+  BatchProcessingJobQueue:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: OziusProcessingJobQueue
+      Priority: 1
+      ComputeEnvironmentOrder:
+      - Order: 1
+        ComputeEnvironment:
+          Ref: ComputeEnvironment
+  ComputeEnvironment:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      Type: MANAGED
+      ComputeResources:
+        Type: EC2
+        MinvCpus: 0
+        DesiredvCpus: 0
+        MaxvCpus: !Ref MaxJobs
+        InstanceTypes:
+        - optimal
+        Subnets:
+        - !Ref BatchSubnet1
+        - !Ref BatchSubnet2
+        - !Ref BatchSubnet3
+        SecurityGroupIds:
+        - !Ref BatchSecurityGroup
+        InstanceRole:
+          Ref: IamInstanceProfile
+      ServiceRole:
+        Ref: BatchServiceRole
+     
+Outputs:
+  VPC:
+    Value:
+      Ref: BatchVPC
+  ComputeEnvironmentArn:
+    Value:
+      Ref: ComputeEnvironment
+  BatchProcessingJobQueueArn:
+    Value:
+      Ref: BatchProcessingJobQueue
+  BatchProcessingJobDefinitionArn:
+    Value:
+      Ref: BatchProcessingJobDefinition
+  Batch_ECR:
+    Value:
+      Ref: BatchRepository
+  BatchInQueue:
+    Value:
+      Ref: BatchInQueue
+  BatchOutQueue:
+    Value:
+      Ref: BatchOutQueue
+  BatchBucket:
+    Value:
+      Ref: BatchBucket
