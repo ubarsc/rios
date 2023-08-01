@@ -42,7 +42,7 @@ setup(name='rios',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
       scripts=scripts_list,
-      packages=['rios', 'rios/parallel', 
+      packages=['rios', 'rios/parallel', 'rios/parallel/aws',
                         'rios/riostests', 'rios/cmdline'],
       license='LICENSE.txt', 
       url='https://www.rioshome.org'

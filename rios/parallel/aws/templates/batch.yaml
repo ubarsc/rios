@@ -165,11 +165,18 @@ Resources:
     Type: AWS::Batch::JobDefinition
     Properties:
       Type: container
-      JobDefinitionName: !Join ['', [!Ref ServiceName, "JobDefinitition"]]
+      JobDefinitionName: !Join ['', [!Ref ServiceName, "JobDefinition"]]
       ContainerProperties:
         Image: !Join ['', [!GetAtt BatchRepository.RepositoryUri, ":latest"]]
         Vcpus: !Ref VCPUS
         Memory: !Ref MaxMemory
+        Environment:
+          - Name: "RIOSBucket"
+            Value: !Ref: BatchBucket
+          - Name: "RIOSInQueue"
+            Value: !Ref BatchInQueue
+          - Name: "RIOSOutQueue"
+            Value: !Ref BatchOutQueue
   BatchProcessingJobQueue:
     Type: AWS::Batch::JobQueue
     Properties:
@@ -211,9 +218,13 @@ Outputs:
   BatchProcessingJobQueueArn:
     Value:
       Ref: BatchProcessingJobQueue
+  BatchProcessingJobQueueName:
+    Value: !Join ['', [!Ref ServiceName, "JobQueue"]]
   BatchProcessingJobDefinitionArn:
     Value:
       Ref: BatchProcessingJobDefinition
+  BatchProcessingJobDefinitionName:
+    Value: !Join ['', [!Ref ServiceName, "JobDefinition"]]
   BatchECR:
     Value:
       Ref: BatchRepository

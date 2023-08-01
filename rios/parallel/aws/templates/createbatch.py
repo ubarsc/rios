@@ -9,9 +9,10 @@ import time
 import argparse
 import boto3
 
+from ..jobmanager import DFLT_STACK_NAME
+from ..jobmanager import DFLT_REGION
+
 N_AZS = 3
-DFLT_STACK_NAME = 'RIOS'
-DFLT_REGION = 'ap-southeast-2'
 
 
 def getCmdArgs():

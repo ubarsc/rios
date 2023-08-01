@@ -273,6 +273,11 @@ class JobManager(object):
         String representation
         """
         return "jobMgrType=%s, numSubJobs=%s" % (self.jobMgrType, self.numSubJobs)
+        
+    def finalize(self):
+        """
+        Do any tidy up at completion of image
+        """
 
 
 class SubprocJobManager(JobManager):
