@@ -14,7 +14,7 @@ try:
     from cloudpickle import cloudpickle
 except ImportError:
     # Import from our own local copy. This is what will usually happen. 
-    from . import cloudpickle
+    from .. import cloudpickle
 
 DFLT_STACK_NAME = 'RIOS'
 DFLT_REGION = 'ap-southeast-2'

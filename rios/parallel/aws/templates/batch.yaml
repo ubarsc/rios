@@ -159,6 +159,7 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
       - !Ref AccessS3ManagedPolicy
       - !Ref AccessQueuesS3ManagedPolicy
   BatchProcessingJobDefinition:
@@ -172,7 +173,7 @@ Resources:
         Memory: !Ref MaxMemory
         Environment:
           - Name: "RIOSBucket"
-            Value: !Ref: BatchBucket
+            Value: !Ref BatchBucket
           - Name: "RIOSInQueue"
             Value: !Ref BatchInQueue
           - Name: "RIOSOutQueue"

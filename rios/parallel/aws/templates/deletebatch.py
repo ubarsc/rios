@@ -10,8 +10,8 @@ import argparse
 import boto3
 import botocore
 
-from ..jobmanager import DFLT_STACK_NAME
-from ..jobmanager import DFLT_REGION
+from rios.parallel.aws.batch import DFLT_STACK_NAME
+from rios.parallel.aws.batch import DFLT_REGION
 
 
 def getCmdArgs():
@@ -24,7 +24,7 @@ def getCmdArgs():
     p.add_argument('--region', default=DFLT_REGION,
         help="AWS Region to use. (default=%(default)s)")
     p.add_argument('--wait', action="store_true",
-        help="Wait until CloudFormation is complete before exiting")
+        help="Wait until CloudFormation is deleted before exiting")
         
     cmdargs = p.parse_args()
         

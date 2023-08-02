@@ -9,8 +9,8 @@ import time
 import argparse
 import boto3
 
-from ..jobmanager import DFLT_STACK_NAME
-from ..jobmanager import DFLT_REGION
+from rios.parallel.aws.batch import DFLT_STACK_NAME
+from rios.parallel.aws.batch import DFLT_REGION
 
 N_AZS = 3
 
