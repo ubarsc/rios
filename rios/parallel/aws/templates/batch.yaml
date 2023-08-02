@@ -227,8 +227,7 @@ Outputs:
   BatchProcessingJobDefinitionName:
     Value: !Join ['', [!Ref ServiceName, "JobDefinition"]]
   BatchECR:
-    Value:
-      Ref: BatchRepository
+    Value: !GetAtt BatchRepository.RepositoryUri
   BatchInQueue:
     Value:
       Ref: BatchInQueue
