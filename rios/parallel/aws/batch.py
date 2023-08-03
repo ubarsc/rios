@@ -98,8 +98,11 @@ class AWSBatch(jobmanager.JobManager):
         
         while len(outputBlocksDict) < len(jobIDlist) - 1:
             resp = self.sqsClient.receive_message(
-                QueueUrl=self.stackOutputs['BatchOutQueue'])
-                
+                QueueUrl=self.stackOutputs['BatchOutQueue'],
+                WaitTimeSeconds=20)  # 20 appears to be the max
+
+            if 'Messages' not in resp:
+                continue                
             for msg in resp['Messages']:
                 body = msg['Body']
                 receiptHandle = msg['ReceiptHandle']

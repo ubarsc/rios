@@ -24,4 +24,4 @@ RUN cd /tmp && tar xf rios-$RIOS_VER.tar.gz \
 ENTRYPOINT ["rios_subproc_awsbatch.py"]
 
 # any pip packages?
-RUN if [[ -n "$PIP_PACKAGES" ]] ; then pip install $PIP_PACKAGES; fi
+RUN if [ -n "$PIP_PACKAGES" ] ; then pip install $PIP_PACKAGES; fi
