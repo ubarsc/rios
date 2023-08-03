@@ -31,11 +31,12 @@ BUCKET = os.getenv("RIOSBucket")
 INQUEUE = os.getenv("RIOSInQueue")
 OUTQUEUE = os.getenv("RIOSOutQueue")
 
-
 def main():
     
     s3Client = boto3.client('s3')
-    sqsClient = boto3.client('sqs')
+    # SQS client needs a region - should be same as s3 bucket
+    region = s3Client.meta.region_name
+    sqsClient = boto3.client('sqs', region_name=region)
     
     while True:
          resp = sqsClient.receive_message(QueueUrl=INQUEUE,
@@ -51,6 +52,8 @@ def main():
              if body == 'Stop':
                  print('Job Exiting')
                  break
+
+             print('Started', body)
                  
              bl, x, y, o = body.split('_')
              outfile = 'block_{}_{}_out.pkl'.format(x, y)
@@ -67,6 +70,8 @@ def main():
              
              self.sqsClient.send_message(QueueUrl=OUTQUEUE,
                 MessageBody=outfile)
+
+             print('finished', body)
                 
          else:
             time.sleep(30)

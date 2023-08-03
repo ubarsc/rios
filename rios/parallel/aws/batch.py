@@ -48,9 +48,9 @@ class AWSBatch(jobmanager.JobManager):
 
     def __init__(self, numSubJobs, stackName=DFLT_STACK_NAME, 
             region=DFLT_REGION):
-        super().__init__(self, numSubJobs)
+        super().__init__(numSubJobs)
         self.stackOutputs = getStackOutputs(stackName, region)
-        self.batchClient = boto3.client('cloudformation', region_name=region)
+        self.batchClient = boto3.client('batch', region_name=region)
         self.s3Client = boto3.client('s3', region_name=region)
         self.sqsClient = boto3.client('sqs', region_name=region)
         # start the required number of batch jobs running now
@@ -76,6 +76,8 @@ class AWSBatch(jobmanager.JobManager):
             
         self.sqsClient.send_message(QueueUrl=self.stackOutputs['BatchInQueue'],
             MessageBody=s3Key)
+
+        print('sent', s3Key)
             
         return (jobInfo.info.xblock, jobInfo.info.yblock)
             
@@ -83,6 +85,7 @@ class AWSBatch(jobmanager.JobManager):
         """
         Wait on all the jobs. Do nothing.
         """
+        print('wait on jobs')
         
     def gatherAllOutputs(self, jobIDlist):
         outputBlocksList = [jobIDlist[0]]
@@ -101,10 +104,12 @@ class AWSBatch(jobmanager.JobManager):
                 body = msg['Body']
                 receiptHandle = msg['ReceiptHandle']
                 bl, x, y, o = body.split('_')
+                print('received', body)
                 x = int(x)
                 y = int(y)
                 # one of ours?
                 if (x, y) in inBlocks:
+                    print('processing', body)
                     self.sqsClient.delete_message(
                         QueueUrl=self.stackOutputs['BatchOutQueue'], 
                         ReceiptHandle=receiptHandle)
