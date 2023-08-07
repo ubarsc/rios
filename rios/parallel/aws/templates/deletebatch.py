@@ -12,6 +12,7 @@ import botocore
 
 from rios.parallel.aws.batch import DFLT_STACK_NAME
 from rios.parallel.aws.batch import DFLT_REGION
+from rios.parallel.aws.batch import getStackOutputs
 
 
 def getCmdArgs():
@@ -31,11 +32,39 @@ def getCmdArgs():
     return cmdargs
 
 
+def deleteAllS3Files(outputs):
+    """
+    See https://stackoverflow.com/questions/43326493/what-is-the-fastest-way-to-empty-s3-bucket-using-boto3
+
+    Needed before you can delete the bucket
+    """
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket(outputs['BatchBucket'])
+    bucket.objects.all().delete()
+
+
+def deleteAllECRImages(outputs):
+    """
+    See https://stackoverflow.com/questions/58843927/boto3-script-to-delete-all-images-which-are-untagged
+
+    Needed before you can delete the repo
+    """
+    client = boto3.client('ecr')
+    response = client.list_images(repositoryName='riosecr')
+    imageList = [image for image in response['imageIds']]
+    client.batch_delete_image(repositoryName='riosecr', imageIds=imageList)
+
+
 def main():
     """
     Main function for this script
     """
     cmdargs = getCmdArgs()
+
+    outputs = getStackOutputs(cmdargs.stackname, cmdargs.region)
+
+    deleteAllS3Files(outputs)
+    deleteAllECRImages(outputs)
 
     client = boto3.client('cloudformation', region_name=cmdargs.region)
     client.delete_stack(StackName=cmdargs.stackname)

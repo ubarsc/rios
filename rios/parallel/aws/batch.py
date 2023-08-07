@@ -30,8 +30,7 @@ def getStackOutputs(stackName=DFLT_STACK_NAME, region=DFLT_REGION):
     """
     client = boto3.client('cloudformation', region_name=region)
     resp = client.describe_stacks(StackName=stackName)
-    if (len(resp['Stacks']) == 0 
-            or resp['Stacks'][0]['StackStatus'] != 'CREATE_COMPLETE'):
+    if len(resp['Stacks']) == 0:
         raise AWSBatchException("Stack not created")
     outputsRaw = resp['Stacks'][0]['Outputs']
     # convert to a normal dictionary
@@ -53,9 +52,16 @@ class AWSBatch(jobmanager.JobManager):
         self.batchClient = boto3.client('batch', region_name=region)
         self.s3Client = boto3.client('s3', region_name=region)
         self.sqsClient = boto3.client('sqs', region_name=region)
+
+        # check they haven't asked for more jobs than we have batch instances
+        if numSubJobs - 1 > int(self.stackOutputs['BatchMaxJobs']):
+            print('Number of threads greater than number of MaxJobs input to ' +
+                'CloudFormation. Consider increasing this number.')
+
         # start the required number of batch jobs running now
-        for n in range(numSubJobs):
+        for n in range(numSubJobs - 1):
             self.batchClient.submit_job(jobName='RIOS_{}'.format(n),
+                #containerOverrides={'command': ['/usr/bin/python3', '/usr/local/bin/rios_subproc_awsbatch.py']},
                 jobQueue=self.stackOutputs['BatchProcessingJobQueueName'],
                 jobDefinition=self.stackOutputs['BatchProcessingJobDefinitionName'])
         
@@ -120,8 +126,9 @@ class AWSBatch(jobmanager.JobManager):
                     # download
                     pickledOutput = io.BytesIO()
                     self.s3Client.download_fileobj(
-                        self.stackOutputs['BatchBucket'], body, fileObj)
-                    outputObj = pickle.loads(pickledOutput)
+                        self.stackOutputs['BatchBucket'], body, pickledOutput)
+                    pickledOutput.seek(0)
+                    outputObj = pickle.load(pickledOutput)
                     outputBlocksDict[(x, y)] = outputObj
                     
                     self.s3Client.delete_object(

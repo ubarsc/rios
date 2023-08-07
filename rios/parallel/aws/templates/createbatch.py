@@ -37,6 +37,8 @@ def getCmdArgs():
             "Ideally the same as controls.setNumThreads()")
     p.add_argument('--wait', action="store_true",
         help="Wait until CloudFormation is complete before exiting")
+    p.add_argument('--modify', action="store_true",
+        help="Instead of creating the stack, modify it.")
         
     cmdargs = p.parse_args()
     if cmdargs.az is not None and len(cmdargs.az) != 3:
@@ -53,7 +55,7 @@ def main():
     
     stackId, status = createBatch(cmdargs.stackname, cmdargs.region,
         cmdargs.az, cmdargs.ecrname, cmdargs.vcpus, 
-        cmdargs.mem, cmdargs.maxjobs, cmdargs.wait)
+        cmdargs.mem, cmdargs.maxjobs, cmdargs.modify, cmdargs.wait)
             
     print('stackId: {}'.format(stackId))
     if status is not None:
@@ -69,7 +71,8 @@ def addParam(params, key, value):
         'ParameterValue': value})
 
     
-def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs, wait):
+def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs, 
+        modify, wait):
     """
     Do the work of creating the CloudFormation Stack
     """        
@@ -95,9 +98,18 @@ def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs, wait):
     body = open('batch.yaml').read()
         
     client = boto3.client('cloudformation', region_name=region)
-    resp = client.create_stack(StackName=stackname,
-        TemplateBody=body, Capabilities=['CAPABILITY_IAM'], 
-        Parameters=params)
+
+    if modify:
+        resp = client.update_stack(StackName=stackname,
+            TemplateBody=body, Capabilities=['CAPABILITY_IAM'], 
+            Parameters=params)
+        inProgressStatus = 'UPDATE_IN_PROGRESS'
+
+    else:
+        resp = client.create_stack(StackName=stackname,
+            TemplateBody=body, Capabilities=['CAPABILITY_IAM'], 
+            Parameters=params)
+        inProgressStatus = 'CREATE_IN_PROGRESS'
         
     stackId = resp['StackId']
     print('StackId: {}'.format(stackId))
@@ -108,7 +120,7 @@ def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs, wait):
             time.sleep(30)
             resp = client.describe_stacks(StackName=stackId)
             status = resp['Stacks'][0]['StackStatus']
-            if status != 'CREATE_IN_PROGRESS':
+            if status != inProgressStatus:
                 break
             print('Status: {}'.format(status))
                 

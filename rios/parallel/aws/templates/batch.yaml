@@ -29,7 +29,9 @@ Resources:
     Type: AWS::EC2::VPC
     Properties:
       CidrBlock: 10.0.0.0/16
-      EnableDnsSupport: 'false'
+      # Below needed for Batch it seems
+      EnableDnsSupport: 'true'
+      EnableDnsHostnames: 'true'
   BatchSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -57,7 +59,41 @@ Resources:
       GroupName: !Join ['', [!Ref ServiceName, "Security Group"]]
       GroupDescription: "Security Group for RIOS VPC"
       VpcId: !Ref BatchVPC
-    
+       
+  # Jobs must have internet connectivity otherwise they won't run...
+  RouteTable:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref BatchVPC
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+  VPCGatewayAttachment:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    Properties:
+      VpcId: !Ref BatchVPC
+      InternetGatewayId: !Ref InternetGateway
+  InternetRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      DestinationCidrBlock: "0.0.0.0/0"
+      GatewayId: !Ref InternetGateway
+      RouteTableId: !Ref RouteTable
+  Subnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref BatchSubnet1
+  Subnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref BatchSubnet2
+  Subnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref RouteTable
+      SubnetId: !Ref BatchSubnet3
+
   BatchRepository:
     Type: AWS::ECR::Repository
     Properties:
@@ -110,8 +146,13 @@ Resources:
           Action: 's3:*Object'
           Resource:
             - !GetAtt BatchBucket.Arn
+        - Effect: Allow
+          Action: 
+            - 's3:GetBucketLocation'
+          Resource:
+            - !GetAtt BatchBucket.Arn
             
-  AccessQueuesS3ManagedPolicy:
+  AccessQueuesManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
       Description: Policy for allowing jobs to our SQS Queues
@@ -161,7 +202,7 @@ Resources:
       - arn:aws:iam::aws:policy/CloudWatchFullAccess
       - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
       - !Ref AccessS3ManagedPolicy
-      - !Ref AccessQueuesS3ManagedPolicy
+      - !Ref AccessQueuesManagedPolicy
   BatchProcessingJobDefinition:
     Type: AWS::Batch::JobDefinition
     Properties:
@@ -194,7 +235,6 @@ Resources:
       ComputeResources:
         Type: EC2
         MinvCpus: 0
-        DesiredvCpus: 0
         MaxvCpus: !Ref MaxJobs
         InstanceTypes:
         - optimal
@@ -237,3 +277,5 @@ Outputs:
   BatchBucket:
     Value:
       Ref: BatchBucket
+  BatchMaxJobs:
+    Value: !Ref MaxJobs

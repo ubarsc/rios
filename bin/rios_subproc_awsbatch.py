@@ -30,50 +30,66 @@ from rios.parallel import subproc
 BUCKET = os.getenv("RIOSBucket")
 INQUEUE = os.getenv("RIOSInQueue")
 OUTQUEUE = os.getenv("RIOSOutQueue")
+DFLT_NOMSG_TIMEOUT_SECS = 60 * 60  # 1 hour
+NOMSG_TIMEOUT_SECS = int(os.getenv('RIOS_NOMSG_TIMEOUT', 
+    default=DFLT_NOMSG_TIMEOUT_SECS))
+
+LAST_MESSAGE_TIME = time.time()
+
 
 def main():
+
+    global LAST_MESSAGE_TIME
     
     s3Client = boto3.client('s3')
     # SQS client needs a region - should be same as s3 bucket
-    region = s3Client.meta.region_name
+    response = s3Client.get_bucket_location(Bucket=BUCKET)
+    region = response['LocationConstraint']
     sqsClient = boto3.client('sqs', region_name=region)
     
     while True:
-         resp = sqsClient.receive_message(QueueUrl=INQUEUE,
-            MaxNumberOfMessages=1)
-         if len(resp['Messages']) > 0:
-             # just look at the first one
-             msg = resp['Messages'][0]
-             body = msg['Body']
-             receiptHandle = msg['ReceiptHandle']
-             self.sqsClient.delete_message(
-                 QueueUrl=INQUEUE, ReceiptHandle=receiptHandle)
-                 
-             if body == 'Stop':
-                 print('Job Exiting')
-                 break
+        resp = sqsClient.receive_message(QueueUrl=INQUEUE,
+            MaxNumberOfMessages=1, WaitTimeSeconds=20)  # must be <= 20
+        if 'Messages' in resp and len(resp['Messages']) > 0:
+            LAST_MESSAGE_TIME = time.time()
 
-             print('Started', body)
+            # just look at the first one
+            msg = resp['Messages'][0]
+            body = msg['Body']
+            receiptHandle = msg['ReceiptHandle']
+            sqsClient.delete_message(
+                QueueUrl=INQUEUE, ReceiptHandle=receiptHandle)
                  
-             bl, x, y, o = body.split('_')
-             outfile = 'block_{}_{}_out.pkl'.format(x, y)
+            if body == 'Stop':
+                print('Job Exiting')
+                break
+
+            print('Started', body)
+                 
+            bl, x, y, o = body.split('_')
+            outfile = 'block_{}_{}_out.pkl'.format(x, y)
              
-             inPlk = io.Bytes()
-             s3Client.download_fileobj(BUCKET, body, inPlk)
+            inPkl = io.BytesIO()
+            s3Client.download_fileobj(BUCKET, body, inPkl)
+            inPkl.seek(0)
              
-             s3Client.delete_object(Bucket=BUCKET, Key=body)
+            s3Client.delete_object(Bucket=BUCKET, Key=body)
              
-             outPkl = io.Bytes()
-             subproc.runJob(inPlk, outPkl)
+            outPkl = io.BytesIO()
+            subproc.runJob(inPkl, outPkl)
+
+            outPkl.seek(0)             
+            s3Client.upload_fileobj(outPkl, BUCKET, outfile)
              
-             s3Client.upload_fileobj(outPkl, BUCKET, outfile)
-             
-             self.sqsClient.send_message(QueueUrl=OUTQUEUE,
+            sqsClient.send_message(QueueUrl=OUTQUEUE,
                 MessageBody=outfile)
 
-             print('finished', body)
-                
-         else:
+            print('finished', body)
+        elif ((time.time() - LAST_MESSAGE_TIME) > 
+                NOMSG_TIMEOUT_SECS):
+            print('No message received within timeout. Exiting')
+            break
+        else:
             time.sleep(30)
 
 

@@ -21,7 +21,7 @@ RUN cd /tmp && tar xf rios-$RIOS_VER.tar.gz \
     && pip install . \
     && cd .. && rm -rf rios-$RIOS_VER rios-$RIOS_VER.tar.gz
 
-ENTRYPOINT ["rios_subproc_awsbatch.py"]
+ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/rios_subproc_awsbatch.py"]
 
 # any pip packages?
 RUN if [ -n "$PIP_PACKAGES" ] ; then pip install $PIP_PACKAGES; fi
