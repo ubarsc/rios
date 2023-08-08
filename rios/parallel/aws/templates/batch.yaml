@@ -1,6 +1,14 @@
 ---
+# Create all the infrastructure for AWS Batch with RIOS
+# This includes a temporary S3 for storing the pickled data files,
+# an ECR for saving the docker image that is used for processing,
+# SQS Queues for communicating between main script and workers.
+# Use the script createbatch.py for creation and modification.
+# deletebatch.py for deletion.
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'RIOS with AWS Batch using CloudFormation'
+# These values can be altered here or overridden with the params
+# for createbatch.py.
 Parameters:
   ServiceName:
     Type: String
@@ -25,6 +33,10 @@ Parameters:
     Default: 32
     
 Resources:
+  # Create our own vpc for resources so we are separate
+  # from whatever else the running account has.
+  # And we can easily determine the output names of resources from
+  # CloudFormation
   BatchVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -32,6 +44,7 @@ Resources:
       # Below needed for Batch it seems
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
+  # Createa subnet for each availability zone
   BatchSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
@@ -53,6 +66,7 @@ Resources:
         Ref: BatchVPC
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Ref AZ3
+  # A security group for everything to run as
   BatchSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -61,6 +75,10 @@ Resources:
       VpcId: !Ref BatchVPC
        
   # Jobs must have internet connectivity otherwise they won't run...
+  # They need to talk to ECS/S3/CloudWatch. This could possibly be
+  # accomplished with VPC Endpoints instead...
+  # Leaving this using an internet gateway so functions can access
+  # any other resources that are on the internet.
   RouteTable:
     Type: "AWS::EC2::RouteTable"
     Properties:
@@ -78,6 +96,7 @@ Resources:
       DestinationCidrBlock: "0.0.0.0/0"
       GatewayId: !Ref InternetGateway
       RouteTableId: !Ref RouteTable
+  # Associate the route table with each subnet
   Subnet1RouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
     Properties:
@@ -94,11 +113,13 @@ Resources:
       RouteTableId: !Ref RouteTable
       SubnetId: !Ref BatchSubnet3
 
+  # Create an ECR to hold the image that contains RIOS
+  # (and any other packages the function needs)
+  # Expires older untagged images
   BatchRepository:
     Type: AWS::ECR::Repository
     Properties:
       RepositoryName: !Join ['', [!Ref ServiceName, "ecr"]]
-          
       LifecyclePolicy:
         LifecyclePolicyText: |
           {
@@ -118,22 +139,29 @@ Resources:
                 }
             ]
           }
-        
+       
+  # An input queue for passing information from the main RIOS
+  # script to the Batch workers 
   BatchInQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Join ['', [!Ref ServiceName, InQueue]]
 
+  # an output queue for passing information from the batch 
+  # workers back to the main RIOS script.
   BatchOutQueue:
     Type: AWS::SQS::Queue
     Properties:
       QueueName: !Join ['', [!Ref ServiceName, OutQueue]]
       
+  # A bucket for holding the pickled information for each tile
+  # that is refered to in the SQS messages.
   BatchBucket:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Join ['', [!Ref ServiceName, bucket]]
       
+  # Ensure the workers have enough access to the S3 bucket
   AccessS3ManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -148,10 +176,12 @@ Resources:
             - !Join ['/', [!GetAtt BatchBucket.Arn, '*']]
         - Effect: Allow
           Action: 
+            # we use GetBucketLocation to determin which region we are in
             - 's3:GetBucketLocation'
           Resource:
             - !GetAtt BatchBucket.Arn
-            
+           
+  # Ensure workers can access the queues 
   AccessQueuesManagedPolicy:
     Type: AWS::IAM::ManagedPolicy
     Properties:
@@ -169,6 +199,7 @@ Resources:
             - !GetAtt BatchInQueue.Arn
             - !GetAtt BatchOutQueue.Arn
       
+  # Needed by AWS Batch.
   BatchServiceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -186,6 +217,8 @@ Resources:
     Properties:
       Roles:
       - Ref: EcsInstanceRole
+  # This is the user that the batch workers run as.
+  # Ensure we attach all the permissions it will need.
   EcsInstanceRole:
     Type: AWS::IAM::Role
     Properties:
@@ -203,6 +236,8 @@ Resources:
       - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
       - !Ref AccessS3ManagedPolicy
       - !Ref AccessQueuesManagedPolicy
+  # The worker job. Set the S3 bucket and SQS queues info in the 
+  # enironment.
   BatchProcessingJobDefinition:
     Type: AWS::Batch::JobDefinition
     Properties:
@@ -219,6 +254,7 @@ Resources:
             Value: !Ref BatchInQueue
           - Name: "RIOSOutQueue"
             Value: !Ref BatchOutQueue
+  # Our queue
   BatchProcessingJobQueue:
     Type: AWS::Batch::JobQueue
     Properties:
@@ -228,6 +264,7 @@ Resources:
       - Order: 1
         ComputeEnvironment:
           Ref: ComputeEnvironment
+  # Compute Environment - set subnets and security group etc.
   ComputeEnvironment:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
@@ -249,6 +286,8 @@ Resources:
       ServiceRole:
         Ref: BatchServiceRole
      
+# Outputs that the main script can queury to find
+# the names and paths of things.
 Outputs:
   VPC:
     Value:

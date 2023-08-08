@@ -3,6 +3,12 @@
 """
 Helper script to create the RIOS Batch CloudFormation. 
 Optionally wait until stack is created before returning.
+
+The --modify command line argument allows modification of 
+an existing stack.
+
+All the other parameters for the CloudFormation stack can
+be altered with the command line params.
 """
 
 import time
@@ -77,6 +83,7 @@ def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs,
     Do the work of creating the CloudFormation Stack
     """        
     
+    # set overridden stack parameters
     params = []
     if azs is not None:
         addParam(params, 'AZ1', azs[0])
@@ -100,12 +107,14 @@ def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs,
     client = boto3.client('cloudformation', region_name=region)
 
     if modify:
+        # modify stack
         resp = client.update_stack(StackName=stackname,
             TemplateBody=body, Capabilities=['CAPABILITY_IAM'], 
             Parameters=params)
         inProgressStatus = 'UPDATE_IN_PROGRESS'
 
     else:
+        # create stack
         resp = client.create_stack(StackName=stackname,
             TemplateBody=body, Capabilities=['CAPABILITY_IAM'], 
             Parameters=params)
@@ -115,6 +124,7 @@ def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs,
     print('StackId: {}'.format(stackId))
     
     status = None
+    # If they asked to wait, loop calling describe_stacks
     if wait:
         while True:
             time.sleep(30)
