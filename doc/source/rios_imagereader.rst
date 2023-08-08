@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 imagereader
 ===========
 .. automodule:: rios.imagereader

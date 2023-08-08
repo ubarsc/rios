@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 inputcollection
 ===============
 .. automodule:: rios.inputcollection

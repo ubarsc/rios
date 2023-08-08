@@ -83,7 +83,7 @@ New Features:
   * Removed support for GDAL versions < 2.2. 
 
 Version 1.4.10 (2019-11-29)
---------------------------
+---------------------------
 
 Bug Fixes:
   * Cope with an API change in GDAL 3, in which latitude/longitude values are swapped
