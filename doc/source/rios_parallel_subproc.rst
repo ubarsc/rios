@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 subproc
 =========
 .. automodule:: rios.parallel.subproc

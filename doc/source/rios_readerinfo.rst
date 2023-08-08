@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 readerinfo
 ==========
 .. automodule:: rios.readerinfo
