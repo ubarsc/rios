@@ -16,6 +16,7 @@ def getCmdArgs():
     cmdargs = p.parse_args()
     return cmdargs
 
+
 def main():
     cmdargs = getCmdArgs()
     
@@ -26,6 +27,6 @@ def main():
         
     print(result)
 
+
 if __name__ == '__main__':
     main()
- 
