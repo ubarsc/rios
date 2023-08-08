@@ -3,6 +3,7 @@ Module for implementing parallel with AWS Batch
 """
 
 import io
+import pickle
 import boto3
 
 from .. import jobmanager
@@ -138,7 +139,8 @@ class AWSBatch(jobmanager.JobManager):
         for xblock, yblock in jobIDlist[1:]:
             obj = outputBlocksDict[(xblock, yblock)]
             outputBlocksList.append(obj)
-        
+
+        return outputBlocksList        
         
     def finalise(self):
         """

@@ -145,7 +145,7 @@ Resources:
         - Effect: Allow
           Action: 's3:*Object'
           Resource:
-            - !GetAtt BatchBucket.Arn
+            - !Join ['/', [!GetAtt BatchBucket.Arn, '*']]
         - Effect: Allow
           Action: 
             - 's3:GetBucketLocation'
