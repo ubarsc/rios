@@ -271,7 +271,7 @@ class JobManager(object):
         """
         return "jobMgrType=%s, numSubJobs=%s" % (self.jobMgrType, self.numSubJobs)
         
-    def finalize(self):
+    def finalise(self):
         """
         Do any tidy up at completion of image
         """
