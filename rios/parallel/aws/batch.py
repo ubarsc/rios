@@ -45,7 +45,7 @@ def getStackOutputs(stackName=DFLT_STACK_NAME, region=DFLT_REGION):
     return outputs
 
 
-class AWSBatch(jobmanager.JobManager):
+class AWSBatchJobManager(jobmanager.JobManager):
     """
     Implementation of parallelisation via AWS Batch.
     This uses 2 SQS queues for communication between the
