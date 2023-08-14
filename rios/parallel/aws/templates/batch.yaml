@@ -159,7 +159,7 @@ Resources:
   BatchBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Join ['', [!Ref ServiceName, bucket]]
+      BucketName: !Join ['', [!Ref ServiceName, bucket, !Ref AWS::AccountId]]
       
   # Ensure the workers have enough access to the S3 bucket
   AccessS3ManagedPolicy:

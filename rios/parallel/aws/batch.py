@@ -5,6 +5,7 @@ See the class AWSBatch for the implemenation.
 """
 
 import io
+import os
 import pickle
 import boto3
 
@@ -19,20 +20,23 @@ except ImportError:
     # Import from our own local copy. This is what will usually happen. 
     from .. import cloudpickle
 
-DFLT_STACK_NAME = 'RIOS'
-DFLT_REGION = 'ap-southeast-2'
+STACK_NAME = os.getenv('RIOS_BATCH_STACK', default='RIOS')
+REGION = os.getenv('RIOS_BATCH_REGION', default='ap-southeast-2')
 
 
 class AWSBatchException(Exception):
     pass
 
 
-def getStackOutputs(stackName=DFLT_STACK_NAME, region=DFLT_REGION):
+def getStackOutputs():
     """
-    Helper function to query the CloudFormation stack for outputs
+    Helper function to query the CloudFormation stack for outputs.
+    
+    Uses the DFLT_BATCH_STACK and DFLT_BATCH_REGION env vars to 
+    determine which stack and region to query.
     """
-    client = boto3.client('cloudformation', region_name=region)
-    resp = client.describe_stacks(StackName=stackName)
+    client = boto3.client('cloudformation', region_name=REGION)
+    resp = client.describe_stacks(StackName=STACK_NAME)
     if len(resp['Stacks']) == 0:
         raise AWSBatchException("Stack not created")
     outputsRaw = resp['Stacks'][0]['Outputs']
@@ -55,15 +59,14 @@ class AWSBatchJobManager(jobmanager.JobManager):
     """
     jobMgrType = 'AWSBatch'
 
-    def __init__(self, numSubJobs, stackName=DFLT_STACK_NAME, 
-            region=DFLT_REGION):
+    def __init__(self, numSubJobs):
         super().__init__(numSubJobs)
         # get the output of the CloudFormation so we know what 
         # the resources are called.
-        self.stackOutputs = getStackOutputs(stackName, region)
-        self.batchClient = boto3.client('batch', region_name=region)
-        self.s3Client = boto3.client('s3', region_name=region)
-        self.sqsClient = boto3.client('sqs', region_name=region)
+        self.stackOutputs = getStackOutputs()
+        self.batchClient = boto3.client('batch', region_name=REGION)
+        self.s3Client = boto3.client('s3', region_name=REGION)
+        self.sqsClient = boto3.client('sqs', region_name=REGION)
 
         # check they haven't asked for more jobs than we have batch instances
         # minus one as one job is always done in this thread
