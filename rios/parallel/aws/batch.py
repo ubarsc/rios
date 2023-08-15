@@ -59,7 +59,8 @@ You can also specify both if needed::
 
     EXTRA_PACKAGES="python3-sklearn python3-skimage" PIP_PACKAGES="pydantic python-dateutil" make
 
-### Setting up your main script
+Setting up your main script
+---------------------------
 
 To enable parallel processing using AWS Batch in your RIOS script you must import the batch module::
 

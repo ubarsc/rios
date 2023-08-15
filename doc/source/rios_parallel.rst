@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 parallel
 =========
 .. automodule:: rios.parallel
