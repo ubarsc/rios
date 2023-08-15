@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 jobmanager
 ==========
 .. automodule:: rios.parallel.jobmanager

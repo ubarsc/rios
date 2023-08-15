@@ -1,5 +1,5 @@
 colortable
-=========
+==========
 .. automodule:: rios.colortable
    :members:
    :undoc-members:

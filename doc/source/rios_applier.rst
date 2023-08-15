@@ -1,5 +1,7 @@
+:tocdepth: 2
+
 applier
-=========
+=======
 .. automodule:: rios.applier
    :members:
    :undoc-members:
