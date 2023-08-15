@@ -39,42 +39,36 @@ AWS Batch requires you to provide a Docker image with the required software inst
 A `Dockerfile` is provided for this, but it it recommended that you use the `Makefile`
 to build the image as this handles the details of pulling the names out of the CloudFormation
 stack and creating a tar file of RIOS for copying into the Docker image. To build and push to 
-ECR simply run:
+ECR simply run::
 
-::
     make
 
 By default this image includes GDAL, boto3 and RIOS. 
 
 Normally your script will need extra packages to run. You can specify the names of Ubuntu packages
-to also install with the environment variable `EXTRA_PACKAGES` like this:
+to also install with the environment variable `EXTRA_PACKAGES` like this::
 
-::
     EXTRA_PACKAGES="python3-sklearn python3-skimage" make
 
 
-You can also use the `PIP_PACKAGES` environment variable to set the name of any pip packages like this:
+You can also use the `PIP_PACKAGES` environment variable to set the name of any pip packages like this::
 
-::
     PIP_PACKAGES="pydantic python-dateutil" make
 
-You can also specify both if needed:
+You can also specify both if needed::
 
-::
     EXTRA_PACKAGES="python3-sklearn python3-skimage" PIP_PACKAGES="pydantic python-dateutil" make
 
 ### Setting up your main script
 
-To enable parallel processing using AWS Batch in your RIOS script you must import the batch module:
+To enable parallel processing using AWS Batch in your RIOS script you must import the batch module::
 
-::
     from rios.parallel.aws import batch
 
 Secondly, you must set up an :class:`rios.applier.ApplierControls`
 object and pass it to :func:`rios.applier.apply`. On this
-object, you must make the following calls:
+object, you must make the following calls::
 
-::
     controls.setNumThreads(4) # or whatever number you want
     controls.setJobManagerType('AWSBatch')
 
@@ -84,9 +78,8 @@ It is recommended that you run this main script within a container based on the 
 of problems introduced by different versions of Python or other packages your script needs between the main RIOS
 script and the AWS Batch workers.
 
-To do this, create a `Dockerfile` like the one below (replacing `myscript.py` with the name of your script):
+To do this, create a `Dockerfile` like the one below (replacing `myscript.py` with the name of your script)::
 
-::
     # Created by make command above
     FROM rios:latest
 
