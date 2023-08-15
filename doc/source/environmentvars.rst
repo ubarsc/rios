@@ -71,3 +71,15 @@ RIOS honours the following environment variables which can be used to override d
 |                               | will be used instead. Added in RIOS   |                |                       |
 |                               | 1.4.5.                                |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_BATCH_STACK				| The CloudFormation stack name to use  | RIOS			 | Not in controls		 |
+|								| for AWS Batch jobs					|				 |						 | 
++-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_BATCH_REGION				| The AWS Region to look for the 		| ap-southeast-2 | Not in controls		 |
+|								| CloudFormation stack specified by		| 				 |						 |
+|								| DFLT_BATCH_STACK.						|				 |						 |
++-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_NOMSG_TIMEOUT             | For AWS Batch sub jobs. The number of | 1 hour         | Not in controls       |
+|								| seconds after the last received 		|				 |						 |
+|								| message before deciding the main 		|				 |						 |
+|								| has crashed and exiting the job.		|				 |						 |
++-------------------------------+---------------------------------------+----------------+-----------------------+

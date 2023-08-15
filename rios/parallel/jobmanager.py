@@ -107,10 +107,7 @@ import abc
 import subprocess
 import tempfile
 import time
-try:
-    import cPickle as pickle        # For Python 2.x
-except ImportError:
-    import pickle
+import pickle
 
 from .. import rioserrors
 # Import a pickler which can pickle functions, with their dependencies, as well
@@ -273,6 +270,11 @@ class JobManager(object):
         String representation
         """
         return "jobMgrType=%s, numSubJobs=%s" % (self.jobMgrType, self.numSubJobs)
+        
+    def finalise(self):
+        """
+        Do any tidy up at completion of image
+        """
 
 
 class SubprocJobManager(JobManager):

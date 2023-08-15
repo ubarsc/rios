@@ -718,6 +718,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
         lastpercent = updateProgress(controls, info, lastpercent)
 
+    if jobmgr is not None:
+        jobmgr.finalise()
+
     if controls.progress is not None:
         controls.progress.setProgress(100)
 
