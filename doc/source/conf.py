@@ -23,8 +23,8 @@ sys.path.insert(0, os.path.abspath('../..'))
 # for version info
 import rios          # noqa: E402
 
-MOCK_MODULES = ['numpy', 'osgeo', 'gdal', 'osgeo.gdal', 'cloud',
-                'cloud.serialization', 'boto3']
+MOCK_MODULES = ['numpy', 'osgeo', 'gdal', 'osgeo.gdal', 'cloudpickle',
+                'boto3']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 

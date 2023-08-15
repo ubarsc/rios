@@ -4,6 +4,7 @@ Requirements.
 -------------
     Numpy.
     GDAL. This must include its python bindings.
+    cloudpickle. Optional. Only required for parallel jobs.
 
 RIOS Installation steps, for Linux and similar.
 -----------------------------------------------

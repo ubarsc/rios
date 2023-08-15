@@ -16,7 +16,7 @@ RUN apt-get update
 RUN apt-get upgrade -y
 
 # install our prereqs, plus anything else the user has asked for
-RUN apt-get install -y python3-gdal python3-boto3 python3-pip $EXTRA_PACKAGES
+RUN apt-get install -y python3-gdal python3-boto3 python3-cloudpickle python3-pip $EXTRA_PACKAGES
 
 # Copy the source archive created by the Makefile
 COPY rios-$RIOS_VER.tar.gz /tmp
