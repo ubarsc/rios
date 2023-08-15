@@ -48,7 +48,8 @@ def deleteAllECRImages(outputs):
     client = boto3.client('ecr')
     response = client.list_images(repositoryName='riosecr')
     imageList = [image for image in response['imageIds']]
-    client.batch_delete_image(repositoryName='riosecr', imageIds=imageList)
+    if len(imageList) > 0:
+        client.batch_delete_image(repositoryName='riosecr', imageIds=imageList)
 
 
 def main():
@@ -63,7 +64,7 @@ def main():
     deleteAllECRImages(outputs)
 
     client = boto3.client('cloudformation', region_name=REGION)
-    client.delete_stack(StackName=cmdargs.stackname)
+    client.delete_stack(StackName=STACK_NAME)
     
     if cmdargs.wait:
         while True:
