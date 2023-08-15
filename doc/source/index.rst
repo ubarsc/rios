@@ -77,6 +77,7 @@ Low level functions
     rios_imagereader
     rios_imagewriter
     rios_parallel
+    rios_parallel_aws_batch
     rios_rat
     rios_colortable
     rios_readerinfo

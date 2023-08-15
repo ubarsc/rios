@@ -15,8 +15,8 @@ import time
 import argparse
 import boto3
 
-from rios.parallel.aws.batch import DFLT_STACK_NAME
-from rios.parallel.aws.batch import DFLT_REGION
+from rios.parallel.aws.batch import STACK_NAME
+from rios.parallel.aws.batch import REGION
 
 N_AZS = 3
 
@@ -26,9 +26,9 @@ def getCmdArgs():
     Get Command Line Args
     """
     p = argparse.ArgumentParser()
-    p.add_argument('--stackname', default=DFLT_STACK_NAME,
+    p.add_argument('--stackname', default=STACK_NAME,
         help="Name of CloudFormation Stack to create. (default=%(default)s)")
-    p.add_argument('--region', default=DFLT_REGION,
+    p.add_argument('--region', default=REGION,
         help="AWS Region to use. (default=%(default)s)")
     p.add_argument('--az', action='append',
         help="Availability zones to use. Specify {} times".format(N_AZS))
