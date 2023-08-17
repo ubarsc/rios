@@ -105,10 +105,10 @@ import io
 import os
 import pickle
 import boto3
+import cloudpickle
 
 from .. import jobmanager
 
-from cloudpickle import cloudpickle
 
 STACK_NAME = os.getenv('RIOS_BATCH_STACK', default='RIOS')
 REGION = os.getenv('RIOS_BATCH_REGION', default='ap-southeast-2')

@@ -108,10 +108,10 @@ import subprocess
 import tempfile
 import time
 import pickle
+import cloudpickle
 
 from .. import rioserrors
 
-from cloudpickle import cloudpickle
 
 
 class BlockAssociations(object):
