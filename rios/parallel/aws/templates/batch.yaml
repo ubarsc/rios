@@ -50,6 +50,7 @@ Resources:
     Properties:
       VpcId:
         Ref: BatchVPC
+      MapPublicIpOnLaunch: true
       CidrBlock: 10.0.0.0/24
       AvailabilityZone: !Ref AZ1
   BatchSubnet2:
@@ -57,6 +58,9 @@ Resources:
     Properties:
       VpcId:
         Ref: BatchVPC
+      # yes we do need public ips or NAT
+      # See https://repost.aws/knowledge-center/batch-job-stuck-runnable-status
+      MapPublicIpOnLaunch: true
       CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Ref AZ2
   BatchSubnet3:
@@ -64,6 +68,7 @@ Resources:
     Properties:
       VpcId:
         Ref: BatchVPC
+      MapPublicIpOnLaunch: true
       CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Ref AZ3
   # A security group for everything to run as
