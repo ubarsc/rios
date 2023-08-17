@@ -113,7 +113,6 @@ import cloudpickle
 from .. import rioserrors
 
 
-
 class BlockAssociations(object):
     """
     Dummy class, to mimic applier.BlockAssociations, while avoiding circular imports. 
