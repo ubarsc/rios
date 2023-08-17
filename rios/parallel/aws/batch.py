@@ -105,17 +105,10 @@ import io
 import os
 import pickle
 import boto3
+import cloudpickle
 
 from .. import jobmanager
 
-# Import a pickler which can pickle functions, with their dependencies, as well
-# as data. Either use the version installed with cloudpickle
-# (https://github.com/cloudpipe/cloudpickle) or the bundled versin
-try:
-    from cloudpickle import cloudpickle
-except ImportError:
-    # Import from our own local copy. This is what will usually happen. 
-    from .. import cloudpickle
 
 STACK_NAME = os.getenv('RIOS_BATCH_STACK', default='RIOS')
 REGION = os.getenv('RIOS_BATCH_REGION', default='ap-southeast-2')

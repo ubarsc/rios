@@ -108,16 +108,9 @@ import subprocess
 import tempfile
 import time
 import pickle
+import cloudpickle
 
 from .. import rioserrors
-# Import a pickler which can pickle functions, with their dependencies, as well
-# as data. Either use the version installed with cloudpickle
-# (https://github.com/cloudpipe/cloudpickle) or the bundled versin
-try:
-    from cloudpickle import cloudpickle
-except ImportError:
-    # Import from our own local copy. This is what will usually happen. 
-    from . import cloudpickle
 
 
 class BlockAssociations(object):
