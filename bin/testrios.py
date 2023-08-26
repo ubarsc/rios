@@ -28,6 +28,8 @@ if __name__ == '__main__':
     # the __name__ == '__main__' is required under Windows
     # so they multiprocessing module works.
     from rios.riostests import riostestutils
+    import warnings
+    warnings.warn("Future versions of RIOS may remove the .py extension from this script name", DeprecationWarning)
 
     if riostestutils.testAll() > 0:
         # return error code
