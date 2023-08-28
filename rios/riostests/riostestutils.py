@@ -32,6 +32,8 @@ from osgeo import ogr
 
 from rios import rioserrors
 
+gdal.UseExceptions()
+
 DEFAULT_ROWS = 500
 DEFAULT_COLS = 500
 DEFAULT_PIXSIZE = 10
