@@ -42,6 +42,12 @@ setup(name='rios',
       author='Sam Gillingham',
       author_email='gillingham.sam@gmail.com',
       scripts=scripts_list,
+      entry_points={
+        'console_scripts': [
+            'testrios = rios.riostests.riostestutils:testAll',
+            'rioscalcstats = rios.cmdline.rioscalcstats:main',
+            'riosprintstats = rios.cmdline.riosprintstats:main'
+        ]},
       packages=['rios', 'rios/parallel', 'rios/parallel/aws',
                         'rios/riostests', 'rios/cmdline'],
       license='LICENSE.txt', 
