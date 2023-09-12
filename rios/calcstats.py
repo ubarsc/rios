@@ -69,6 +69,9 @@ def addPyramid(ds, progress,
     """
     progress.setLabelText("Computing Pyramid Layers...")
     progress.setProgress(0)
+    
+    # ensure everything is written to disc first
+    ds.FlushCache()
 
     # first we work out how many overviews to build based on the size
     if ds.RasterXSize < ds.RasterYSize:
