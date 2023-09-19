@@ -313,13 +313,6 @@ Resources:
         Image: !Join ['', [!GetAtt BatchRepositoryMain.RepositoryUri, ":latest"]]
         Vcpus: !Ref VCPUS
         Memory: !Ref MaxMemory
-        Environment:
-          - Name: "RIOSBucket"
-            Value: !Ref BatchBucket
-          - Name: "RIOSInQueue"
-            Value: !Ref BatchInQueue
-          - Name: "RIOSOutQueue"
-            Value: !Ref BatchOutQueue
   # Our queue
   BatchProcessingJobQueue:
     Type: AWS::Batch::JobQueue
@@ -378,6 +371,8 @@ Outputs:
     Value: !Join ['', [!Ref ServiceName, "JobDefinitionMain"]]
   BatchECR:
     Value: !GetAtt BatchRepository.RepositoryUri
+  BatchECRMain:
+    Value: !GetAtt BatchRepositoryMain.RepositoryUri
   BatchInQueue:
     Value:
       Ref: BatchInQueue
