@@ -45,6 +45,8 @@ def getCmdArgs():
         help="Wait until CloudFormation is complete before exiting")
     p.add_argument('--modify', action="store_true",
         help="Instead of creating the stack, modify it.")
+    p.add_argument('--tag', default='RIOS', 
+        help="Tag to use when creating resources. (default=%(default)s)")
         
     cmdargs = p.parse_args()
     if cmdargs.az is not None and len(cmdargs.az) != 3:
@@ -61,7 +63,8 @@ def main():
     
     stackId, status = createBatch(cmdargs.stackname, cmdargs.region,
         cmdargs.az, cmdargs.ecrname, cmdargs.vcpus, 
-        cmdargs.mem, cmdargs.maxjobs, cmdargs.modify, cmdargs.wait)
+        cmdargs.mem, cmdargs.maxjobs, cmdargs.modify, cmdargs.wait,
+        cmdargs.tag)
             
     print('stackId: {}'.format(stackId))
     if status is not None:
@@ -78,7 +81,7 @@ def addParam(params, key, value):
 
     
 def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs, 
-        modify, wait):
+        modify, wait, tag):
     """
     Do the work of creating the CloudFormation Stack
     """        
@@ -110,14 +113,14 @@ def createBatch(stackname, region, azs, ecrName, vCPUs, maxMem, maxJobs,
         # modify stack
         resp = client.update_stack(StackName=stackname,
             TemplateBody=body, Capabilities=['CAPABILITY_IAM'], 
-            Parameters=params)
+            Parameters=params, Tags=[{'Key': tag, 'Value': '1'}])
         inProgressStatus = 'UPDATE_IN_PROGRESS'
 
     else:
         # create stack
         resp = client.create_stack(StackName=stackname,
             TemplateBody=body, Capabilities=['CAPABILITY_IAM'], 
-            Parameters=params)
+            Parameters=params, Tags=[{'Key': tag, 'Value': '1'}])
         inProgressStatus = 'CREATE_IN_PROGRESS'
         
     stackId = resp['StackId']

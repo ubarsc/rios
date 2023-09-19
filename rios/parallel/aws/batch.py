@@ -39,25 +39,26 @@ AWS Batch requires you to provide a Docker image with the required software inst
 A `Dockerfile` is provided for this, but it it recommended that you use the `Makefile`
 to build the image as this handles the details of pulling the names out of the CloudFormation
 stack and creating a tar file of RIOS for copying into the Docker image. To build and push to 
-ECR simply run::
+ECR simply run (being careful to set RIOS_BATCH_REGION to the correct AWS region)::
 
-    make
+    RIOS_BATCH_REGION=ap-southeast-2 make
 
 By default this image includes GDAL, boto3 and RIOS. 
 
 Normally your script will need extra packages to run. You can specify the names of Ubuntu packages
 to also install with the environment variable `EXTRA_PACKAGES` like this::
 
-    EXTRA_PACKAGES="python3-sklearn python3-skimage" make
+    EXTRA_PACKAGES="python3-sklearn python3-skimage" RIOS_BATCH_REGION=ap-southeast-2 make
 
 
 You can also use the `PIP_PACKAGES` environment variable to set the name of any pip packages like this::
 
-    PIP_PACKAGES="pydantic python-dateutil" make
+    PIP_PACKAGES="pydantic python-dateutil" RIOS_BATCH_REGION=ap-southeast-2 make
 
 You can also specify both if needed::
 
-    EXTRA_PACKAGES="python3-sklearn python3-skimage" PIP_PACKAGES="pydantic python-dateutil" make
+    EXTRA_PACKAGES="python3-sklearn python3-skimage" PIP_PACKAGES="pydantic python-dateutil" \
+        RIOS_BATCH_REGION=ap-southeast-2 make
 
 Setting up your main script
 ---------------------------
@@ -96,8 +97,8 @@ need to set them otherwise).
 Also a good idea to pass in your RIOS_BATCH_REGION and RIOS_BATCH_STACK environment variables if the
 defaults have been overridden so that RIOS can find the CloudFormation stack.
 
-Needless to say the account that this "main" script run as should have sufficient permissions on the resources 
-created by CloudFormation. 
+To also run you "main" Dockerfile as a batch job, push to the "RIOSecrMain" repository created by 
+``templates/batch.yaml``. You can then submit jobs to the RIOSJobQueue using the RIOSJobDefinitionMain.
  
 """
 
