@@ -25,6 +25,6 @@ dist:
 # Login to ECR, build package and push to ECR
 all: dist
 	aws ecr get-login-password --region ${RIOS_BATCH_REGION} | docker login --username AWS --password-stdin $(ECR_URL)
-	docker build AWS_REGION=${RIOS_BATCH_REGION} --build-arg EXTRA_PACKAGES=${EXTRA_PACKAGES} --build-arg=PIP_PACKAGES=${PIP_PACKAGES} --build-arg RIOS_VER=$(RIOS_VER) -t rios .
+	docker build --build-arg AWS_REGION=${RIOS_BATCH_REGION} --build-arg EXTRA_PACKAGES=${EXTRA_PACKAGES} --build-arg=PIP_PACKAGES=${PIP_PACKAGES} --build-arg RIOS_VER=$(RIOS_VER) -t rios .
 	docker tag rios $(REPO)
 	docker push $(REPO)

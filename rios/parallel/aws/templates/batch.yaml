@@ -149,7 +149,7 @@ Resources:
   BatchRepositoryMain:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Join ['', [!Ref ServiceName, "ecrMain"]]
+      RepositoryName: !Join ['', [!Ref ServiceName, "ecrmain"]]
       LifecyclePolicy:
         LifecyclePolicyText: |
           {
@@ -244,8 +244,10 @@ Resources:
           Action: 
             - 'batch:SubmitJob'
           Resource:
-            - !GetAtt BatchProcessingJobDefinition.Arn
-            - !GetAtt BatchProcessingJobQueue.Arn
+            # Sorry can't nail down to particular queue and defn
+            # as this creates a circular dependency
+            - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-queue/*'
+            - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/*'
       
   # Needed by AWS Batch.
   BatchServiceRole:
