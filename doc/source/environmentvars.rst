@@ -74,7 +74,7 @@ RIOS honours the following environment variables which can be used to override d
 |RIOS_BATCH_STACK				| The CloudFormation stack name to use  | RIOS			 | Not in controls		 |
 |								| for AWS Batch jobs					|				 |						 | 
 +-------------------------------+---------------------------------------+----------------+-----------------------+
-|RIOS_BATCH_REGION				| The AWS Region to look for the 		| ap-southeast-2 | Not in controls		 |
+|RIOS_AWSBATCH_REGION			| The AWS Region to look for the 		| ap-southeast-2 | Not in controls		 |
 |								| CloudFormation stack specified by		| 				 |						 |
 |								| DFLT_BATCH_STACK.						|				 |						 |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
