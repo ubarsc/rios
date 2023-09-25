@@ -301,7 +301,9 @@ class SubprocJobManager(JobManager):
         """
         # If we don't have cloudpickle, we can't do anything anyway
         if cloudpickle is None:
-            return
+            msg = "Jobmanager '{}' requires cloudpickle, which is unavailable"
+            msg = msg.format(self.jobMgrType)
+            raise rioserrors.JobMgrError(msg)
 
         jobInfo = jobInfo.prepareForPickling()
 
@@ -366,7 +368,9 @@ class PbsJobManager(JobManager):
         """
         # If we don't have cloudpickle, we can't do anything anyway
         if cloudpickle is None:
-            return
+            msg = "Jobmanager '{}' requires cloudpickle, which is unavailable"
+            msg = msg.format(self.jobMgrType)
+            raise rioserrors.JobMgrError(msg)
 
         jobInfo = jobInfo.prepareForPickling()
 
@@ -509,7 +513,9 @@ class SlurmJobManager(JobManager):
         """
         # If we don't have cloudpickle, we can't do anything anyway
         if cloudpickle is None:
-            return
+            msg = "Jobmanager '{}' requires cloudpickle, which is unavailable"
+            msg = msg.format(self.jobMgrType)
+            raise rioserrors.JobMgrError(msg)
 
         jobInfo = jobInfo.prepareForPickling()
 
@@ -700,7 +706,9 @@ class MpiJobManager(JobManager):
         """
         # If we don't have cloudpickle, we can't do anything anyway
         if cloudpickle is None:
-            return
+            msg = "Jobmanager '{}' requires cloudpickle, which is unavailable"
+            msg = msg.format(self.jobMgrType)
+            raise rioserrors.JobMgrError(msg)
 
         jobInfo = jobInfo.prepareForPickling()
 
