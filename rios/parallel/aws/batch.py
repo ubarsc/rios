@@ -28,7 +28,7 @@ need to update the availability zones (--az command line option).
 
 When you have completed processing you can run ``templates/deletebatch.py`` to delete
 all resources so you aren't paying for it. Note that you specify the region and stack
-name for this script via the RIOS_AWSBATCH_REGION and RIOS_BATCH_STACK environment variables.
+name for this script via the RIOS_AWSBATCH_REGION and RIOS_AWSBATCH_STACK environment variables.
 
 Note that both ``createbatch.py`` and ``deletebatch.py`` have a ``--wait`` option that causes the
 script to keep running until creation/deletion is complete. 
@@ -95,7 +95,7 @@ Don't forget to pass in your ``AWS_ACCESS_KEY_ID`` and ``AWS_SECRET_ACCESS_KEY``
 container when it runs (these variables are automatically set if running as a AWS Batch job but you'll
 need to set them otherwise).
 
-Also a good idea to pass in your RIOS_AWSBATCH_REGION and RIOS_BATCH_STACK environment variables if the
+Also a good idea to pass in your RIOS_AWSBATCH_REGION and RIOS_AWSBATCH_STACK environment variables if the
 defaults have been overridden so that RIOS can find the CloudFormation stack.
 
 To also run you "main" Dockerfile as a batch job, push to the "RIOSecrMain" repository created by 
@@ -112,7 +112,7 @@ import cloudpickle
 from .. import jobmanager
 
 
-STACK_NAME = os.getenv('RIOS_BATCH_STACK', default='RIOS')
+STACK_NAME = os.getenv('RIOS_AWSBATCH_STACK', default='RIOS')
 REGION = os.getenv('RIOS_AWSBATCH_REGION', default='ap-southeast-2')
 
 
@@ -124,7 +124,7 @@ def getStackOutputs():
     """
     Helper function to query the CloudFormation stack for outputs.
     
-    Uses the RIOS_BATCH_STACK and RIOS_AWSBATCH_REGION env vars to 
+    Uses the RIOS_AWSBATCH_STACK and RIOS_AWSBATCH_REGION env vars to 
     determine which stack and region to query.
     """
     client = boto3.client('cloudformation', region_name=REGION)
