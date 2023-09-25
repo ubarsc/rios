@@ -108,7 +108,12 @@ import subprocess
 import tempfile
 import time
 import pickle
-import cloudpickle
+try:
+    import cloudpickle
+except ImportError:
+    # If we don't have cloudpickle, then we can't do any jobmanager stuff,
+    # but continue as a dummy anyway, to avoid impacting anything else
+    cloudpickle = None
 
 from .. import rioserrors
 
@@ -294,6 +299,10 @@ class SubprocJobManager(JobManager):
         outputs object. 
         
         """
+        # If we don't have cloudpickle, we can't do anything anyway
+        if cloudpickle is None:
+            return
+
         jobInfo = jobInfo.prepareForPickling()
 
         allInputs = (userFunc, jobInfo)
@@ -355,6 +364,10 @@ class PbsJobManager(JobManager):
         defaulted by PBS. 
         
         """
+        # If we don't have cloudpickle, we can't do anything anyway
+        if cloudpickle is None:
+            return
+
         jobInfo = jobInfo.prepareForPickling()
 
         allInputs = (userFunc, jobInfo)
@@ -494,6 +507,10 @@ class SlurmJobManager(JobManager):
         defaulted by SLURM. 
         
         """
+        # If we don't have cloudpickle, we can't do anything anyway
+        if cloudpickle is None:
+            return
+
         jobInfo = jobInfo.prepareForPickling()
 
         allInputs = (userFunc, jobInfo)
@@ -681,6 +698,10 @@ class MpiJobManager(JobManager):
         we do our own here so that the function etc gets pickled.
 
         """
+        # If we don't have cloudpickle, we can't do anything anyway
+        if cloudpickle is None:
+            return
+
         jobInfo = jobInfo.prepareForPickling()
 
         allInputs = (userFunc, jobInfo)
