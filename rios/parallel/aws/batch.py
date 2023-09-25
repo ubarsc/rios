@@ -23,7 +23,8 @@ to create a separate VPC with all the infrastructure required. It is recommended
 to use the script `templates/createbatch.py` for the creation or modification (via the ``--modify``
 command line option) of this CloudFormation stack. There are also options for
 overriding some of the input parameters - see the output of `createbatch.py --help`
-for more information.
+for more information. NB: when running in a region that is NOT ap-southeast-2 you will
+need to update the availability zones (--az command line option).
 
 When you have completed processing you can run ``templates/deletebatch.py`` to delete
 all resources so you aren't paying for it. Note that you specify the region and stack

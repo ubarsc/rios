@@ -284,6 +284,9 @@ Resources:
       - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       - arn:aws:iam::aws:policy/CloudWatchFullAccess
       - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+      # giving s3 readonly everywhere along with more specific policy (AccessS3ManagedPolicy)
+      # that allows writing to our bucket. Doing this in case auxillary data required elsewhere
+      - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
       - !Ref AccessS3ManagedPolicy
       - !Ref AccessQueuesManagedPolicy
       - !Ref SubmitJobsManagedPolicy
