@@ -144,6 +144,31 @@ Resources:
                 }
             ]
           }
+
+  # another repo that the user can copy 'main' docker images with their main scripts
+  BatchRepositoryMain:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Join ['', [!Ref ServiceName, "ecrmain"]]
+      LifecyclePolicy:
+        LifecyclePolicyText: |
+          {
+            "rules": [
+                {
+                    "rulePriority": 1,
+                    "description": "Expire images older than 1 day",
+                    "selection": {
+                        "tagStatus": "untagged",
+                        "countType": "sinceImagePushed",
+                        "countUnit": "days",
+                        "countNumber": 1
+                    },
+                    "action": {
+                        "type": "expire"
+                    }
+                }
+            ]
+          }
        
   # An input queue for passing information from the main RIOS
   # script to the Batch workers 
@@ -164,7 +189,7 @@ Resources:
   BatchBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Join ['', [!Ref ServiceName, bucket, !Ref AWS::AccountId]]
+      BucketName: !Join ['', [!Ref ServiceName, bucket, !Ref AWS::AccountId, !Ref AWS::Region]]
       
   # Ensure the workers have enough access to the S3 bucket
   AccessS3ManagedPolicy:
@@ -203,6 +228,26 @@ Resources:
           Resource:
             - !GetAtt BatchInQueue.Arn
             - !GetAtt BatchOutQueue.Arn
+            
+  # Allow jobs to submit other jobs. Handy in case the user
+  # runs their own 'main' script in the queue and wants to 
+  # fire off sub jobs
+  SubmitJobsManagedPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      Description: Policy for allowing jobs to submit other jobs
+      Path: /
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action: 
+            - 'batch:SubmitJob'
+          Resource:
+            # Sorry can't nail down to particular queue and defn
+            # as this creates a circular dependency
+            - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-queue/*'
+            - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/*'
       
   # Needed by AWS Batch.
   BatchServiceRole:
@@ -239,8 +284,12 @@ Resources:
       - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       - arn:aws:iam::aws:policy/CloudWatchFullAccess
       - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
+      # giving s3 readonly everywhere along with more specific policy (AccessS3ManagedPolicy)
+      # that allows writing to our bucket. Doing this in case auxillary data required elsewhere
+      - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
       - !Ref AccessS3ManagedPolicy
       - !Ref AccessQueuesManagedPolicy
+      - !Ref SubmitJobsManagedPolicy
   # The worker job. Set the S3 bucket and SQS queues info in the 
   # enironment.
   BatchProcessingJobDefinition:
@@ -259,6 +308,16 @@ Resources:
             Value: !Ref BatchInQueue
           - Name: "RIOSOutQueue"
             Value: !Ref BatchOutQueue
+  # job definition for the 'main' script
+  BatchProcessingJobDefinitionMain:
+    Type: AWS::Batch::JobDefinition
+    Properties:
+      Type: container
+      JobDefinitionName: !Join ['', [!Ref ServiceName, "JobDefinitionMain"]]
+      ContainerProperties:
+        Image: !Join ['', [!GetAtt BatchRepositoryMain.RepositoryUri, ":latest"]]
+        Vcpus: !Ref VCPUS
+        Memory: !Ref MaxMemory
   # Our queue
   BatchProcessingJobQueue:
     Type: AWS::Batch::JobQueue
@@ -308,10 +367,17 @@ Outputs:
   BatchProcessingJobDefinitionArn:
     Value:
       Ref: BatchProcessingJobDefinition
+  BatchProcessingJobDefinitionMainArn:
+    Value:
+      Ref: BatchProcessingJobDefinitionMain
   BatchProcessingJobDefinitionName:
     Value: !Join ['', [!Ref ServiceName, "JobDefinition"]]
+  BatchProcessingJobDefinitionMainName:
+    Value: !Join ['', [!Ref ServiceName, "JobDefinitionMain"]]
   BatchECR:
     Value: !GetAtt BatchRepository.RepositoryUri
+  BatchECRMain:
+    Value: !GetAtt BatchRepositoryMain.RepositoryUri
   BatchInQueue:
     Value:
       Ref: BatchInQueue
