@@ -1,6 +1,29 @@
 Release Notes
 =============
 
+
+Version 1.4.16 (2023-09-28)
+---------------------------
+
+Bug Fixes:
+  * Add missing FlushCache call when doing statistics https://github.com/ubarsc/rios/pull/66
+  * Suppress GDAL warning when running testsuite with recent GDAL. https://github.com/ubarsc/rios/pull/65
+
+Improvements:
+  * Remove old stats caching code from readerinfo and RAT writing code from imagewriter.
+    These were both inherited from the original PyModeller code and are no longer
+    needed. https://github.com/ubarsc/rios/pull/57 and https://github.com/ubarsc/rios/pull/58
+  * Improvements to ReadTheDocs formating. https://github.com/ubarsc/rios/pull/59
+    and https://github.com/ubarsc/rios/pull/60
+  * Implement parallel processing with AWS Batch https://github.com/ubarsc/rios/pull/61
+    and https://github.com/ubarsc/rios/pull/67
+  * Remove vendored cloudpickle. This standalone package now must be present before
+    using the parallel processing functionality. https://github.com/ubarsc/rios/pull/63,
+    https://github.com/ubarsc/rios/pull/68 and https://github.com/ubarsc/rios/pull/69.
+  * Add new entry points without extensions. This should help Windows users.
+    https://github.com/ubarsc/rios/pull/64
+
+
 Version 1.4.15 (2023-01-25)
 ---------------------------
 
