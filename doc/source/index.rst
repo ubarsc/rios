@@ -81,6 +81,18 @@ Low level functions
     rios_rat
     rios_colortable
     rios_readerinfo
+    
+
+Command Line Programs
+---------------------
+
+RIOS comes with two command line programs:
+  - `rioscalcstats` computes statistics and pyramid layers (overviews) on a file. 
+  - `riosprintstats` prints statistics information previously calculated on the file. 
+  
+Refer to the helpstrings (run with `-h`) for usage of these programs. Note that 
+by default, RIOS calculates pyramid layers and statistics on a file.
+
 
 Utilities
 --------------------
