@@ -16,17 +16,12 @@
 import sys
 import os
 
-# Set up 'mock' modules, needed to build docs if numpy, gdal etc., aren't installed
-import mock
-
 sys.path.insert(0, os.path.abspath('../..'))
 # for version info
 import rios          # noqa: E402
 
-MOCK_MODULES = ['numpy', 'osgeo', 'gdal', 'osgeo.gdal', 'cloudpickle',
+autodoc_mock_imports = ['numpy', 'osgeo', 'gdal', 'osgeo.gdal', 'cloudpickle',
                 'boto3']
-for mod_name in MOCK_MODULES:
-    sys.modules[mod_name] = mock.Mock()
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
