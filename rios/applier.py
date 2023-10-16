@@ -349,6 +349,8 @@ class ApplierControls(object):
         """
         Set the global default value to use as the 
         null value when calculating stats.
+        Setting this to None means there will be no null value in the 
+        stats calculations.
         """
         self.setOptionForImagename('statsIgnore', imagename, statsIgnore)
         
