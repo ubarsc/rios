@@ -257,7 +257,7 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             histCalcMax = maxval
             if histCalcMin == histCalcMax:
                 histCalcMax = histCalcMax + 0.5
-                histmax = histCalcMax
+                histnbins = 1
             histstep = float(histCalcMax - histCalcMin) / histnbins
         # Note that the complex number data types are not handled, as I am not sure
         # what a histogram or a median would mean for such types. 
