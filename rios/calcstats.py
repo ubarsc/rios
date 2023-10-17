@@ -255,6 +255,9 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
             histCalcMin = minval
             histCalcMax = maxval
+            if histCalcMin == histCalcMax:
+                histCalcMax = histCalcMax + 0.5
+                histnbins = 1
             histstep = float(histCalcMax - histCalcMin) / histnbins
         # Note that the complex number data types are not handled, as I am not sure
         # what a histogram or a median would mean for such types. 
