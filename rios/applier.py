@@ -299,6 +299,24 @@ class ApplierControls(object):
         """
         Set type of footprint, one of INTERSECTION, UNION or 
         BOUNDS_FROM_REFERENCE from this module
+
+        The footprint type controls the extent of the pixel grid
+        used for calculation within the user function, and of the
+        output files.
+
+        Using INTERSECTION will result in the minimum extent which
+        is wholly included in all of the input images. Using UNION results
+        in the largest extent which wholly includes all of the input
+        images. If BOUNDS_FROM_REFERENCE is used, then the extent will
+        be the same as that of the reference image or pixgrid, regardless
+        of the extents of the various other inputs.
+
+        For both UNION and BOUNDS_FROM_REFERENCE, it is possible to
+        have pixels which are within the extent, but outside one or
+        more of the input files. The input data for such pixels are filled
+        with the null value for that file. If no null value is set for that
+        file, then zero is used.
+
         """
         self.footprint = footprint
         
