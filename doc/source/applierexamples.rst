@@ -130,7 +130,7 @@ will be the smallest extent contained within all of the input images, while
 the UNION will be the largest extent which will contain all the input
 images. If BOUNDS_FROM_REFERENCE is used, the output extent will be the same
 as that for the selected reference image or pixgrid, regardless of the extents
-of the other input images.
+of the other input images, for example::
 
     controls.setFootprintType(applier.BOUNDS_FROM_REFERENCE)
 
