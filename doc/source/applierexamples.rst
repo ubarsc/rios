@@ -125,7 +125,8 @@ this would look something like the following::
     controls.setReferencePixgrid(pixgrid)
 
 The extent of the output grid can be controlled using the footprint type. This
-can be one of INTERSECTION, UNION, or BOUNDS_FROM_REFERENCE. The INTERSECTION
+can be one of applier.INTERSECTION, applier.UNION, or
+applier.BOUNDS_FROM_REFERENCE. The INTERSECTION
 will be the smallest extent contained within all of the input images, while
 the UNION will be the largest extent which will contain all the input
 images. If BOUNDS_FROM_REFERENCE is used, the output extent will be the same
