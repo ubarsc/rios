@@ -117,7 +117,7 @@ Resampling can also be done onto a different reference than any of the
 inputs, by using the setReferencePixgrid method on the controls object.
 This requires understanding the :class:`rios.pixelgrid.PixelGridDefn` class.
 Assuming we already know the desired projection and geotransform and so on,
-this would look simething like the following::
+this would look something like the following::
 
     controls = applier.ApplierControls()
     pixgrid = pixelgrid.PixelGridDefn(geotransform=gt, nrows=nrows,
