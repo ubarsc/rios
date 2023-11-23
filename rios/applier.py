@@ -616,7 +616,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
         userFunction(info, inputs, outputs, otherArgs)
 
-    if otherArgs is not None. 
+    if otherArgs is not None.
+
     inputs and outputs are objects in which there are named attributes 
     with the same names as those given in the infiles and outfiles 
     objects. In the inputs and outputs objects, available inside 
