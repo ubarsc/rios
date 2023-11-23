@@ -38,7 +38,8 @@ def setDefaultDriver():
     Sets some default values into global variables, defining
     what defaults we should use for GDAL driver. On any given
     output file these can be over-ridden, and can be over-ridden globally
-    using the environment variables 
+    using the environment variables
+
         * $RIOS_DFLT_DRIVER
         * $RIOS_DFLT_DRIVEROPTIONS
         * $RIOS_DFLT_CREOPT_<drivername>
