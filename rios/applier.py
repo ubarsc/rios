@@ -259,10 +259,17 @@ class ApplierControls(object):
     def setOverlap(self, overlap):
         """
         Set the overlap to the given value.
-        Overlap is a number of pixels, and is somewhat mis-named. It refers 
-        to the amount of margin added to each block of input, so that the blocks 
-        will overlap, hence the actual amount of overlap is really more like
-        double this value (allowing for odd and even numbers, etc). 
+
+        Overlap is a number of pixels, and is somewhat mis-named. It refers
+        to the amount of margin added to each block of input, so that the
+        blocks will overlap, hence the actual amount of overlap is really
+        more like double this value (allowing for odd and even numbers, etc).
+
+        The margin can result in pixels which are outside the extent of
+        the given input images. These pixels will be filled with the null
+        value for that input file, or zero if no null value is set on
+        that file.
+
         """
         self.overlap = overlap
         
