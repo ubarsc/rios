@@ -89,25 +89,66 @@ An example of using the otherargs object to accumulate information across blocks
 The *tot* and *count* values on otherargs are initialized before calling :func:`rios.applier.apply`, and are accumulated between blocks, 
 as RIOS loops over all blocks in the image. After the call to :func:`rios.applier.apply`, these attributes have their final values, and we can calculate the final average.
 
-Of course, there already exist superior ways of calculating the mean value of an image, but the point about using rios to do 
+Of course, there already exist superior ways of calculating the mean value of an image, but the point about using RIOS to do
 something like this would be that: (a) opening the input rasters is taken care of; and (b) it takes up very little memory, as only small blocks are in memory at one time. The same mechanism can be used to do more specialized calculations across the image(s).
 
 Note that there are no output rasters from the last example - this is perfectly valid.         
 
-Controlling Reading/Writing Example
------------------------------------
+Examples Controlling Reading/Writing
+------------------------------------
 
-A simple example would be to allow resampling of input rasters. 
-Normally, rios will raise an exception if the input rasters are on different projections, 
-but if requested to do so, it will reproject on-the-fly. This is enabled by telling it 
-which of the input rasters should be used as the reference (all other inputs will be 
-reprojected onto the reference projection. This is done as follows (showing only the relevant lines)::
+By default, if the input rasters are on different projections, or different
+pixel sizes, or even just mis-aligned pixel grids, then RIOS will raise an
+exception. However, if requested to do so, it will reproject
+on-the-fly, and the arrays presented to the user function will be in this
+resamped grid, as will the output rasters. This is enabled by telling it which
+of the input rasters should be used as the reference, and all other inputs
+will be reprojected onto the reference projection. This is done as follows
+(showing only the relevant lines)::
 
     controls = applier.ApplierControls()
     controls.setReferenceImage(infiles.img2)
     applier.apply(userFunc, infiles, outfiles, controls=controls)
 
-Other controls which can be manipulated are detailed in the full python documentation for the :class:`rios.applier.ApplierControls` class.
+The method used for resampling is controlled by calling
+controls.setResampleMethod().
+
+Resampling can also be done onto a different reference than any of the
+inputs, by using the setReferencePixgrid method on the controls object.
+This requires understanding the :class:`rios.pixelgrid.PixelGridDefn` class.
+Assuming we already know the desired projection and geotransform and so on,
+this would look something like the following::
+
+    controls = applier.ApplierControls()
+    pixgrid = pixelgrid.PixelGridDefn(geotransform=gt, nrows=nrows,
+        ncols=ncols, projection=outWKT)
+    controls.setReferencePixgrid(pixgrid)
+
+The extent of the output grid can be controlled using the footprint type. This
+can be one of applier.INTERSECTION, applier.UNION, or
+applier.BOUNDS_FROM_REFERENCE. The INTERSECTION
+will be the smallest extent contained within all of the input images, while
+the UNION will be the largest extent which will contain all the input
+images. If BOUNDS_FROM_REFERENCE is used, the output extent will be the same
+as that for the selected reference image or pixgrid, regardless of the extents
+of the other input images. For example::
+
+    controls.setFootprintType(applier.BOUNDS_FROM_REFERENCE)
+
+Some of the `set` methods on the controls object allow the parameter
+to be specific to only one of the input/output files, by specifying
+the name of the image to which it applies. For example::
+
+    outfiles.outimg1 = 'mainoutput.tif'
+    controls.setOutputDriverName('GTiff', imagename='outimg1')
+
+which would make that output file in GTiff format, without affecting
+other output files.
+
+Most other aspects of reading and writing the inputs and output can
+be controlled via the controls object. Please see the full documentation
+for the :class:`rios.applier.ApplierControls` class for all options and
+details.
 
         
 Arbitrary Numbers of Input (and Output) Files

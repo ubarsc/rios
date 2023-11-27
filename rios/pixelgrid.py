@@ -56,9 +56,18 @@ class PixelGridDefn(object):
         * yRes
         * projection
         
-    NOTE: The bounds defined the external corners of the image, i.e. the
+    The bounds define the external corners of the image, i.e. the
     top-left corner of the top-left pixel, through to the bottom-right
-    corner of the bottom-right pixel. This is in accordance with GDAL conventions. 
+    corner of the bottom-right pixel. This is consistent with GDAL
+    conventions.
+
+    The projection is given as a WKT string.
+
+    The constructor takes the projection, the number of rows and columns,
+    and EITHER a complete GDAL geotransform tuple, OR a grid specified
+    with all the extent limits and the pixel resolutions (xRes and yRes).
+    If the geotransform is given, then the xMin, xMax, xRes and so on
+    are calculated from it.
     
     """
     def __init__(self, geotransform=None, nrows=None, ncols=None, projection=None,

@@ -259,10 +259,17 @@ class ApplierControls(object):
     def setOverlap(self, overlap):
         """
         Set the overlap to the given value.
-        Overlap is a number of pixels, and is somewhat mis-named. It refers 
-        to the amount of margin added to each block of input, so that the blocks 
-        will overlap, hence the actual amount of overlap is really more like
-        double this value (allowing for odd and even numbers, etc). 
+
+        Overlap is a number of pixels, and is somewhat mis-named. It refers
+        to the amount of margin added to each block of input, so that the
+        blocks will overlap, hence the actual amount of overlap is really
+        more like double this value (allowing for odd and even numbers, etc).
+
+        The margin can result in pixels which are outside the extent of
+        the given input images. These pixels will be filled with the null
+        value for that input file, or zero if no null value is set on
+        that file.
+
         """
         self.overlap = overlap
         
@@ -276,7 +283,7 @@ class ApplierControls(object):
         
         In more recent versions of RIOS, the addition of driver-specific
         default creation options ($RIOS_DFLT_CREOPT_<driver>) allows for
-        multiple default creation optionsto be set up. 
+        multiple default creation options to be set up.
         
         """
         self.setOptionForImagename('drivername', imagename, drivername)
@@ -299,6 +306,24 @@ class ApplierControls(object):
         """
         Set type of footprint, one of INTERSECTION, UNION or 
         BOUNDS_FROM_REFERENCE from this module
+
+        The footprint type controls the extent of the pixel grid
+        used for calculation within the user function, and of the
+        output files.
+
+        Using INTERSECTION will result in the minimum extent which
+        is wholly included in all of the input images. Using UNION results
+        in the largest extent which wholly includes all of the input
+        images. If BOUNDS_FROM_REFERENCE is used, then the extent will
+        be the same as that of the reference image or pixgrid, regardless
+        of the extents of the various other inputs.
+
+        For both UNION and BOUNDS_FROM_REFERENCE, it is possible to
+        have pixels which are within the extent, but outside one or
+        more of the input files. The input data for such pixels are filled
+        with the null value for that file. If no null value is set for that
+        file, then zero is used.
+
         """
         self.footprint = footprint
         
@@ -616,7 +641,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
         userFunction(info, inputs, outputs, otherArgs)
 
-    if otherArgs is not None. 
+    if otherArgs is not None.
+
     inputs and outputs are objects in which there are named attributes 
     with the same names as those given in the infiles and outfiles 
     objects. In the inputs and outputs objects, available inside 
