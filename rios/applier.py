@@ -311,9 +311,9 @@ class ApplierControls(object):
         used for calculation within the user function, and of the
         output files.
 
-        Using INTERSECTION will result in the minimum extent which
+        Using INTERSECTION will result in the maximum extent which
         is wholly included in all of the input images. Using UNION results
-        in the largest extent which wholly includes all of the input
+        in the minimum extent which wholly includes all of the input
         images. If BOUNDS_FROM_REFERENCE is used, then the extent will
         be the same as that of the reference image or pixgrid, regardless
         of the extents of the various other inputs.
