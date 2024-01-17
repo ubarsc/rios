@@ -25,8 +25,8 @@ import os
 import math
 
 from osgeo import gdal
+from osgeo import gdal_array
 
-from . import imageio
 from . import rioserrors
 from . import rat
 from . import calcstats
@@ -221,7 +221,7 @@ class ImageWriter(object):
             # get the number of bands out of the block
             (nbands, y, x) = firstblock.shape
             # and the datatype
-            gdaldatatype = imageio.NumpyTypeToGDALType(firstblock.dtype)
+            gdaldatatype = gdal_array.NumericTypeCodeToGDALTypeCode(firstblock.dtype)
 
         if creationoptions is None:
             if drivername in dfltDriverOptions:

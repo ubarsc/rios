@@ -24,6 +24,7 @@ read and info on the current block
 import math
 
 import numpy
+from osgeo import gdal_array
 
 from . import imageio
 
@@ -322,7 +323,7 @@ class ReaderInfo(object):
         # if there is a valid novalue, cast it to the type
         # of the dataset. Note this creates a numpy 0-d array
         if novalue is not None:
-            numpytype = imageio.GDALTypeToNumpyType(band.DataType)
+            numpytype = gdal_array.GDALTypeCodeToNumericTypeCode(band.DataType)
             novalue = numpy.cast[numpytype](novalue)
 
         return novalue
