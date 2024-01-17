@@ -302,6 +302,15 @@ class ApplierControls(object):
         """
         self.windowysize = windowysize
         
+    def setWindowSize(self, windowxsize, windowysize):
+        """
+        Sets the X and Y size of the blocks used in one call.
+        Images are processed in blocks (windows) of 'windowxsize' 
+        columns, and 'windowysize' rows. 
+        """
+        self.windowxsize = windowxsize
+        self.windowysize = windowysize
+        
     def setFootprintType(self, footprint):
         """
         Set type of footprint, one of INTERSECTION, UNION or 
