@@ -25,10 +25,10 @@ import os
 import sys
 import tempfile
 
-from . import imageio
 from . import rioserrors
 from . import pixelgrid
 from osgeo import gdal
+from osgeo import gdal_array
 
 
 class InputIterator(object):
@@ -134,7 +134,7 @@ class InputCollection(object):
                 
             # get the datatype of band 1
             gdaldatatype = ds.GetRasterBand(1).DataType
-            numpytype = imageio.GDALTypeToNumpyType(gdaldatatype)
+            numpytype = gdal_array.GDALTypeCodeToNumericTypeCode(gdaldatatype)
         
             # store the values in our lists
             self.imageList.append(image)

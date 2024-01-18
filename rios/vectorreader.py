@@ -29,10 +29,10 @@ from .imagewriter import DEFAULTCREATIONOPTIONS
 from . import rioserrors
 from . import cuiprogress
 from .imagereader import ImageReader
-from .imageio import NumpyTypeToGDALType
 from osgeo import ogr
 from osgeo import gdal
 from osgeo import osr
+from osgeo import gdal_array
 import numpy
 
 DEFAULTBURNVALUE = 1
@@ -259,7 +259,7 @@ class VectorReader(object):
                 # Haven't yet rasterized, so do this for the whole workingGrid
                 (nrows, ncols) = info.workingGrid.getDimensions()
                 numLayers = 1
-                gdaldatatype = NumpyTypeToGDALType(vector.datatype)
+                gdaldatatype = gdal_array.NumericTypeCodeToGDALTypeCode(vector.datatype)
                 outds = vector.driver.Create(vector.temp_image, ncols, nrows, numLayers, 
                     gdaldatatype, vector.driveroptions)
                 if outds is None:

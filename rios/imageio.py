@@ -21,11 +21,9 @@ writing modules
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import numpy
-from osgeo import gdalconst
+import warnings
 from osgeo import gdal
-
-from . import rioserrors
+from osgeo import gdal_array
 
 INTERSECTION = 0
 UNION = 1
@@ -52,41 +50,15 @@ def pix2wld(transform, x, y):
     return Coord(geox, geoy)
 
 
-# Mappings between numpy datatypes and GDAL datatypes.
-# Note that ambiguities are resolved by the order - the first one found 
-# is the one chosen. 
-dataTypeMapping = [
-    (numpy.uint8, gdalconst.GDT_Byte),
-    (bool, gdalconst.GDT_Byte),
-    (numpy.int16, gdalconst.GDT_Int16),
-    (numpy.uint16, gdalconst.GDT_UInt16),
-    (numpy.int32, gdalconst.GDT_Int32),
-    (numpy.uint32, gdalconst.GDT_UInt32),
-    (numpy.float32, gdalconst.GDT_Float32),
-    (numpy.float64, gdalconst.GDT_Float64)
-]
-
-# hack for GDAL 3.5 and later which suppport 64 bit ints
-if hasattr(gdalconst, 'GDT_Int64'):
-    dataTypeMapping.append((numpy.int64, gdalconst.GDT_Int64))
-    dataTypeMapping.append((numpy.uint64, gdalconst.GDT_UInt64))
-
-# With GDAL 3.7, there is a plan to introduce GDT_Int8, so try to cope with it.
-# Hopefully OK, because we did not previously have anything to cope with arrays
-# of type numpy.int8.
-if hasattr(gdalconst, 'GDT_Int8'):
-    dataTypeMapping.append((numpy.int8, gdalconst.GDT_Int8))
-
-
 def GDALTypeToNumpyType(gdaltype):
     """
     Given a gdal data type returns the matching
     numpy data type
     """
-    for (numpy_type, test_gdal_type) in dataTypeMapping:
-        if test_gdal_type == gdaltype:
-            return numpy_type
-    raise rioserrors.TypeConversionError("Unknown GDAL datatype: %s"%gdaltype)
+    warnings.warn("Future versions of RIOS may remove this function. " +
+        "Use gdal_array.GDALTypeCodeToNumericTypeCode instead",
+        DeprecationWarning, stacklevel=2)
+    return gdal_array.GDALTypeCodeToNumericTypeCode(gdaltype)
 
 
 def NumpyTypeToGDALType(numpytype):
@@ -94,7 +66,7 @@ def NumpyTypeToGDALType(numpytype):
     For a given numpy data type returns the matching
     GDAL data type
     """
-    for (test_numpy_type, gdaltype) in dataTypeMapping:
-        if test_numpy_type == numpytype:
-            return gdaltype
-    raise rioserrors.TypeConversionError("Unknown numpy datatype: %s"%numpytype)
+    warnings.warn("Future versions of RIOS may remove this function. " +
+        "Use gdal_array.NumericTypeCodeToGDALTypeCode instead",
+        DeprecationWarning, stacklevel=2)
+    return gdal_array.NumericTypeCodeToGDALTypeCode(numpytype)
