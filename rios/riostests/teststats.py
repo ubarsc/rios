@@ -20,8 +20,9 @@ import os
 
 import numpy
 from osgeo import gdal
+from osgeo.gdal_array import GDALTypeCodeToNumericTypeCode
 
-from rios import calcstats, cuiprogress, imageio, VersionObj
+from rios import calcstats, cuiprogress, VersionObj
 
 from . import riostestutils
 
@@ -88,7 +89,7 @@ def run():
 
         # Loop over all datatype tuples in the list
         for (fileDtype, scalefactor) in dataTypesForDriver:
-            arrDtype = imageio.GDALTypeToNumpyType(fileDtype)
+            arrDtype = GDALTypeCodeToNumericTypeCode(fileDtype)
             imgfile = 'test.' + ext
             ds = riostestutils.createTestFile(imgfile, dtype=fileDtype, driverName=driverName, 
                     creationOptions=creationOptions)
