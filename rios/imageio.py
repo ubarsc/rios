@@ -56,7 +56,8 @@ def GDALTypeToNumpyType(gdaltype):
     numpy data type
     """
     warnings.warn("Future versions of RIOS may remove this function. " +
-        "Use gdal_array.GDALTypeCodeToNumericTypeCode instead", DeprecationWarning)
+        "Use gdal_array.GDALTypeCodeToNumericTypeCode instead",
+        DeprecationWarning, stacklevel=2)
     return gdal_array.GDALTypeCodeToNumericTypeCode(gdaltype)
 
 
@@ -66,5 +67,6 @@ def NumpyTypeToGDALType(numpytype):
     GDAL data type
     """
     warnings.warn("Future versions of RIOS may remove this function. " +
-        "Use gdal_array.NumericTypeCodeToGDALTypeCode instead", DeprecationWarning)
+        "Use gdal_array.NumericTypeCodeToGDALTypeCode instead",
+        DeprecationWarning, stacklevel=2)
     return gdal_array.NumericTypeCodeToGDALTypeCode(numpytype)
