@@ -431,7 +431,7 @@ class ApplierControls(object):
         Set boolean value of alltouched attribute. If alltouched is True, then
         pixels will count as "inside" a vector polygon if they touch the polygon,
         rather than only if their centre is inside. 
-        If vectornmame given, then set only for that vector. 
+        If vectorname given, then set only for that vector.
         """
         self.setOptionForImagename('alltouched', vectorname, alltouched)
     
@@ -484,6 +484,8 @@ class ApplierControls(object):
     
     def setNumThreads(self, numThreads):
         """
+        This is now deprecated. Please see setConcurrencyStyle instead.
+
         Set the number of 'threads' to be used when processing each block 
         of imagery. Note that these are not threads in the technical sense, 
         but are handled by the JobManager class, and are some form of 
@@ -498,12 +500,23 @@ class ApplierControls(object):
     
     def setJobManagerType(self, jobMgrType):
         """
+        This is now deprecated. Please see setConcurrencyStyle instead.
+
         Set which type of JobManager is to be used for parallel processing.
         See :mod:`rios.parallel.jobmanager` for details. Default is taken from
         $RIOS_DFLT_JOBMGRTYPE. 
         
         """
         self.jobManagerType = jobMgrType
+
+    def setConcurrencyStyle(self, concurrencyStyle):
+        """
+        Set the concurrency style. Argument is an instance of the
+        :class:`rios.structures.ConcurrencyStyle` class. See there
+        for full details of how to use this.
+
+        """
+        self.concurrency = concurrencyStyle
     
     def setAutoColorTableType(self, autoColorTableType, imagename=None):
         """
@@ -625,16 +638,20 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     # Divide the working grid into blocks for processing
     blockList = makeBlockList(workinggrid, controls)
 
-    # The various cases for different concurrency styles
-    concurrency = controls.concurrency
-    if (concurrency.computeWorkerKind == CW_NONE):
-        rtn = apply_singleCompute(userFunction, infiles, outfiles,
-            otherArgs, controls, allInfo, workinggrid, blockList,
-            None, None)
-    else:
-        rtn = apply_multipleCompute(userFunction, infiles, outfiles,
-            otherArgs, controls, allInfo, workinggrid, blockList)
+    # A timer for the main thread, to estimate wallclock time of whole run
+    timings = Timers()
 
+    with timings.interval('walltime'):
+        concurrency = controls.concurrency
+        if (concurrency.computeWorkerKind == CW_NONE):
+            rtn = apply_singleCompute(userFunction, infiles, outfiles,
+                otherArgs, controls, allInfo, workinggrid, blockList,
+                None, None)
+        else:
+            rtn = apply_multipleCompute(userFunction, infiles, outfiles,
+                otherArgs, controls, allInfo, workinggrid, blockList)
+
+    rtn.timings.merge(timings)
     return rtn
 
 
@@ -661,7 +678,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         if concurrency.numReadWorkers > 0:
             inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
             readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
-                controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache)
+                controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache,
+                timings)
         else:
             gdalObjCache = {}
     if outBlockCache is None:
@@ -722,13 +740,14 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     outBlockCache = BlockCache(outfiles, numComputeWorkers)
     gdalOutObjCache = {}
 
-    inBlockCache = None
     readWorkerMgr = None
+    inCacheMax = max(1, concurrency.numReadWorkers)
+    inBlockCache = BlockCache(infiles, inCacheMax)
     if not concurrency.computeWorkersRead and concurrency.numReadWorkers > 0:
-        inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
         if concurrency.numReadWorkers > 0:
             readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
-                controls, tmpfileMgr, workinggrid, inBlockCache, timings)
+                controls, tmpfileMgr, rasterizeMgr, workinggrid,
+                inBlockCache, timings)
 
     gdalObjCache = None
     if (concurrency.numReadWorkers == 0 and
@@ -745,6 +764,9 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp)
 
     for blockDefn in blockList:
+        computeMgr.checkWorkerErrors()
+        readWorkerMgr.checkWorkerErrors()
+
         if (concurrency.numReadWorkers == 0 and
                 not concurrency.computeWorkersRead):
             with timings.interval('reading'):
@@ -809,7 +831,7 @@ def startReadWorkers(blockList, infiles, allInfo, controls, tmpfileMgr,
     return ReadWorkerMgr(threadPool, workerList, readTaskQue)
 
 
-def readWorkerFunc(readTaskQue, blockCache, gdalObjCache, controls, tmpfileMgr,
+def readWorkerFunc(readTaskQue, blockCache, controls, tmpfileMgr,
         rasterizeMgr, workinggrid, allInfo, timings):
     """
     This function runs in each read worker thread. The readTaskQue gives
@@ -822,18 +844,24 @@ def readWorkerFunc(readTaskQue, blockCache, gdalObjCache, controls, tmpfileMgr,
     # as these cannot be shared between threads.
     gdalObjCache = {}
 
-    readTask = readTaskQue.get(block=False)
+    try:
+        readTask = readTaskQue.get(block=False)
+    except queue.Empty:
+        readTask = None
     while readTask is not None:
         (blockDefn, symName, seqNum, filename) = readTask
         with timings.interval('reading'):
-            arr = readBlockOneFile(symName, seqNum, filename,
+            arr = readBlockOneFile(blockDefn, symName, seqNum, filename,
                 gdalObjCache, controls, tmpfileMgr, rasterizeMgr,
                 workinggrid, allInfo)
 
         with timings.interval('waitaddincache'):
             blockCache.addBlockData(blockDefn, symName, seqNum, arr)
 
-        readTask = readTaskQue.get(block=False)
+        try:
+            readTask = readTaskQue.get(block=False)
+        except queue.Empty:
+            readTask = None
 
 
 def readAllImgInfo(infiles):
