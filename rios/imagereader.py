@@ -22,14 +22,15 @@ import sys
 import copy
 
 import numpy
-from osgeo import gdal, osr
+from osgeo import gdal, osr, gdal_array
 
 from . import imageio
 from . import inputcollection
 from . import readerinfo
 from . import rioserrors
-from .structures import BlockAssociations, RasterizationMgr
+from .structures import BlockAssociations
 from .fileinfo import ImageInfo, VectorFileInfo
+from .pixelgrid import PixelGridDefn, findCommonRegion
 
 if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
@@ -45,7 +46,7 @@ DEFAULTLOGGINGSTREAM = sys.stdout
 
 
 def readBlockAllFiles(infiles, workinggrid, blockDefn, allInfo, gdalObjCache,
-        controls, tmpfileMgr):
+        controls, tmpfileMgr, rasterizeMgr):
     """
     Read all input files for a single block.
     Return the complete BlockAssociations object (i.e. 'inputs').
@@ -53,24 +54,24 @@ def readBlockAllFiles(infiles, workinggrid, blockDefn, allInfo, gdalObjCache,
     inputs = BlockAssociations(infiles)
     for (symbolicName, seqNum, filename) in infiles:
         arr = readBlockOneFile(blockDefn, symbolicName, seqNum, filename,
-            gdalObjCache, controls, tmpfileMgr, workinggrid, allInfo)
+            gdalObjCache, controls, tmpfileMgr, rasterizeMgr, workinggrid,
+            allInfo)
         inputs[symbolicName, seqNum] = arr
     return inputs
 
 
 def readBlockOneFile(blockDefn, symbolicName, seqNum, filename, gdalObjCache,
-        controls, tmpfileMgr, workinggrid, allInfo):
+        controls, tmpfileMgr, rasterizeMgr, workinggrid, allInfo):
     if (symbolicName, seqNum) not in gdalObjCache:
         fileInfo = allInfo[symbolicName, seqNum]
         (ds, bandObjList) = openForWorkingGrid(filename, workinggrid,
-            fileInfo, controls, tmpfileMgr, symbolicName)
+            fileInfo, controls, tmpfileMgr, rasterizeMgr, symbolicName)
         gdalObjCache[symbolicName, seqNum] = (ds, bandObjList)
 
     (ds, bandObjList) = gdalObjCache[symbolicName, seqNum]
 
     margin = controls.overlap
-    (left, top, xsize, ysize) = (blockDefn.left - margin,
-            blockDefn.top - margin,
+    (left, top, xsize, ysize) = (blockDefn.left, blockDefn.top,
             blockDefn.ncols + 2 * margin,
             blockDefn.nrows + 2 * margin)
     # If we are reading all bands, just use the Dataset, but
@@ -89,7 +90,7 @@ def readBlockOneFile(blockDefn, symbolicName, seqNum, filename, gdalObjCache,
 
 
 def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
-        tmpfileMgr, symbolicName):
+        tmpfileMgr, rasterizeMgr, symbolicName):
     """
     If the fileInfo for the given filename is a raster, aligned with
     the working grid, just open it. If it is a raster, but not aligned,
@@ -103,18 +104,54 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
     of band.ReadAsArray.
 
     """
+    (xRes, yRes) = (workinggrid.xRes, abs(workinggrid.yRes))
+
     if isinstance(fileInfo, VectorFileInfo):
-        # make a pixgrid of vector extent
-        # Work out intersection with workinggrid, in vector's projection
-        # Make rasterizeOptions
-        # tmprast = rasterizeMgr.rasterize(filename, rasterizeOptions, tmpfileMgr)
-        # fileInfo = ImageInfo(tmprast)
-        # filename = tmprast
-        pass
+        vectorlayer = controls.getOptionForImagename('vectorlayer',
+                symbolicName)
+        if isinstance(vectorlayer, int):
+            vecNdx = vectorlayer
+        else:
+            raise NotImplementedError("Vector layer by name")
+        vecLyrInfo = fileInfo[vecNdx]
+        projection = vecLyrInfo.spatialRef.ExportToWkt()
+        xMin = PixelGridDefn.snapToGrid(vecLyrInfo.xMin, xRes, xRes) - xRes
+        xMax = PixelGridDefn.snapToGrid(vecLyrInfo.xMax, xRes, xRes) + xRes
+        yMin = PixelGridDefn.snapToGrid(vecLyrInfo.yMin, yRes, yRes) - yRes
+        yMax = PixelGridDefn.snapToGrid(vecLyrInfo.yMax, yRes, yRes) + yRes
+        vectorPixgrid = PixelGridDefn(projection=projection,
+            xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, xRes=xRes, yRes=yRes)
+        gridList = [workinggrid, vectorPixgrid]
+        commonRegion = findCommonRegion(gridList, vectorPixgrid,
+            combine=imageio.INTERSECTION)
+        dtype = controls.getOptionForImagename('vectordatatype', symbolicName)
+        gdalDtype = gdal_array.NumericTypeCodeToGDALTypeCode(dtype)
+        gtiffOptions = ['TILED=YES', 'COMPRESS=DEFLATE', 'BIGTIFF=IF_SAFER']
+        outBounds = (commonRegion.xMin, commonRegion.yMin,
+            commonRegion.xMax, commonRegion.yMax)
+        vecNull = controls.getOptionForImagename('vectornull', symbolicName)
+        burnattribute = controls.getOptionForImagename('burnattribute',
+                symbolicName)
+        burnvalue = None
+        if burnattribute is None:
+            burnvalue = controls.getOptionForImagename('burnvalue',
+                    symbolicName)
+        alltouched = controls.getOptionForImagename('alltouched',
+                    symbolicName)
+        filtersql = controls.getOptionForImagename('filtersql', symbolicName)
+        rasterizeOptions = gdal.RasterizeOptions(format='GTiff',
+            outputType=gdalDtype, creationOptions=gtiffOptions,
+            outputBounds=outBounds, xRes=xRes, yRes=yRes, noData=vecNull,
+            initValues=vecNull, burnValues=burnvalue, attribute=burnattribute,
+            allTouched=alltouched, SQLStatement=filtersql)
+
+        tmprast = rasterizeMgr.rasterize(filename, rasterizeOptions,
+                tmpfileMgr)
+        filename = tmprast
+        fileInfo = ImageInfo(filename)
 
     if isinstance(fileInfo, ImageInfo):
         vrtfile = tmpfileMgr.mktempfile(suffix='.vrt')
-        (xRes, yRes) = (workinggrid.xRes, abs(workinggrid.yRes))
         margin = controls.overlap
         # The world coordinates of the extent. Note that we make
         # it bigger around the edges if we are working with an overlap
