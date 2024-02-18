@@ -135,6 +135,7 @@ class ApplierControls(object):
         self.autoColorTableType = DEFAULT_AUTOCOLORTABLETYPE
         self.allowOverviewsGdalwarp = False
         self.approxStats = False
+        self.layerselection = None
 
         # Vector fields
         self.burnvalue = 1
@@ -144,7 +145,6 @@ class ApplierControls(object):
         self.alltouched = False
         self.vectordatatype = numpy.uint8
         self.vectorlayer = 0
-        self.layerselection = None
 
         # Options specific to a named image. This was added on later, and is 
         # only valid for some of the attributes, so it looks a bit out-of-place.
