@@ -23,102 +23,32 @@ point of entry in this module.
 
 import os
 import sys
+from concurrent import futures
+import queue
 
 import numpy
-from osgeo import gdal
-from osgeo import ogr
 
-from . import imagereader
-from . import imagewriter
-from . import imageio
 from . import rioserrors
-from . import vectorreader
-from . import calcstats
-from . import rat
-from .parallel import jobmanager
+from .imagereader import DEFAULTFOOTPRINT, DEFAULTWINDOWXSIZE
+from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP, DEFAULTLOGGINGSTREAM
+from .imagereader import readBlockAllFiles, readBlockOneFile
+from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS
+from .imagewriter import dfltDriverOptions, writeBlock, closeOutfiles
+from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE
+from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
+from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE
+from .rat import DEFAULT_AUTOCOLORTABLETYPE
+from .structures import BlockAssociations, OtherInputs
+from .structures import BlockCache, Timers, TempfileManager, ApplierReturn
+from .structures import ReadWorkerMgr, ApplierBlockDefn
+from .structures import CW_NONE
+from .fileinfo import ImageInfo, VectorFileInfo
+from .pixelgrid import PixelGridDefn, findCommonRegion
+from .readerinfo import makeReaderInfo
+from .computemanager import getComputeWorkerManager
 
-# All default values, etc., copied in from their appropriate rios modules. 
+
 DEFAULT_RESAMPLEMETHOD = "near"
-DEFAULTFOOTPRINT = imagereader.DEFAULTFOOTPRINT
-DEFAULTWINDOWXSIZE = imagereader.DEFAULTWINDOWXSIZE
-DEFAULTWINDOWYSIZE = imagereader.DEFAULTWINDOWYSIZE
-DEFAULTOVERLAP = imagereader.DEFAULTOVERLAP
-DEFAULTLOGGINGSTREAM = imagereader.DEFAULTLOGGINGSTREAM
-DEFAULTDRIVERNAME = imagewriter.DEFAULTDRIVERNAME
-# Use of DEFAULTCREATIONOPTIONS is now deprecated, in favour of dfltDriverOptions[driver]
-DEFAULTCREATIONOPTIONS = imagewriter.DEFAULTCREATIONOPTIONS
-dfltDriverOptions = imagewriter.dfltDriverOptions
-INTERSECTION = imageio.INTERSECTION
-"Use the spatial intersection of inputs"
-UNION = imageio.UNION
-"Use the spatial union of inputs"
-BOUNDS_FROM_REFERENCE = imageio.BOUNDS_FROM_REFERENCE
-"Use the spatial extent of the reference file"
-
-# From the calcstats module
-DEFAULT_OVERVIEWLEVELS = calcstats.DEFAULT_OVERVIEWLEVELS
-"Default overview levels on output images"
-DEFAULT_MINOVERVIEWDIM = calcstats.DEFAULT_MINOVERVIEWDIM
-"Default minimum dimension of highest overview level calculated"
-DEFAULT_OVERVIEWAGGREGRATIONTYPE = calcstats.DEFAULT_OVERVIEWAGGREGRATIONTYPE
-"Default agregation type when using formats without LAYER_TYPE"
-
-# For supporting that automatic color table thing which Sam loves
-DEFAULT_AUTOCOLORTABLETYPE = rat.DEFAULT_AUTOCOLORTABLETYPE
-
-# For deciding if we resample using a VRT or not. VRT is the default
-# and should be used unless there is a real problem with gdalwarp
-# (ie GDAL 2.1.x and NZTM)
-NO_VRT_FOR_RESAMPLING = os.getenv('RIOS_NO_VRT_FOR_RESAMPLING', default='0') != '0'
-"""
-Whether to use VRTs for resampling inputs. Set by RIOS_NO_VRT_FOR_RESAMPLING
-environment variable. Default is True.
-"""
-
-if sys.version_info[0] > 2:
-    # hack for Python 3 which uses str instead of basestring
-    # we just use basestring
-    basestring = str
-
-
-class FilenameAssociations(object): 
-    """
-    Class for associating external image filenames with internal
-    names, which are then the same names used inside a function given
-    to the :func:`rios.applier.apply` function. 
-    
-    Each attribute created on this object should be a filename, or a 
-    list of filenames. The corresponding attribute names will appear 
-    on the 'inputs' or 'outputs' objects inside the applied function. 
-    Each such attribute will be an image data block or a list of image 
-    data blocks, accordingly. 
-    
-    """
-    def __len__(self):
-        "Number of names defined on this instance (a list counts as only one name)"
-        return len(self.__dict__.keys())
-
-
-class BlockAssociations(object): 
-    """
-    Generic object to store the image blocks used within
-    the applied function. The attributes are named the same way 
-    as in the corresponding FilenameAssociations object, but are
-    blocks of image data, instead of filenames. Where lists of 
-    filenames were used, lists of image blocks are used here. 
-    """
-    pass
-
-
-class OtherInputs(object): 
-    """
-    Generic object to store any extra inputs and outputs used 
-    inside the function being applied. This class was originally
-    named for inputs, but in fact works just as well for outputs, 
-    too. Any items stored on this will be persistent between 
-    iterations of the block loop. 
-    """
-    pass
 
 
 class ApplierControls(object):
@@ -682,109 +612,342 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     There is a page dedicated to :doc:`applierexamples`.
 
     """
-    # Get default controls object if none given. 
     if controls is None:
         controls = ApplierControls()
 
-    (imagefiles, vectorfiles) = separateVectors(infiles)
-    inputImageLayerSelection = makeInputImageLayerSelection(imagefiles, controls)
-    reader = imagereader.ImageReader(imagefiles.__dict__, 
-        controls.footprint, controls.windowxsize, controls.windowysize, 
-        controls.overlap, loggingstream=controls.loggingstream,
-        layerselection=inputImageLayerSelection)
+    # Includes ImageInfo and VectorFileInfo, keyed by (logicalname, seqNum)
+    allInfo = readAllImgInfo(infiles)
+    # Make the working grid
+    workinggrid = makeWorkingGrid(infiles, allInfo, controls)
+    # Divide the working grid into blocks for processing
+    blockList = makeBlockList(workinggrid, controls)
 
-    vecreader = None
-    if len(vectorfiles) > 0:
-        vectordict = makeVectorObjects(vectorfiles, controls)
-        vecreader = vectorreader.VectorReader(vectordict, progress=controls.progress)
+    # The various cases for different concurrency styles
+    concurrency = controls.concurrency
+    if (concurrency.computeWorkerKind == CW_NONE):
+        rtn = apply_singleCompute(userFunction, infiles, outfiles,
+            otherArgs, controls, allInfo, workinggrid, blockList,
+            None, None)
+    else:
+        rtn = apply_multipleCompute(userFunction, infiles, outfiles,
+            otherArgs, controls, allInfo, workinggrid, blockList)
 
-    handleInputResampling(imagefiles, controls, reader)
+    return rtn
 
-    writerdict = {}
 
-    if controls.progress is not None:
-        controls.progress.setTotalSteps(100)
-        controls.progress.setProgress(0)
-    lastpercent = 0
+def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
+        controls, allInfo, workinggrid, blockList, outBlockCache,
+        inBlockCache):
+    """
+    Apply function for simplest configuration, with no compute concurrency.
+    Does have possible read concurrency.
 
-    # Set up for parallel processing, if requested. 
-    jobmgr = None
-    if controls.numThreads > 1:
-        jobmgr = jobmanager.getJobMgrObject(controls)
+    This is also called for each compute worker in the batch-oriented
+    compute worker styles, where each worker is an instance of a
+    single-compute case.
 
-    done = False
-    iterator = reader.__iter__()
-    while not done:
-        # list of RIOSJobInfo
-        jobInputs = []
+    """
+    timings = Timers()
 
-        for n in range(controls.numThreads):
+    concurrency = controls.concurrency
+    tmpfileMgr = TempfileManager(controls.tempdir)
+    readWorkerMgr = None
+    gdalObjCache = None
+    if inBlockCache is None:
+        if concurrency.numReadWorkers > 0:
+            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
+            readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
+                controls, tmpfileMgr, workinggrid, inBlockCache)
+        else:
+            gdalObjCache = {}
+    if outBlockCache is None:
+        gdalOutObjCache = {}
+
+    for blockDefn in blockList:
+        readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
+        if inBlockCache is None:
+            with timings.interval('reading'):
+                inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
+                    allInfo, gdalObjCache, controls, tmpfileMgr)
+        else:
+            with timings.interval('waitaddincache'):
+                inputs = inBlockCache.popCompleteBlock(blockDefn)
+
+        outputs = BlockAssociations()
+        userArgs = (readerInfo, inputs, outputs)
+        if otherArgs is not None:
+            userArgs += otherArgs
+
+        with timings.interval('userfunction'):
+            userFunction(*userArgs)
+
+        if outBlockCache is None:
+            with timings.interval('writing'):
+                writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                    controls, workinggrid)
+        else:
+            with timings.interval('waitaddoutcache'):
+                outBlockCache.insertCompleteBlock(blockDefn, outputs)
+
+    if outBlockCache is None:
+        closeOutfiles(gdalOutObjCache, outfiles, controls)
+    if readWorkerMgr is not None:
+        readWorkerMgr.shutdown()
+
+    # Set up returns object
+    rtn = ApplierReturn()
+    rtn.timings = timings
+    rtn.cachemonitors = None
+    rtn.otherArgsList = None
+
+    return rtn
+
+
+def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
+        controls, allInfo, workinggrid, blockList):
+    """
+    Multiple compute workers
+    """
+    concurrency = controls.concurrency
+    tmpfileMgr = TempfileManager(controls.tempdir)
+    computeMgr = getComputeWorkerManager(concurrency.computeWorkerKind)
+    timings = Timers()
+
+    numComputeWorkers = concurrency.numComputeWorkers
+    outBlockCache = BlockCache(outfiles, numComputeWorkers)
+    gdalOutObjCache = {}
+
+    inBlockCache = None
+    readWorkerMgr = None
+    if not concurrency.computeWorkersRead and concurrency.numReadWorkers > 0:
+        inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
+        if concurrency.numReadWorkers > 0:
+            readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
+                controls, tmpfileMgr, workinggrid, inBlockCache, timings)
+
+    gdalObjCache = None
+    if (concurrency.numReadWorkers == 0 and
+            not concurrency.computeWorkersRead):
+        gdalObjCache = {}
+
+    computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
+        userFunction=userFunction, infiles=infiles, outfiles=outfiles,
+        otherArgs=otherArgs, controls=controls, blockList=blockList,
+        inBlockCache=inBlockCache, outBlockCache=outBlockCache,
+        workinggrid=workinggrid, allInfo=allInfo,
+        computeWorkersRead=concurrency.computeWorkersRead,
+        singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
+        tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp)
+
+    for blockDefn in blockList:
+        if (concurrency.numReadWorkers == 0 and
+                not concurrency.computeWorkersRead):
+            with timings.interval('reading'):
+                inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
+                    allInfo, gdalObjCache, controls, tmpfileMgr)
+            with timings.interval('waitaddincache'):
+                inBlockCache.insertCompleteBlock(blockDefn, inputs)
+
+        with timings.interval('waitpopoutcache'):
+            outputs = outBlockCache.popCompleteBlock(blockDefn)
+        with timings.interval('writing'):
+            writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                    controls, workinggrid)
+
+    closeOutfiles(gdalOutObjCache, outfiles, controls)
+    computeMgr.shutdown()
+    if readWorkerMgr is not None:
+        readWorkerMgr.shutdown()
+
+    # Assemble the return object
+    rtn = ApplierReturn()
+    outObjList = computeMgr.outObjList
+    timingsList = [obj for obj in outObjList if isinstance(obj, Timers)]
+    rtn.timings = timings
+    for t in timingsList:
+        rtn.timings.merge(t)
+    rtn.otherArgsList = [obj for obj in computeMgr.outObjList
+        if isinstance(obj, OtherInputs)]
+
+    return rtn
+
+
+def startReadWorkers(blockList, infiles, allInfo, controls, tmpfileMgr,
+        workinggrid, inBlockCache, timings):
+    """
+    Start the requested number of read worker threads, within the current
+    process. All threads will read single blocks from individual files
+    and place them into the inBlockCache.
+
+    Return value is an instance of ReadWorkerMgr, which must remain
+    active until all reading is complete.
+
+    """
+    numWorkers = controls.concurrency.numReadWorkers
+    threadPool = futures.ThreadPoolExecutor(max_workers=numWorkers)
+    readTaskQue = queue.Queue()
+
+    # Put all read tasks into the queue. A single task is one block of
+    # input for one input file.
+    for blockDefn in blockList:
+        for (symName, seqNum, filename) in infiles:
+            task = (blockDefn, symName, seqNum, filename)
+            readTaskQue.put(task)
+
+    workerList = []
+    for i in range(numWorkers):
+        worker = threadPool.submit(readWorkerFunc, readTaskQue,
+            inBlockCache, controls, tmpfileMgr, workinggrid, allInfo,
+            timings)
+        workerList.append(worker)
+
+    return ReadWorkerMgr(threadPool, workerList, readTaskQue)
+
+
+def readWorkerFunc(readTaskQue, blockCache, gdalObjCache, controls, tmpfileMgr,
+        workinggrid, allInfo, timings):
+    """
+    This function runs in each read worker thread. The readTaskQue gives
+    it tasks to perform (i.e. single blocks of data to read), and it loops
+    until there are no more to do. Each block is sent back through
+    the blockCache.
+
+    """
+    # Each instance of this readWorkerFunc has its own set of GDAL objects,
+    # as these cannot be shared between threads.
+    gdalObjCache = {}
+
+    readTask = readTaskQue.get(block=False)
+    while readTask is not None:
+        (blockDefn, symName, seqNum, filename) = readTask
+        with timings.interval('reading'):
+            arr = readBlockOneFile(symName, seqNum, filename,
+                gdalObjCache, controls, tmpfileMgr, workinggrid, allInfo)
+
+        with timings.interval('waitaddincache'):
+            blockCache.addBlockData(blockDefn, symName, seqNum, arr)
+
+        readTask = readTaskQue.get(block=False)
+
+
+def readAllImgInfo(infiles):
+    """
+    Open all input files and create an ImageInfo (or VectorFileInfo)
+    object for each. Return a dictionary of them, keyed by their
+    position within infiles, i.e. (symbolicName, SeqNum).
+
+    """
+    allInfo = {}
+    for (symbolicName, seqNum, filename) in infiles:
+        try:
+            infoObj = ImageInfo(filename)
+        except (RuntimeError, rioserrors.FileOpenError):
+            infoObj = None
+
+        # Try as a vector
+        if infoObj is None:
             try:
-                info, blockdict = iterator.__next__()
-            except StopIteration:
-                done = True
-                break
+                infoObj = VectorFileInfo(filename)
+            except (RuntimeError, rioserrors.FileOpenError):
+                infoObj = None
 
-            inputBlocks = BlockAssociations()
-            inputBlocks.__dict__.update(blockdict)
-            if vecreader is not None:
-                vecblocks = vecreader.rasterize(info)
-                inputBlocks.__dict__.update(vecblocks)
+        if infoObj is None:
+            msg = "Unable to open '{}'".format(filename)
+            raise rioserrors.FileOpenError(msg)
 
-            # build a RIOSJobInfo with the params
-            jobInfo = RIOSJobInfo(info, inputBlocks, otherArgs)
-            jobInputs.append(jobInfo)
+        allInfo[symbolicName, seqNum] = infoObj
 
-        if len(jobInputs) == 0:
+    return allInfo
+
+
+def makeWorkingGrid(infiles, allInfo, controls):
+    """
+    Work out the projection and extent of the working grid.
+
+    Return a PixelGridDefn object representing it.
+    """
+    # Make a list of all the pixel grids
+    pixgridList = []
+    for info in allInfo.values():
+        if isinstance(info, ImageInfo):
+            pixgrid = PixelGridDefn(projection=info.projection,
+                        geotransform=info.transform,
+                        nrows=info.nrows, ncols=info.ncols)
+            pixgridList.append(pixgrid)
+
+    # Work out the reference pixel grid
+    refPixGrid = controls.referencePixgrid
+    if refPixGrid is None and controls.referenceImage is not None:
+        refImage = controls.referenceImage
+
+        refNdx = None
+        for (symbolicName, seqNum, filename) in infiles:
+            # refImage can be either a symbolic name or a real filename,
+            # so check both.
+            if refImage in (symbolicName, filename):
+                refNdx = (symbolicName, seqNum)
+        refInfo = allInfo[refNdx]
+        refPixGrid = PixelGridDefn(projection=refInfo.projection,
+                        geotransform=refInfo.transform,
+                        nrows=refInfo.nrows, ncols=refInfo.ncols)
+
+    if refPixGrid is None:
+        # We have not been given a reference. This means that we should not
+        # be doing any reprojecting, so check that all pixel grids match
+        # the first one
+        refPixGrid = pixgridList[0]
+        match = checkAllMatch(pixgridList, refPixGrid)
+        if not match:
+            msg = ('Input grids do not match. Must supply a reference'
+                'image or pixelgrid')
+            raise rioserrors.ResampleNeededError(msg)
+
+    workinggrid = findCommonRegion(pixgridList, refPixGrid,
+        controls.footprint)
+    return workinggrid
+
+
+def checkAllMatch(pixgridList, refPixGrid):
+    """
+    Returns whether any resampling necessary to match
+    reference dataset.
+
+    Use as a check if no resampling is done that we
+    can proceed ok.
+
+    """
+
+    match = True
+    for pixGrid in pixgridList:
+        if not refPixGrid.isComparable(pixGrid):
+            match = False
+            break
+        elif not refPixGrid.alignedWith(pixGrid):
+            match = False
             break
 
-        # Now call the function with those args
-        if jobmgr is None:
-            # single threaded - just call it
-            params = jobInfo.getFunctionParams()
-            userFunction(*params)
-            outputBlocks = jobInfo.getFunctionResult(params)
-            writeOutputBlocks(writerdict, outfiles, outputBlocks, 
-                            controls, info)
-        else:
-            # multi threaded - get the job manager to run jobs
-            outBlocksList = jobmgr.runSubJobs(userFunction, jobInputs)
-            for outputBlocks in outBlocksList:
-                writeOutputBlocks(writerdict, outfiles, outputBlocks, 
-                            controls, info)
-
-        lastpercent = updateProgress(controls, info, lastpercent)
-
-    if jobmgr is not None:
-        jobmgr.finalise()
-
-    if controls.progress is not None:
-        controls.progress.setProgress(100)
-
-    closeOutputImages(writerdict, outfiles, controls)
+    return match
 
 
-def closeOutputImages(writerdict, outfiles, controls):
+def makeBlockList(workinggrid, controls):
     """
-    Called by :func:`rios.applier.apply` to close all output image files. 
+    Divide the working grid area into blocks. Return a list of
+    ApplierBlockDefn objects
     """
-    for name in outfiles.__dict__.keys():
-        writer = writerdict[name]
-        if isinstance(writer, list):
-            writerList = writer
-        else:
-            writerList = [writer]
+    blockList = []
+    (nrows, ncols) = (workinggrid.nrows, workinggrid.ncols)
+    top = 0
+    while top < nrows:
+        ysize = min(controls.windowysize, (nrows - top))
+        left = 0
+        while left < ncols:
+            xsize = min(controls.windowxsize, (ncols - left))
 
-        for singleWriter in writerList:
-            singleWriter.close(calcStats=controls.getOptionForImagename('calcStats', name), 
-                statsIgnore=controls.getOptionForImagename('statsIgnore', name), 
-                progress=controls.progress,
-                omitPyramids=controls.getOptionForImagename('omitPyramids', name),
-                overviewLevels=controls.getOptionForImagename('overviewLevels', name),
-                overviewMinDim=controls.getOptionForImagename('overviewMinDim', name), 
-                overviewAggType=controls.getOptionForImagename('overviewAggType', name),
-                autoColorTableType=controls.getOptionForImagename('autoColorTableType', name),
-                approx_ok=controls.getOptionForImagename('approxStats', name))
+            blockDefn = ApplierBlockDefn(top, left, xsize, ysize)
+            blockList.append(blockDefn)
+            left += xsize
+        top += ysize
+    return blockList
 
 
 def updateProgress(controls, info, lastpercent):
@@ -797,261 +960,3 @@ def updateProgress(controls, info, lastpercent):
             controls.progress.setProgress(percent)
             lastpercent = percent
     return lastpercent
-
-
-def handleInputResampling(infiles, controls, reader):
-    """
-    Called by :func:`rios.applier.apply` to handle automatic resampling of input rasters.
-    Most of the work is done by the read.allowResample() method. 
-    """
-    if controls.referenceImage is not None:
-        resampleDict = controls.makeResampleDict(infiles.__dict__)
-        reader.allowResample(refpath=controls.referenceImage, tempdir=controls.tempdir,
-            resamplemethod=resampleDict, useVRT=(not NO_VRT_FOR_RESAMPLING),
-            allowOverviewsGdalwarp=controls.allowOverviewsGdalwarp)
-    elif controls.referencePixgrid is not None:
-        resampleDict = controls.makeResampleDict(infiles.__dict__)
-        reader.allowResample(refPixgrid=controls.referencePixgrid, 
-            tempdir=controls.tempdir, 
-            resamplemethod=resampleDict, useVRT=(not NO_VRT_FOR_RESAMPLING),
-            allowOverviewsGdalwarp=controls.allowOverviewsGdalwarp)
-
-
-def writeOutputBlocks(writerdict, outfiles, outputBlocks, controls, info):
-    """
-    Called by :func:`rios.applier.apply`, to write the output blocks, after
-    they have been created by the user function. 
-    For internal use only. 
-    
-    For all names given in outfiles object, look for a data block 
-    of the same name in the outputBlocks object. If the given name
-    is a list, then the corresponding name should be a list of blocks. 
-    
-    """
-    for name in outfiles.__dict__.keys():
-        if name not in outputBlocks.__dict__:
-            msg = 'Output key %s not found in output blocks' % name
-            raise rioserrors.KeysMismatch(msg)
-
-        outblock = outputBlocks.__dict__[name]
-        outfileName = getattr(outfiles, name)
-        if name not in writerdict:
-            # We have not yet created the output writers
-            if isinstance(outfileName, list):
-                # We have a list of filenames under this name in the dictionary,
-                # and so we must create a list of writers. The outblock will also be 
-                # a list of blocks
-                writerdict[name] = []
-                numFiles = len(outfileName)
-                if len(outblock) != numFiles:
-                    raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
-                        "but only %d blocks given")%(name, numFiles, len(outblock)))
-                for i in range(numFiles):
-                    filename = outfileName[i]
-                    writer = imagewriter.ImageWriter(filename, info=info, 
-                        firstblock=outblock[i], 
-                        drivername=controls.getOptionForImagename('drivername', name), 
-                        creationoptions=controls.getOptionForImagename('creationoptions', name))
-                    writerdict[name].append(writer)
-                    if controls.getOptionForImagename('thematic', name):
-                        writer.setThematic()
-
-                    layernames = controls.getOptionForImagename('layernames', name)
-                    if layernames is not None:
-                        writer.setLayerNames(layernames)
-            else:
-                # This name in the dictionary is just a single filename
-                writer = imagewriter.ImageWriter(outfileName, info=info, firstblock=outblock,
-                    drivername=controls.getOptionForImagename('drivername', name), 
-                    creationoptions=controls.getOptionForImagename('creationoptions', name))
-                writerdict[name] = writer
-                if controls.getOptionForImagename('thematic', name):
-                    writer.setThematic()
-
-                layernames = controls.getOptionForImagename('layernames', name)
-                if layernames is not None:
-                    writer.setLayerNames(layernames)
-        else:
-            # The output writers exist, so select the correct one and write the block
-            if isinstance(outfileName, list):
-                # We have a list of files for this name, and a list of blocks to write
-                numFiles = len(outfileName)
-                if len(outblock) != numFiles:
-                    raise rioserrors.MismatchedListLengthsError(("Output '%s' writes %d files, "+
-                        "but only %d blocks given")%(name, numFiles, len(outblock)))
-                for i in range(numFiles):
-                    writerdict[name][i].write(outblock[i])
-            else:
-                # This name is just a single file, and we write a single block
-                writerdict[name].write(outblock)
-
-
-def separateVectors(infiles):
-    """
-    Given a :class:`rios.applier.FilenameAssociations` object, separate out the files which 
-    are raster, and the files which are vectors. Returns two :class:`rios.applier.FilenameAssociations`
-    objects, carrying the same attribute names, but each has only the raster
-    or the vectors. 
-    
-    """
-    imagefiles = FilenameAssociations()
-    vectorfiles = FilenameAssociations()
-    
-    nameList = sorted(infiles.__dict__.keys())
-    for name in nameList:
-        fileValue = getattr(infiles, name)
-        if isinstance(fileValue, basestring):
-            testFilename = fileValue
-        elif isinstance(fileValue, list):
-            # We only check the first filename in a list. If the user
-            # mixed rasters and vectors in one list, things would go horribly wrong
-            testFilename = fileValue[0]
-        else:
-            testFilename = None
-
-        if opensAsRaster(testFilename):
-            setattr(imagefiles, name, fileValue)
-        elif opensAsVector(testFilename):
-            setattr(vectorfiles, name, fileValue)
-        else:
-            raise rioserrors.FileOpenError("Failed to open file '%s' as either raster or vector"%testFilename)
-        
-    return (imagefiles, vectorfiles)
-
-
-def opensAsRaster(filename):
-    """
-    Return True if filename opens as a GDAL raster, False otherwise
-    """
-    usingExceptions = gdal.GetUseExceptions()
-    gdal.UseExceptions()
-    try:
-        ds = gdal.Open(filename)
-    except Exception:
-        ds = None
-    finally:
-        if not usingExceptions:
-            gdal.DontUseExceptions()
-
-    opensOK = (ds is not None)
-    return opensOK
-
-
-def opensAsVector(filename):
-    """
-    Return True if filename opens as an OGR vector, False otherwise
-    """
-    usingExceptions = False
-    if hasattr(ogr, 'GetUseExceptions'):
-        usingExceptions = ogr.GetUseExceptions()
-    ogr.UseExceptions()
-    try:
-        ds = ogr.Open(filename)
-    except Exception:
-        ds = None
-    opensOK = (ds is not None)
-    
-    if not usingExceptions:
-        ogr.DontUseExceptions()
-    return opensOK
-
-
-def makeVectorObjects(vectorfiles, controls):
-    """
-    Returns a dictionary of :class:`rios.vectorreader.Vector` objects,
-    with the keys being the attribute names used
-    on the vectorfiles object. This is then ready to
-    go into the :class:`rios.vectorreader.VectorReader` constructor. 
-    
-    """
-    vectordict = {}
-    namelist = sorted(vectorfiles.__dict__.keys())
-    for name in namelist:
-        burnvalue = controls.getOptionForImagename('burnvalue', name)
-        vectordatatype = controls.getOptionForImagename('vectordatatype', name)
-        alltouched = controls.getOptionForImagename('alltouched', name)
-        vectorlayer = controls.getOptionForImagename('vectorlayer', name)
-        burnattribute = controls.getOptionForImagename('burnattribute', name)
-        filtersql = controls.getOptionForImagename('filtersql', name)
-        tempdir = controls.tempdir
-        vectornull = controls.getOptionForImagename('vectornull', name)
-        
-        fileValue = getattr(vectorfiles, name)
-        if isinstance(fileValue, list):
-            veclist = []
-            for filename in fileValue:
-                vec = vectorreader.Vector(filename, burnvalue=burnvalue, datatype=vectordatatype,
-                    attribute=burnattribute, filter=filtersql, inputlayer=vectorlayer,
-                    alltouched=alltouched, tempdir=tempdir, nullval=vectornull)
-                veclist.append(vec)
-            vectordict[name] = veclist
-        elif isinstance(fileValue, basestring):
-            vectordict[name] = vectorreader.Vector(fileValue, burnvalue=burnvalue, 
-                datatype=vectordatatype, attribute=burnattribute, filter=filtersql, 
-                inputlayer=vectorlayer, alltouched=alltouched, tempdir=tempdir, 
-                nullval=vectornull)
-
-    return vectordict
-
-
-def makeInputImageLayerSelection(imagefiles, controls):
-    """
-    Make a dictionary with the same image name keys as imagefiles, but with
-    layerselection lists for each entry, as per the controls object. If only
-    some images have a layerselection set, then the remaining entries are None. 
-    
-    """
-    layerselection = {}
-    for name in imagefiles.__dict__.keys():
-        layerselection[name] = controls.getOptionForImagename('layerselection', name)
-    return layerselection
-
-
-class RIOSJobInfo(jobmanager.JobInfo):
-    """
-    Class that contains information for parameters to a RIOS
-    function
-    """
-    def __init__(self, info, inputs, otherargs=None):
-        self.info = info
-        self.inputs = inputs
-        self.otherargs = otherargs
-        # we don't bother pickling the outputs - start again 
-        # with a fresh BlockAssociations
-
-    def prepareForPickling(self):
-        """
-        GDAL datasets cannot be pickled
-        and neither stderr (in info.logginstream)
-        so we clean up the info object a bit
-
-        """
-        self.info.blocklookup = {}
-        self.info.loggingstream = None
-        return self
-
-    def getFunctionParams(self):
-        """
-        Return the parameters as a tuple.
-
-        When this is run in the subprocess, we can 
-        reset the info.loggingstream to something
-        other than None
-
-        """
-        if self.info.loggingstream is None:
-            self.info.loggingstream = imagereader.DEFAULTLOGGINGSTREAM
-        outputs = BlockAssociations()
-        params = (self.info, self.inputs, outputs)
-        if self.otherargs is not None:
-            params += (self.otherargs,)
-
-        return params
-
-    def getFunctionResult(self, params):
-        """
-        Return the ouputs parameter
-
-        """
-        return params[2]
-
