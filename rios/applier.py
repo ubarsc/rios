@@ -27,6 +27,8 @@ import queue
 
 import numpy
 
+# Some symbols are imported to here for easy access by the user, even
+# though they are not used in this module. Hence the "# noqa: F401"
 from . import rioserrors
 from .imagereader import DEFAULTFOOTPRINT, DEFAULTWINDOWXSIZE
 from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP
