@@ -676,7 +676,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     gdalObjCache = None
     if inBlockCache is None:
         if concurrency.numReadWorkers > 0:
-            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
+            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 60)
             readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
                 controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache,
                 timings)
@@ -686,6 +686,9 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         gdalOutObjCache = {}
 
     for blockDefn in blockList:
+        if readWorkerMgr is not None:
+            readWorkerMgr.checkWorkerErrors()
+
         readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
         if inBlockCache is None:
             with timings.interval('reading'):
@@ -737,11 +740,11 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     timings = Timers()
 
     numComputeWorkers = concurrency.numComputeWorkers
-    outBlockCache = BlockCache(outfiles, numComputeWorkers)
+    outBlockCache = BlockCache(outfiles, numComputeWorkers, 10)
     gdalOutObjCache = {}
 
     readWorkerMgr = None
-    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
+    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 60)
     if not concurrency.computeWorkersRead:
         readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
@@ -766,7 +769,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
                 readWorkerMgr.checkWorkerErrors()
 
             with timings.interval('pop_outcache'):
-                outputs = outBlockCache.popCompleteBlock(blockDefn, timeout=60)
+                outputs = outBlockCache.popCompleteBlock(blockDefn)
+
             if outputs is not None:
                 with timings.interval('writing'):
                     writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
