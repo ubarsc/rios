@@ -709,6 +709,19 @@ class ReadWorkerMgr:
         self.workerList = workerList
         self.readTaskQue = readTaskQue
 
+    def checkWorkerErrors(self):
+        """
+        Check for Exceptions raised by the workers. If we don't check, then
+        exceptions are hidden and we don't see them. If we find one,
+        then re-raise it here. This function must be called from the main
+        thread.
+        """
+        for worker in self.workerList:
+            if worker.done():
+                e = worker.exception(timeout=0)
+                if e is not None:
+                    raise e
+
     def shutdown(self):
         futures.wait(self.workerList)
         self.threadPool.shutdown()
