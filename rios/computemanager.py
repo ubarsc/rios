@@ -7,6 +7,7 @@ import time
 
 from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
+from .structures import CW_NONE, CW_THREADS, CW_PBS
 from .readerinfo import makeReaderInfo
 
 
@@ -17,7 +18,7 @@ class ComputeWorkerManager(ABC):
     A subclass implements a particular way of managing RIOS
     compute-workers. It should over-ride all abstract methods given here.
     """
-    computeWorkerKind = None
+    computeWorkerKind = CW_NONE
 
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
@@ -28,6 +29,12 @@ class ComputeWorkerManager(ABC):
             haveSharedTemp=True):
         """
         Start the specified compute workers
+        """
+
+    @abstractmethod
+    def checkWorkerErrors(self):
+        """
+        Check for errors in workers which might otherwise be hidden
         """
 
     @abstractmethod
@@ -59,6 +66,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
     """
     Manage compute workers using the threads within the current process.
     """
+    computeWorkerKind = CW_THREADS
+
     def __init__(self):
         self.threadPool = None
         self.workerList = None
@@ -101,7 +110,10 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
 
         """
         timings = Timers()
-        blockDefn = taskQ.get(block=False)
+        try:
+            blockDefn = taskQ.get(block=False)
+        except queue.Empty:
+            blockDefn = None
         while blockDefn is not None:
             readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
             with timings.interval('waitpopincache'):
@@ -109,7 +121,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             outputs = BlockAssociations()
             userArgs = (readerInfo, inputs, outputs)
             if otherArgs is not None:
-                userArgs += otherArgs
+                userArgs += (otherArgs, )
 
             with timings.interval('userfunction'):
                 userFunction(*userArgs)
@@ -117,10 +129,27 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             with timings.interval('waitaddoutcache'):
                 outBlockCache.insertCompleteBlock(blockDefn, outputs)
 
-            blockDefn = taskQ.get(block=False)
+            try:
+                blockDefn = taskQ.get(block=False)
+            except queue.Empty:
+                blockDefn = None
 
-        outqueue.put(otherArgs)
+        if otherArgs is not None:
+            outqueue.put(otherArgs)
         outqueue.put(timings)
+
+    def checkWorkerErrors(self):
+        """
+        Check for Exceptions raised by the workers. If we don't check, then
+        exceptions are hidden and we don't see them. If we find one,
+        then re-raise it here. This function must be called from the main
+        thread.
+        """
+        for worker in self.workerList:
+            if worker.done():
+                e = worker.exception(timeout=0)
+                if e is not None:
+                    raise e
 
     def shutdown(self):
         """
@@ -132,16 +161,21 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         # Make a list of all the objects the workers put into outqueue
         # on completion
         self.outObjList = []
-        outObj = self.outqueue.get(block=False)
-        while outObj is not None:
-            self.outObjList.append(outObj)
-            outObj = self.outqueue.get(block=False)
+        done = False
+        while not done:
+            try:
+                outObj = self.outqueue.get(block=False)
+                self.outObjList.append(outObj)
+            except queue.Empty:
+                done = True
 
 
 class PBSComputeWorkerMgr(ComputeWorkerManager):
     """
     Manage compute workers using the PBS batch queue.
     """
+    computeWorkerKind = CW_PBS
+
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockCache=None, outBlockCache=None,
@@ -290,7 +324,10 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         # Make a list of all the objects the workers put into outqueue
         # on completion
         self.outObjList = []
-        outObj = self.dataChan.outqueue.get(block=False)
-        while outObj is not None:
-            self.outObjList.append(outObj)
-            outObj = self.dataChan.outqueue.get(block=False)
+        done = False
+        while not done:
+            try:
+                outObj = self.outqueue.get(block=False)
+                self.outObjList.append(outObj)
+            except queue.Empty:
+                done = True
