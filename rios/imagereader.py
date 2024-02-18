@@ -71,13 +71,15 @@ def readBlockOneFile(blockDefn, symbolicName, seqNum, filename, gdalObjCache,
     margin = controls.overlap
     (left, top, xsize, ysize) = (blockDefn.left - margin,
             blockDefn.top - margin,
-            blockDefn.xsize + margin,
-            blockDefn.ysize + margin)
+            blockDefn.ncols + 2 * margin,
+            blockDefn.nrows + 2 * margin)
     # If we are reading all bands, just use the Dataset, but
     # if we are only reading selected bands, read each one and
     # then combine into a single array stack
     if bandObjList is None:
         arr = ds.ReadAsArray(left, top, xsize, ysize)
+        if len(arr.shape) == 2:
+            arr = numpy.expand_dims(arr, 0)
     else:
         arrList = [band.ReadAsArray(left, top, xsize, ysize)
             for band in bandObjList]
@@ -129,13 +131,13 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         dstSrs.ImportFromWkt(workinggrid.projection)
         resampleMethod = controls.getOptionForImagename('resampleMethod',
             symbolicName)
-        warpOptions = gdal.WarpOptions(format="VRT", outBounds=outBounds,
+        warpOptions = gdal.WarpOptions(format="VRT", outputBounds=outBounds,
             xRes=xRes, yRes=yRes, srcNodata=nullval,
-            dstNodata=nullval, dstSrs=dstSrs, overviewLevel=overviewLevel,
+            dstNodata=nullval, dstSRS=dstSrs, overviewLevel=overviewLevel,
             resampleAlg=resampleMethod)
         # Have to remove the vrtfile, because gdal.Warp won't over-write.
         os.remove(vrtfile)
-        gdal.Warp(vrtfile, filename, warpOptions)
+        gdal.Warp(vrtfile, filename, options=warpOptions)
         fileToOpen = vrtfile
 
     ds = gdal.Open(fileToOpen)

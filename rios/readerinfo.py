@@ -41,7 +41,7 @@ def makeReaderInfo(workinggrid, blockDefn, controls):
 
     """
     info = ReaderInfo(workinggrid, controls.windowxsize,
-            controls.windowysize, controls.overlap, controls.logginstream)
+            controls.windowysize, controls.overlap, controls.loggingstream)
     info.setBlockSize(blockDefn.ncols, blockDefn.nrows)
     transform = workinggrid.makeGeoTransform()
     (top, left) = (blockDefn.top, blockDefn.left)

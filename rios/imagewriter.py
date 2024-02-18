@@ -136,7 +136,10 @@ def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
 
         # Trim the margin
         m = controls.getOptionForImagename('overlap', symbolicName)
-        arrTrimmed = arr[:, m:-m, m:-m]
+        if m > 0:
+            arrTrimmed = arr[:, m:-m, m:-m]
+        else:
+            arrTrimmed = arr
         ds.WriteArray(arrTrimmed, blockDefn.left, blockDefn.top)
 
 

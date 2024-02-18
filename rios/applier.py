@@ -40,10 +40,10 @@ from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F4
 from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
 from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
-from .structures import BlockAssociations, OtherInputs
+from .structures import FilenameAssociations, BlockAssociations, OtherInputs # noqa: F401
 from .structures import BlockCache, Timers, TempfileManager, ApplierReturn
 from .structures import ReadWorkerMgr, ApplierBlockDefn
-from .structures import CW_NONE
+from .structures import CW_NONE, ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
 from .pixelgrid import PixelGridDefn, findCommonRegion
 from .readerinfo import makeReaderInfo
@@ -131,6 +131,7 @@ class ApplierControls(object):
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
         self.numThreads = 1
         self.jobManagerType = os.getenv('RIOS_DFLT_JOBMGRTYPE', default=None)
+        self.concurrency = ConcurrencyStyle()
         self.autoColorTableType = DEFAULT_AUTOCOLORTABLETYPE
         self.allowOverviewsGdalwarp = False
         self.approxStats = False
@@ -937,7 +938,7 @@ def makeBlockList(workinggrid, controls):
     ApplierBlockDefn objects
     """
     blockList = []
-    (nrows, ncols) = (workinggrid.nrows, workinggrid.ncols)
+    (nrows, ncols) = workinggrid.getDimensions()
     top = 0
     while top < nrows:
         ysize = min(controls.windowysize, (nrows - top))
@@ -945,7 +946,7 @@ def makeBlockList(workinggrid, controls):
         while left < ncols:
             xsize = min(controls.windowxsize, (ncols - left))
 
-            blockDefn = ApplierBlockDefn(top, left, xsize, ysize)
+            blockDefn = ApplierBlockDefn(top, left, ysize, xsize)
             blockList.append(blockDefn)
             left += xsize
         top += ysize
