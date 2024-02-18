@@ -741,18 +741,12 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     gdalOutObjCache = {}
 
     readWorkerMgr = None
-    inCacheMax = max(1, concurrency.numReadWorkers)
-    inBlockCache = BlockCache(infiles, inCacheMax)
+    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
     if not concurrency.computeWorkersRead and concurrency.numReadWorkers > 0:
         if concurrency.numReadWorkers > 0:
             readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
                 controls, tmpfileMgr, rasterizeMgr, workinggrid,
                 inBlockCache, timings)
-
-    gdalObjCache = None
-    if (concurrency.numReadWorkers == 0 and
-            not concurrency.computeWorkersRead):
-        gdalObjCache = {}
 
     computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
         userFunction=userFunction, infiles=infiles, outfiles=outfiles,
@@ -765,15 +759,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
 
     for blockDefn in blockList:
         computeMgr.checkWorkerErrors()
-        readWorkerMgr.checkWorkerErrors()
-
-        if (concurrency.numReadWorkers == 0 and
-                not concurrency.computeWorkersRead):
-            with timings.interval('reading'):
-                inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
-                    allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
-            with timings.interval('waitaddincache'):
-                inBlockCache.insertCompleteBlock(blockDefn, inputs)
+        if readWorkerMgr is not None:
+            readWorkerMgr.checkWorkerErrors()
 
         with timings.interval('waitpopoutcache'):
             outputs = outBlockCache.popCompleteBlock(blockDefn)
