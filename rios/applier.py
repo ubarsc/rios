@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Basic tools for setting up a function to be applied over 
 a raster processing chain. The :func:`rios.applier.apply` function is the main
