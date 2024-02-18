@@ -119,6 +119,275 @@ def anynotNone(items):
     return False
 
 
+def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
+        workinggrid):
+    """
+    Write the given block to the files given in outfiles
+    """
+    for (symbolicName, seqNum, filename) in outfiles:
+        arr = outputs[symbolicName, seqNum]
+        key = (symbolicName, seqNum)
+        if key not in gdalOutObjCache:
+            ds = openOutfile(symbolicName, filename, controls, arr,
+                    workinggrid)
+            gdalOutObjCache[symbolicName, seqNum] = ds
+
+        ds = gdalOutObjCache[symbolicName, seqNum]
+
+        # Trim the margin
+        m = controls.getOptionForImagename('overlap', symbolicName)
+        arrTrimmed = arr[:, m:-m, m:-m]
+        ds.WriteArray(arrTrimmed, blockDefn.left, blockDefn.top)
+
+
+def openOutfile(symbolicName, filename, controls, arr, workinggrid):
+    """
+    Open the requested output file
+    """
+    # RIOS only works with 3-d image arrays, where the first dimension is
+    # the number of bands. Check that this is what the user gave us to write.
+    if len(arr.shape) != 3:
+        msg = ("Shape of array to write must be 3-d. " +
+            "Shape is actually {}").format(repr(arr.shape))
+        raise rioserrors.ArrayShapeError(msg)
+
+    deleteIfExisting(filename)
+
+    driverName = controls.getOptionForImagename('drivername', symbolicName)
+    creationoptions = controls.getOptionForImagename('creationoptions',
+        symbolicName)
+    if creationoptions is None:
+        creationoptions = dfltDriverOptions.get(driverName, [])
+    creationoptions = doubleCheckCreationOptions(driverName, creationoptions,
+        controls)
+
+    numBands = arr.shape[0]
+    gdalDatatype = gdal_array.NumericTypeCodeToGDALTypeCode(arr.dtype)
+    (nrows, ncols) = workinggrid.getDimensions()
+    geotransform = workinggrid.makeGeoTransform()
+    projWKT = workinggrid.projection
+    thematic = controls.getOptionForImagename('thematic', symbolicName)
+    nullVal = controls.getOptionForImagename('statsIgnore', symbolicName)
+    layernames = controls.getOptionForImagename('layernames', symbolicName)
+
+    drvr = gdal.GetDriverByName(driverName)
+    ds = drvr.Create(filename, ncols, nrows, numBands, gdalDatatype,
+        creationoptions)
+    if ds is None:
+        msg = 'Unable to create output file {}'.format(filename)
+        raise rioserrors.ImageOpenError(msg)
+    ds.SetGeoTransform(geotransform)
+    ds.SetProjection(projWKT)
+
+    for i in range(numBands):
+        band = ds.GetRasterBand(i + 1)
+        if thematic:
+            band.SetMetadataItem('LAYER_TYPE', 'thematic')
+        band.SetNoDataValue(nullVal)
+        if layernames is not None:
+            band.SetDescription(layernames[i])
+
+    return ds
+
+
+def closeOutfiles(gdalOutObjCache, outfiles, controls):
+    """
+    Close all the output files
+    """
+    # getOpt is just a little local shortcut
+    getOpt = controls.getOptionForImagename
+
+    for (symbolicName, seqNum, filename) in outfiles:
+        doStats = getOpt('calcStats', symbolicName)
+        statsIgnore = getOpt('statsIgnore', symbolicName)
+        omitPyramids = getOpt('omitPyramids', symbolicName)
+        overviewLevels = getOpt('overviewLevels', symbolicName)
+        overviewMinDim = getOpt('overviewMinDim', symbolicName)
+        overviewAggType = getOpt('overviewAggType', symbolicName)
+        approxStats = getOpt('approxStats', symbolicName)
+        autoColorTableType = getOpt('autoColorTableType', symbolicName)
+        progress = getOpt('progress', symbolicName)
+        if progress is None:
+            from .cuiprogress import SilentProgress
+            progress = SilentProgress()
+
+        ds = gdalOutObjCache[symbolicName, seqNum]
+        if doStats:
+            if not omitPyramids:
+                calcstats.addPyramid(ds, progress, levels=overviewLevels,
+                    minoverviewdim=overviewMinDim,
+                    aggregationType=overviewAggType)
+
+            # Note that statsIgnore is passed in here. This is a historical
+            # anomaly, from when calcStats was the only time that the null
+            # value was set. In the current version, it is set when the file
+            # is created.
+            calcstats.calcStats(ds, progress, statsIgnore,
+                approx_ok=approxStats)
+
+        # This is doing everything I can to ensure the file gets fully closed
+        # at this point.
+        ds.FlushCache()
+        ds = None
+        del ds
+
+        # Check whether we will need to add an auto color table
+        if autoColorTableType is not None:
+            # Does nothing if layers are not thematic
+            addAutoColorTable(filename, autoColorTableType)
+
+
+def deleteIfExisting(filename):
+    """
+    Delete the filename if it already exists. If possible, use the
+    appropriate GDAL driver to do so, to ensure that any associated
+    files will also be deleted.
+
+    """
+    if os.path.exists(filename):
+        # Save the current exception-use state
+        usingExceptions = gdal.GetUseExceptions()
+        if not usingExceptions:
+            gdal.UseExceptions()
+
+        # Try opening it for read, to find out whether it is
+        # a valid GDAL file, and which driver it goes with
+        try:
+            ds = gdal.Open(str(filename))
+        except RuntimeError:
+            ds = None
+        finally:
+            # Restore exception-use state
+            if not usingExceptions:
+                gdal.DontUseExceptions()
+
+        if ds is not None:
+            # It is apparently a valid GDAL file, so get the driver
+            # appropriate for it, and use that to delete the file.
+            drvr = ds.GetDriver()
+            del ds
+            drvr.Delete(filename)
+        else:
+            # Apparently not a valid GDAL file, for whatever reason,
+            # so just remove the file directly.
+            os.remove(filename)
+
+
+def doubleCheckCreationOptions(drivername, creationoptions, controls):
+    """
+    Try to ensure that the given creation options are not incompatible with
+    RIOS operations. Does not attempt to ensure they are totally valid, as
+    that is GDAL's job.
+
+    Returns a copy of creationoptions, possibly modified, or raises
+    ImageOpenError in cases where the problem is not fixable.
+
+    """
+    newCreationoptions = creationoptions
+
+    if drivername == 'GTiff':
+        # The GDAL GTiff driver is incapable of reclaiming space within the
+        # file. This means that if a block is re-written, then the space
+        # already used is left dangling, and the total file size gets larger
+        # accordingly. If the RIOS block size is not a multiple of the TIFF
+        # block size, then each RIOS block will require the re-writing of at
+        # least one TIFF block (usually several). This turns out to be a
+        # disaster for file sizes. So, here, we do our best to check these
+        # things, and prevent such a result. The recommended configuration
+        # is that the $RIOS_DFLT_BLOCKXSIZE and $RIOS_DFLT_BLOCKYSIZE be
+        # set to a power of 2, and everything else will follow.
+
+        tiffBlockX = None
+        tiffBlockY = None
+        riosBlockX = controls.windowxsize
+        riosBlockY = controls.windowysize
+
+        # First copy the existing options, but keep aside any explicitly
+        # specified block size
+        newCreationoptions = []
+        for optStr in creationoptions:
+            if optStr[:11] == 'BLOCKXSIZE=':
+                tiffBlockX = int(optStr[11:])
+            elif optStr[:11] == 'BLOCKYSIZE=':
+                tiffBlockY = int(optStr[11:])
+            else:
+                newCreationoptions.append(optStr)
+
+        # If no tiff blocksizes were explictly requested, then set them the
+        # same as the RIOS block sizes
+        resettingTiffBlocksize = False
+        if tiffBlockX is None:
+            tiffBlockX = riosBlockX
+            resettingTiffBlocksize = True
+        if tiffBlockY is None:
+            tiffBlockY = riosBlockY
+            resettingTiffBlocksize = True
+
+        # Require that tiff block sizes be a factor of the RIOS block size, so
+        # that whole TIFF blocks are always written exactly once, with no
+        # re-writing.
+        if (((riosBlockX % tiffBlockX) != 0) or
+                ((riosBlockY % tiffBlockY) != 0)):
+            msg = ("GTiff block sizes {} should be factors of RIOS block " +
+                "sizes {}, otherwise vast amounts of space are wasted " +
+                "rewriting blocks which are not reclaimed.").format(
+                (tiffBlockX, tiffBlockY), (riosBlockX, riosBlockY))
+            raise rioserrors.ImageOpenError(msg)
+
+        # The GDAL GTiff driver will complain if GTiff block sizes are not
+        # powers of 2
+        def isPowerOf2(n):
+            return (((n - 1) & n) == 0)
+        if not (isPowerOf2(tiffBlockX) and isPowerOf2(tiffBlockY)):
+            msg = "GTiff block sizes are {}. Must be powers of 2. ".format(
+                (tiffBlockX, tiffBlockY))
+            if resettingTiffBlocksize:
+                msg += ("GTiff block size(s) have been reset to match RIOS " +
+                    "block sizes, so recommend adjusting RIOS block sizes.")
+            else:
+                msg += "Recommend resetting explicit GTiff block sizes."
+            raise rioserrors.ImageOpenError(msg)
+
+        # Now append what we want the block size to be.
+        newCreationoptions.append('BLOCKXSIZE={}'.format(controls.windowxsize))
+        newCreationoptions.append('BLOCKYSIZE={}'.format(controls.windowysize))
+
+    return newCreationoptions
+
+
+def addAutoColorTable(filename, autoColorTableType):
+    """
+    If autoColorTable has been set up for this output, then generate
+    a color table of the requested type, and add it to the current
+    file. This is called AFTER the Dataset has been closed, so is performed on
+    the filename. This only applies to thematic layers, so when we open the file
+    and find that the layers are athematic, we do nothing. 
+
+    """
+    imgInfo = fileinfo.ImageInfo(filename)
+    if imgInfo.layerType == "thematic":
+        imgStats = fileinfo.ImageFileStats(filename)
+        ds = gdal.Open(filename, gdal.GA_Update)
+
+        for i in range(imgInfo.rasterCount):
+            numEntries = int(imgStats[i].max + 1)
+            clrTbl = rat.genColorTable(numEntries, autoColorTableType)
+            band = ds.GetRasterBand(i + 1)
+            ratObj = band.GetDefaultRAT()
+            redIdx, redNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Red, "Red", gdal.GFT_Integer)
+            greenIdx, greenNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Green, "Green", gdal.GFT_Integer)
+            blueIdx, blueNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
+            alphaIdx, alphaNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Alpha, "Alpha", gdal.GFT_Integer)
+            # were any of these not already existing?
+            if redNew or greenNew or blueNew or alphaNew:
+                ratObj.WriteArray(clrTbl[:, 0], redIdx)
+                ratObj.WriteArray(clrTbl[:, 1], greenIdx)
+                ratObj.WriteArray(clrTbl[:, 2], blueIdx)
+                ratObj.WriteArray(clrTbl[:, 3], alphaIdx)
+            if not ratObj.ChangesAreWrittenToFile():
+                band.SetDefaultRAT(ratObj)
+
+
 class ImageWriter(object):
     """
     This class is the opposite of the ImageReader class and is designed
