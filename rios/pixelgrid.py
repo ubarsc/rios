@@ -63,11 +63,11 @@ class PixelGridDefn(object):
 
     The projection is given as a WKT string.
 
-    The constructor takes the projection, the number of rows and columns,
-    and EITHER a complete GDAL geotransform tuple, OR a grid specified
-    with all the extent limits and the pixel resolutions (xRes and yRes).
-    If the geotransform is given, then the xMin, xMax, xRes and so on
-    are calculated from it.
+    The constructor takes the projection, and EITHER a complete GDAL
+    geotransform tuple, with the number of rows and columns, OR a grid
+    specified with all the extent limits and the pixel resolutions
+    (xRes and yRes). If the geotransform is given, then the xMin, xMax, xRes
+    and so on are calculated from it.
     
     """
     def __init__(self, geotransform=None, nrows=None, ncols=None, projection=None,
