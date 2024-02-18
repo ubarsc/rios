@@ -756,19 +756,29 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
         tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp)
 
-    for blockDefn in blockList:
-        computeMgr.checkWorkerErrors()
-        if readWorkerMgr is not None:
-            readWorkerMgr.checkWorkerErrors()
+    try:
+        i = 0
+        while i < len(blockList):
+            blockDefn = blockList[i]
 
-        with timings.interval('pop_outcache'):
-            outputs = outBlockCache.popCompleteBlock(blockDefn)
-        with timings.interval('writing'):
-            writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
-                    controls, workinggrid)
+            computeMgr.checkWorkerErrors()
+            if readWorkerMgr is not None:
+                readWorkerMgr.checkWorkerErrors()
 
-    closeOutfiles(gdalOutObjCache, outfiles, controls)
-    computeMgr.shutdown()
+            with timings.interval('pop_outcache'):
+                outputs = outBlockCache.popCompleteBlock(blockDefn, timeout=60)
+            if outputs is not None:
+                with timings.interval('writing'):
+                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                            controls, workinggrid)
+
+                i += 1
+
+        closeOutfiles(gdalOutObjCache, outfiles, controls)
+    finally:
+        # It is important that the computeMgr always be shut down, as it
+        # could be running a NetworkDataChannel thread
+        computeMgr.shutdown()
     if readWorkerMgr is not None:
         readWorkerMgr.shutdown()
 
