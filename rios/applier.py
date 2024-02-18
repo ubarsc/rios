@@ -40,9 +40,9 @@ from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F4
 from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
 from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
-from .structures import FilenameAssociations, BlockAssociations, OtherInputs # noqa: F401
+from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockCache, Timers, TempfileManager, ApplierReturn
-from .structures import ReadWorkerMgr, ApplierBlockDefn
+from .structures import ReadWorkerMgr, ApplierBlockDefn, RasterizationMgr
 from .structures import CW_NONE, ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
 from .pixelgrid import PixelGridDefn, findCommonRegion
@@ -654,13 +654,14 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
 
     concurrency = controls.concurrency
     tmpfileMgr = TempfileManager(controls.tempdir)
+    rasterizeMgr = RasterizationMgr()
     readWorkerMgr = None
     gdalObjCache = None
     if inBlockCache is None:
         if concurrency.numReadWorkers > 0:
             inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
             readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
-                controls, tmpfileMgr, workinggrid, inBlockCache)
+                controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache)
         else:
             gdalObjCache = {}
     if outBlockCache is None:
@@ -671,7 +672,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         if inBlockCache is None:
             with timings.interval('reading'):
                 inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
-                    allInfo, gdalObjCache, controls, tmpfileMgr)
+                    allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
         else:
             with timings.interval('waitaddincache'):
                 inputs = inBlockCache.popCompleteBlock(blockDefn)
@@ -679,7 +680,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         outputs = BlockAssociations()
         userArgs = (readerInfo, inputs, outputs)
         if otherArgs is not None:
-            userArgs += otherArgs
+            userArgs += (otherArgs,)
 
         with timings.interval('userfunction'):
             userFunction(*userArgs)
@@ -713,6 +714,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     """
     concurrency = controls.concurrency
     tmpfileMgr = TempfileManager(controls.tempdir)
+    rasterizeMgr = RasterizationMgr()
     computeMgr = getComputeWorkerManager(concurrency.computeWorkerKind)
     timings = Timers()
 
@@ -747,7 +749,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
                 not concurrency.computeWorkersRead):
             with timings.interval('reading'):
                 inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
-                    allInfo, gdalObjCache, controls, tmpfileMgr)
+                    allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
             with timings.interval('waitaddincache'):
                 inBlockCache.insertCompleteBlock(blockDefn, inputs)
 
@@ -776,7 +778,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
 
 
 def startReadWorkers(blockList, infiles, allInfo, controls, tmpfileMgr,
-        workinggrid, inBlockCache, timings):
+        rasterizeMgr, workinggrid, inBlockCache, timings):
     """
     Start the requested number of read worker threads, within the current
     process. All threads will read single blocks from individual files
@@ -800,15 +802,15 @@ def startReadWorkers(blockList, infiles, allInfo, controls, tmpfileMgr,
     workerList = []
     for i in range(numWorkers):
         worker = threadPool.submit(readWorkerFunc, readTaskQue,
-            inBlockCache, controls, tmpfileMgr, workinggrid, allInfo,
-            timings)
+            inBlockCache, controls, tmpfileMgr, rasterizeMgr, workinggrid,
+            allInfo, timings)
         workerList.append(worker)
 
     return ReadWorkerMgr(threadPool, workerList, readTaskQue)
 
 
 def readWorkerFunc(readTaskQue, blockCache, gdalObjCache, controls, tmpfileMgr,
-        workinggrid, allInfo, timings):
+        rasterizeMgr, workinggrid, allInfo, timings):
     """
     This function runs in each read worker thread. The readTaskQue gives
     it tasks to perform (i.e. single blocks of data to read), and it loops
@@ -825,7 +827,8 @@ def readWorkerFunc(readTaskQue, blockCache, gdalObjCache, controls, tmpfileMgr,
         (blockDefn, symName, seqNum, filename) = readTask
         with timings.interval('reading'):
             arr = readBlockOneFile(symName, seqNum, filename,
-                gdalObjCache, controls, tmpfileMgr, workinggrid, allInfo)
+                gdalObjCache, controls, tmpfileMgr, rasterizeMgr,
+                workinggrid, allInfo)
 
         with timings.interval('waitaddincache'):
             blockCache.addBlockData(blockDefn, symName, seqNum, arr)
