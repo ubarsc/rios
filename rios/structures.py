@@ -14,6 +14,7 @@ import contextlib
 import queue
 import tempfile
 
+import numpy
 from osgeo import gdal
 
 
@@ -157,8 +158,8 @@ class ConcurrencyStyle:
         if ((numComputeWorkers > 0) and (not computeWorkersRead) and
                 (numReadWorkers == 0)):
             msg = ("Multiple non-reading compute workers with " +
-                    "no read workers is not a sensible choice. Best "
-                    "to make numReadWorkers at least 1")
+                   "no read workers is not a sensible choice. Best "
+                   "to make numReadWorkers at least 1")
             raise ValueError(msg)
 
 
@@ -400,23 +401,26 @@ class BlockCache:
                 self.completionEvents[blockDefn] = threading.Event()
             self.completionEvents[blockDefn].set()
 
-    def popCompleteBlock(self, blockDefn):
+    def popCompleteBlock(self, blockDefn, timeout=None):
         """
         Returns the BlockAssociations object for the given blockDefn,
         and removes it from the cache
         """
-        self.waitCompletion(blockDefn)
-        with self.lock:
-            if blockDefn in self.cache:
-                blockData = self.cache[blockDefn].blockData
-            else:
-                blockData = None
+        completed = self.waitCompletion(blockDefn, timeout=timeout)
+        if completed:
+            with self.lock:
+                if blockDefn in self.cache:
+                    blockData = self.cache[blockDefn].blockData
+                else:
+                    blockData = None
 
-            # Now remove this block from the cache
-            self.cache.pop(blockDefn)
-            self.completionEvents.pop(blockDefn)
-            # One less block in the cache, so increment the semaphore
-            self.cacheCount.release()
+                # Now remove this block from the cache
+                self.cache.pop(blockDefn)
+                self.completionEvents.pop(blockDefn)
+                # One less block in the cache, so increment the semaphore
+                self.cacheCount.release()
+        else:
+            blockData = None
 
         return blockData
 
@@ -497,6 +501,39 @@ class Timers:
                     self.pairs[intervalName].extend(other.pairs[intervalName])
                 else:
                     self.pairs[intervalName] = other.pairs[intervalName]
+
+    def makeSummaryDict(self):
+        """
+        Make some summary statistics, and return them in a dictionary
+        """
+        d = {}
+        for name in self.pairs:
+            intervals = numpy.array(self.getDurationsForName(name))
+            tot = intervals.sum()
+            mean = intervals.mean()
+            d[name] = {'mean': mean, 'tot': tot}
+        return d
+
+    def formatReport(self):
+        """
+        Format a simple report. Return as a formatted string
+        """
+        d = self.makeSummaryDict()
+        reportLines = [
+            "Wall clock elapsed time: {:.1f} seconds".format(
+                d['walltime']['tot']),
+            "",
+            "{:14s}       {:13s}".format("Timer", "Total (sec)"),
+            "-"*31
+        ]
+        fieldOrder = ['reading', 'userfunction', 'writing', 'add_incache',
+            'pop_incache', 'add_outcache', 'pop_outcache']
+        for name in fieldOrder:
+            if name in d:
+                line = "{:14s}    {:8.1f}".format(name, d[name]['tot'])
+                reportLines.append(line)
+        reportStr = '\n'.join(reportLines)
+        return reportStr
 
 
 class NetworkDataChannel:
