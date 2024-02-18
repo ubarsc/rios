@@ -92,16 +92,17 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
 
         self.threadPool = futures.ThreadPoolExecutor(max_workers=numWorkers)
         self.workerList = []
-        for i in range(numWorkers):
+        for workerID in range(numWorkers):
             worker = self.threadPool.submit(self.worker, userFunction, infiles,
                 outfiles, otherArgs, controls, allInfo, workinggrid,
-                self.taskQ, inBlockCache, outBlockCache, self.outqueue)
+                self.taskQ, inBlockCache, outBlockCache, self.outqueue,
+                workerID)
             self.workerList.append(worker)
 
     @staticmethod
     def worker(userFunction, infiles, outfiles, otherArgs, controls,
             allInfo, workinggrid, taskQ, inBlockCache, outBlockCache,
-            outqueue):
+            outqueue, workerID):
         """
         This function is a worker for a single thread.
 
