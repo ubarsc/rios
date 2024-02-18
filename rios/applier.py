@@ -30,13 +30,14 @@ import numpy
 
 from . import rioserrors
 from .imagereader import DEFAULTFOOTPRINT, DEFAULTWINDOWXSIZE
-from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP, DEFAULTLOGGINGSTREAM
+from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP
+from .imagereader import DEFAULTLOGGINGSTREAM                         # noqa: F401
 from .imagereader import readBlockAllFiles, readBlockOneFile
-from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS
-from .imagewriter import dfltDriverOptions, writeBlock, closeOutfiles
-from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE
+from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS    # noqa: F401
+from .imagewriter import writeBlock, closeOutfiles
+from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F401
 from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
-from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE
+from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import BlockAssociations, OtherInputs
 from .structures import BlockCache, Timers, TempfileManager, ApplierReturn
