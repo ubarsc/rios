@@ -49,6 +49,9 @@ def makeReaderInfo(workinggrid, blockDefn, controls):
     (bottom, right) = (left + blockDefn.ncols, top + blockDefn.nrows)
     blockbr = imageio.pix2wld(transform, right, bottom)
     info.setBlockBounds(blocktl, blockbr)
+    xblock = int(round(left / controls.windowxsize))
+    yblock = int(round(top / controls.windowysize))
+    info.setBlockCount(xblock, yblock)
 
     return info
 
