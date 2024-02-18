@@ -154,6 +154,13 @@ class ConcurrencyStyle:
             msg = "Compute workers requested, but no computeWorkerKind given"
             raise ValueError(msg)
 
+        if ((numComputeWorkers > 0) and (not computeWorkersRead) and
+                (numReadWorkers == 0)):
+            msg = ("Multiple non-reading compute workers with " +
+                    "no read workers is not a sensible choice. Best "
+                    "to make numReadWorkers at least 1")
+            raise ValueError(msg)
+
 
 class FilenameAssociations(object):
     """
