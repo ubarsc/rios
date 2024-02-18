@@ -524,7 +524,7 @@ class Timers:
                 d['walltime']['tot']),
             "",
             "{:14s}       {:13s}".format("Timer", "Total (sec)"),
-            "-"*31
+            ("-" * 31)
         ]
         fieldOrder = ['reading', 'userfunction', 'writing', 'add_incache',
             'pop_incache', 'add_outcache', 'pop_outcache']
