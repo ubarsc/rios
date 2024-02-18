@@ -640,13 +640,13 @@ class RasterizationMgr:
 
         """
         with self.lock:
-            if vectorfile not in self.perfileLocks:
+            if vectorfile not in self.perFileLocks:
                 self.perFileLocks[vectorfile] = threading.Lock()
         with self.perFileLocks[vectorfile]:
             if vectorfile not in self.lookup:
                 tmpraster = tmpfileMgr.mktempfile(prefix='rios_vecrast_',
                     suffix='.tif')
-                gdal.Rasterize(tmpraster, vectorfile, rasterizeOptions)
+                gdal.Rasterize(tmpraster, vectorfile, options=rasterizeOptions)
                 self.lookup[vectorfile] = tmpraster
                 
         return self.lookup[vectorfile]
