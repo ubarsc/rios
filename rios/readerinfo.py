@@ -29,6 +29,30 @@ from osgeo import gdal_array
 from . import imageio
 
 
+def makeReaderInfo(workinggrid, blockDefn, controls):
+    """
+    Construct a ReaderInfo object for the current block.
+
+    In earlier versions of RIOS, this was constructed more organically
+    during the block iteration process (although it was rather obscure,
+    even then). In newer versions, we are putting it together from
+    other information, to maintain full compatibility when this is passed
+    to the user function. It is not used for any other purpose within RIOS.
+
+    """
+    info = ReaderInfo(workinggrid, controls.windowxsize,
+            controls.windowysize, controls.overlap, controls.logginstream)
+    info.setBlockSize(blockDefn.ncols, blockDefn.nrows)
+    transform = workinggrid.makeGeoTransform()
+    (top, left) = (blockDefn.top, blockDefn.left)
+    blocktl = imageio.pix2wld(transform, left, top)
+    (bottom, right) = (left + blockDefn.ncols, top + blockDefn.nrows)
+    blockbr = imageio.pix2wld(transform, right, bottom)
+    info.setBlockBounds(blocktl, blockbr)
+
+    return info
+
+
 class ReaderInfo(object):
     """
     ReaderInfo class. Holds information about the area being
