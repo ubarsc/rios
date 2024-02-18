@@ -334,11 +334,12 @@ class BlockCache:
     within a given process, so includes locking mechanisms to
     make it thread-safe.
     """
-    def __init__(self, filenameAssoc, numWorkers):
+    def __init__(self, filenameAssoc, numWorkers, popTimeout):
         self.CACHEMAX = 2 * numWorkers
         self.lock = threading.Lock()
         self.cache = {}
         self.completionEvents = {}
+        self.popTimeout = popTimeout
 
         # This semaphore counts backwards for the number of blocks
         # currently in the cache. A semaphore value of zero would
@@ -401,18 +402,15 @@ class BlockCache:
                 self.completionEvents[blockDefn] = threading.Event()
             self.completionEvents[blockDefn].set()
 
-    def popCompleteBlock(self, blockDefn, timeout=None):
+    def popCompleteBlock(self, blockDefn):
         """
         Returns the BlockAssociations object for the given blockDefn,
         and removes it from the cache
         """
-        completed = self.waitCompletion(blockDefn, timeout=timeout)
+        completed = self.waitCompletion(blockDefn, timeout=self.popTimeout)
         if completed:
             with self.lock:
-                if blockDefn in self.cache:
-                    blockData = self.cache[blockDefn].blockData
-                else:
-                    blockData = None
+                blockData = self.cache[blockDefn].blockData
 
                 # Now remove this block from the cache
                 self.cache.pop(blockDefn)
@@ -464,6 +462,10 @@ class ApplierBlockDefn:
         thisID = (self.top, self.left, self.nrows, self.ncols)
         otherID = (other.top, other.left, other.nrows, other.ncols)
         return (thisID == otherID)
+
+    def __repr__(self):
+        return 'ApplierBlockDefn({}, {}, {}, {})'.format(self.top,
+            self.left, self.nrows, self.ncols)
 
 
 class Timers:
