@@ -7,6 +7,7 @@ import argparse
 from osgeo import gdal
 
 from rios import applier
+from rios.structures import NetworkDataChannel
 
 
 def getCmdargs():
@@ -46,7 +47,7 @@ def mainCmd():
     (host, port, authkey) = tuple(addrStr.split(','))
     port = int(port)
 
-    dataChan = NetworkDataChan(hostname=host, portnum=port, authkey=authkey)
+    dataChan = NetworkDataChannel(hostname=host, portnum=port, authkey=authkey)
 
     riosComputeWorker(cmdargs.idnum, dataChan)
 
