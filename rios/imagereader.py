@@ -1,4 +1,3 @@
-
 """
 Contains the ImageReader class
 
@@ -18,16 +17,19 @@ Contains the ImageReader class
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import os
 import sys
 import copy
+
 import numpy
+from osgeo import gdal, osr
 
 from . import imageio
 from . import inputcollection
 from . import readerinfo
 from . import rioserrors
+from .structures import BlockAssociations, RasterizationMgr
+from .fileinfo import ImageInfo, VectorFileInfo
 
 if sys.version_info[0] > 2:
     # hack for Python 3 which uses str instead of basestring
@@ -40,6 +42,111 @@ DEFAULTWINDOWXSIZE = int(os.getenv('RIOS_DFLT_BLOCKXSIZE', default=256))
 DEFAULTWINDOWYSIZE = int(os.getenv('RIOS_DFLT_BLOCKYSIZE', default=256))
 DEFAULTOVERLAP = int(os.getenv('RIOS_DFLT_OVERLAP', default=0))
 DEFAULTLOGGINGSTREAM = sys.stdout
+
+
+def readBlockAllFiles(infiles, workinggrid, blockDefn, allInfo, gdalObjCache,
+        controls, tmpfileMgr):
+    """
+    Read all input files for a single block.
+    Return the complete BlockAssociations object (i.e. 'inputs').
+    """
+    inputs = BlockAssociations(infiles)
+    for (symbolicName, seqNum, filename) in infiles:
+        arr = readBlockOneFile(blockDefn, symbolicName, seqNum, filename,
+            gdalObjCache, controls, tmpfileMgr, workinggrid, allInfo)
+        inputs[symbolicName, seqNum] = arr
+    return inputs
+
+
+def readBlockOneFile(blockDefn, symbolicName, seqNum, filename, gdalObjCache,
+        controls, tmpfileMgr, workinggrid, allInfo):
+    if (symbolicName, seqNum) not in gdalObjCache:
+        fileInfo = allInfo[symbolicName, seqNum]
+        (ds, bandObjList) = openForWorkingGrid(filename, workinggrid,
+            fileInfo, controls, tmpfileMgr, symbolicName)
+        gdalObjCache[symbolicName, seqNum] = (ds, bandObjList)
+
+    (ds, bandObjList) = gdalObjCache[symbolicName, seqNum]
+
+    margin = controls.overlap
+    (left, top, xsize, ysize) = (blockDefn.left - margin,
+            blockDefn.top - margin,
+            blockDefn.xsize + margin,
+            blockDefn.ysize + margin)
+    # If we are reading all bands, just use the Dataset, but
+    # if we are only reading selected bands, read each one and
+    # then combine into a single array stack
+    if bandObjList is None:
+        arr = ds.ReadAsArray(left, top, xsize, ysize)
+    else:
+        arrList = [band.ReadAsArray(left, top, xsize, ysize)
+            for band in bandObjList]
+        arr = numpy.array(arrList)
+
+    return arr
+
+
+def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
+        tmpfileMgr, symbolicName):
+    """
+    If the fileInfo for the given filename is a raster, aligned with
+    the working grid, just open it. If it is a raster, but not aligned,
+    do a warp VRT that makes it aligned, and open that instead.
+    If it is a vector, then first rasterize onto the working grid in a
+    temp file, and open that.
+
+    Either way, return a GDAL Dataset object and potentially a list of
+    band objects corresponding to the selected bands. If selectedBands
+    is None, so is bandObjList, and so should use ds.ReadAsArray instead
+    of band.ReadAsArray.
+
+    """
+    if isinstance(fileInfo, VectorFileInfo):
+        # make a pixgrid of vector extent
+        # Work out intersection with workinggrid, in vector's projection
+        # Make rasterizeOptions
+        # tmprast = rasterizeMgr.rasterize(filename, rasterizeOptions, tmpfileMgr)
+        # fileInfo = ImageInfo(tmprast)
+        # filename = tmprast
+        pass
+
+    if isinstance(fileInfo, ImageInfo):
+        vrtfile = tmpfileMgr.mktempfile(suffix='.vrt')
+        (xRes, yRes) = (workinggrid.xRes, abs(workinggrid.yRes))
+        margin = controls.overlap
+        # The world coordinates of the extent. Note that we make
+        # it bigger around the edges if we are working with an overlap
+        outBounds = (workinggrid.xMin - margin * xRes,
+                     workinggrid.yMin - margin * yRes,
+                     workinggrid.xMax + margin * xRes,
+                     workinggrid.yMax + margin * yRes)
+        nullval = fileInfo.nodataval
+        overviewLevel = 'NONE'
+        if controls.getOptionForImagename('allowOverviewsGdalwarp',
+                symbolicName):
+            overviewLevel = 'AUTO'
+        dstSrs = osr.SpatialReference()
+        dstSrs.ImportFromWkt(workinggrid.projection)
+        resampleMethod = controls.getOptionForImagename('resampleMethod',
+            symbolicName)
+        warpOptions = gdal.WarpOptions(format="VRT", outBounds=outBounds,
+            xRes=xRes, yRes=yRes, srcNodata=nullval,
+            dstNodata=nullval, dstSrs=dstSrs, overviewLevel=overviewLevel,
+            resampleAlg=resampleMethod)
+        # Have to remove the vrtfile, because gdal.Warp won't over-write.
+        os.remove(vrtfile)
+        gdal.Warp(vrtfile, filename, warpOptions)
+        fileToOpen = vrtfile
+
+    ds = gdal.Open(fileToOpen)
+    layerselection = controls.getOptionForImagename('layerselection',
+            symbolicName)
+    if layerselection is None:
+        bandObjList = None
+    else:
+        bandObjList = [ds.GetRasterBand(i) for i in layerselection]
+
+    return (ds, bandObjList)
 
 
 class ImageIterator(object):
