@@ -692,7 +692,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                 inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
                     allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
         else:
-            with timings.interval('waitaddincache'):
+            with timings.interval('add_incache'):
                 inputs = inBlockCache.popCompleteBlock(blockDefn)
 
         outputs = BlockAssociations()
@@ -708,7 +708,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                 writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
                     controls, workinggrid)
         else:
-            with timings.interval('waitaddoutcache'):
+            with timings.interval('add_outcache'):
                 outBlockCache.insertCompleteBlock(blockDefn, outputs)
 
     if outBlockCache is None:
@@ -761,7 +761,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         if readWorkerMgr is not None:
             readWorkerMgr.checkWorkerErrors()
 
-        with timings.interval('waitpopoutcache'):
+        with timings.interval('pop_outcache'):
             outputs = outBlockCache.popCompleteBlock(blockDefn)
         with timings.interval('writing'):
             writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
@@ -841,7 +841,7 @@ def readWorkerFunc(readTaskQue, blockCache, controls, tmpfileMgr,
                 gdalObjCache, controls, tmpfileMgr, rasterizeMgr,
                 workinggrid, allInfo)
 
-        with timings.interval('waitaddincache'):
+        with timings.interval('add_incache'):
             blockCache.addBlockData(blockDefn, symName, seqNum, arr)
 
         try:

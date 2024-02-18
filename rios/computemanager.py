@@ -116,7 +116,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             blockDefn = None
         while blockDefn is not None:
             readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
-            with timings.interval('waitpopincache'):
+            with timings.interval('pop_incache'):
                 inputs = inBlockCache.popCompleteBlock(blockDefn)
             outputs = BlockAssociations()
             userArgs = (readerInfo, inputs, outputs)
@@ -126,7 +126,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             with timings.interval('userfunction'):
                 userFunction(*userArgs)
 
-            with timings.interval('waitaddoutcache'):
+            with timings.interval('add_outcache'):
                 outBlockCache.insertCompleteBlock(blockDefn, outputs)
 
             try:
