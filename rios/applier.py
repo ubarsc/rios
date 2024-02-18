@@ -742,11 +742,10 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
 
     readWorkerMgr = None
     inBlockCache = BlockCache(infiles, concurrency.numReadWorkers)
-    if not concurrency.computeWorkersRead and concurrency.numReadWorkers > 0:
-        if concurrency.numReadWorkers > 0:
-            readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
-                controls, tmpfileMgr, rasterizeMgr, workinggrid,
-                inBlockCache, timings)
+    if not concurrency.computeWorkersRead:
+        readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
+            controls, tmpfileMgr, rasterizeMgr, workinggrid,
+            inBlockCache, timings)
 
     computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
         userFunction=userFunction, infiles=infiles, outfiles=outfiles,
