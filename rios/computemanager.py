@@ -188,6 +188,17 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
     """
     computeWorkerKind = CW_PBS
 
+    def __init__(self):
+        try:
+            subprocess.Popen(['qsub'], stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, universal_newlines=True)
+            pbsInstalled = True
+        except FileNotFoundError:
+            pbsInstalled = False
+
+        if not pbsInstalled:
+            raise rioserrors.UnavailableError("PBS is not available")
+
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockCache=None, outBlockCache=None,
@@ -322,6 +333,10 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             if not allFinished:
                 # Sleep for a bit before checking again
                 time.sleep(60)
+
+    def checkWorkerErrors(self):
+        "Not yet implemented"
+        pass
 
     def shutdown(self):
         """
