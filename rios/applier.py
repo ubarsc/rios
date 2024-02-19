@@ -24,6 +24,8 @@ import os
 import sys
 from concurrent import futures
 import queue
+import threading
+import traceback
 
 import numpy
 
@@ -676,7 +678,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     gdalObjCache = None
     if inBlockCache is None:
         if concurrency.numReadWorkers > 0:
-            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 60)
+            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 10)
             readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
                 controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache,
                 timings)
@@ -687,10 +689,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
 
     numBlocks = len(blockList)
     blockNdx = 0
-    while blockNdx < numBlocks:
-        if readWorkerMgr is not None:
-            readWorkerMgr.checkWorkerErrors()
-
+    forceExit = False
+    while blockNdx < numBlocks and not forceExit:
         if inBlockCache is None:
             blockDefn = blockList[blockNdx]
             with timings.interval('reading'):
@@ -707,24 +707,30 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         if otherArgs is not None:
             userArgs += (otherArgs,)
 
-        with timings.interval('userfunction'):
-            userFunction(*userArgs)
+        try:
+            with timings.interval('userfunction'):
+                userFunction(*userArgs)
+        except Exception as e:
+            traceback.print_exception(e)
+            forceExit = True
 
-        if outBlockCache is None:
-            with timings.interval('writing'):
-                writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
-                    controls, workinggrid)
-        else:
-            with timings.interval('add_outcache'):
-                outBlockCache.insertCompleteBlock(blockDefn, outputs)
+        if not forceExit:
+            if outBlockCache is None:
+                with timings.interval('writing'):
+                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                        controls, workinggrid)
+            else:
+                with timings.interval('add_outcache'):
+                    outBlockCache.insertCompleteBlock(blockDefn, outputs)
 
         blockNdx += 1
 
-    if outBlockCache is None:
-        with timings.interval('writing'):
-            closeOutfiles(gdalOutObjCache, outfiles, controls)
-    if readWorkerMgr is not None:
-        readWorkerMgr.shutdown()
+    if not forceExit:
+        if outBlockCache is None:
+            with timings.interval('writing'):
+                closeOutfiles(gdalOutObjCache, outfiles, controls)
+        if readWorkerMgr is not None:
+            readWorkerMgr.shutdown()
 
     # Set up returns object
     rtn = ApplierReturn()
@@ -749,7 +755,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     gdalOutObjCache = {}
 
     readWorkerMgr = None
-    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 60)
+    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 10)
     if not concurrency.computeWorkersRead:
         readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
@@ -767,22 +773,25 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     try:
         numBlocks = len(blockList)
         blockNdx = 0
-        while blockNdx < numBlocks:
-            computeMgr.checkWorkerErrors()
-            if readWorkerMgr is not None:
-                readWorkerMgr.checkWorkerErrors()
-
+        forceExit = False
+        while blockNdx < numBlocks and not forceExit:
             with timings.interval('pop_outcache'):
+              try:
                 (blockDefn, outputs) = outBlockCache.popNextBlock()
+              except rioserrors.TimeoutError as e:
+                traceback.print_exception(e)
+                forceExit = True
 
-            with timings.interval('writing'):
-                writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
-                        controls, workinggrid)
+            if not forceExit:
+                with timings.interval('writing'):
+                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                            controls, workinggrid)
 
             blockNdx += 1
 
-        with timings.interval('writing'):
-            closeOutfiles(gdalOutObjCache, outfiles, controls)
+        if not forceExit:
+            with timings.interval('writing'):
+                closeOutfiles(gdalOutObjCache, outfiles, controls)
     finally:
         # It is important that the computeMgr always be shut down, as it
         # could be running a NetworkDataChannel thread
@@ -826,17 +835,18 @@ def startReadWorkers(blockList, infiles, allInfo, controls, tmpfileMgr,
             readTaskQue.put(task)
 
     workerList = []
+    forceExit = threading.Event()
     for i in range(numWorkers):
         worker = threadPool.submit(readWorkerFunc, readTaskQue,
             inBlockCache, controls, tmpfileMgr, rasterizeMgr, workinggrid,
-            allInfo, timings)
+            allInfo, timings, forceExit)
         workerList.append(worker)
 
-    return ReadWorkerMgr(threadPool, workerList, readTaskQue)
+    return ReadWorkerMgr(threadPool, workerList, readTaskQue, forceExit)
 
 
 def readWorkerFunc(readTaskQue, blockCache, controls, tmpfileMgr,
-        rasterizeMgr, workinggrid, allInfo, timings):
+        rasterizeMgr, workinggrid, allInfo, timings, forceExit):
     """
     This function runs in each read worker thread. The readTaskQue gives
     it tasks to perform (i.e. single blocks of data to read), and it loops
@@ -852,7 +862,7 @@ def readWorkerFunc(readTaskQue, blockCache, controls, tmpfileMgr,
         readTask = readTaskQue.get(block=False)
     except queue.Empty:
         readTask = None
-    while readTask is not None:
+    while readTask is not None and not forceExit.is_set():
         (blockDefn, symName, seqNum, filename) = readTask
         with timings.interval('reading'):
             arr = readBlockOneFile(blockDefn, symName, seqNum, filename,

@@ -13,6 +13,7 @@ import time
 import contextlib
 import queue
 import tempfile
+import traceback
 
 import numpy
 from osgeo import gdal
@@ -336,12 +337,12 @@ class BlockCache:
     within a given process, so includes locking mechanisms to
     make it thread-safe.
     """
-    def __init__(self, filenameAssoc, numWorkers, popTimeout):
+    def __init__(self, filenameAssoc, numWorkers, timeout):
         self.CACHEMAX = 2 * numWorkers
         self.lock = threading.Lock()
         self.cache = {}
         self.completionEvents = {}
-        self.popTimeout = popTimeout
+        self.timeout = timeout
         self.nextBlockQ = queue.Queue()
 
         # This semaphore counts backwards for the number of blocks
@@ -370,7 +371,7 @@ class BlockCache:
         """
         # Acquire (i.e. decrement) this semaphore, in case we are about
         # to add a whole new block
-        self.cacheCount.acquire()
+        self.cacheCount.acquire(timeout=self.timeout)
 
         with self.lock:
             if blockDefn not in self.cache:
@@ -393,7 +394,7 @@ class BlockCache:
         """
         Use when inserting a complete BlockAssociations object at once
         """
-        self.cacheCount.acquire()
+        self.cacheCount.acquire(self.timeout)
         with self.lock:
             if blockDefn in self.cache:
                 # We did not actually add a new entry, so increment
@@ -412,7 +413,7 @@ class BlockCache:
         Returns the BlockAssociations object for the given blockDefn,
         and removes it from the cache
         """
-        completed = self.waitCompletion(blockDefn, timeout=self.popTimeout)
+        completed = self.waitCompletion(blockDefn, timeout=self.timeout)
         if completed:
             with self.lock:
                 blockData = self.cache[blockDefn].blockData
@@ -437,13 +438,13 @@ class BlockCache:
 
         """
         try:
-            nextBlock = self.nextBlockQ.get(timeout=self.popTimeout)
+            nextBlock = self.nextBlockQ.get(timeout=self.timeout)
             timedout = False
         except queue.Empty:
             timedout = True
 
         if timedout:
-            msg = "BlockCache timeout at {} seconds".format(self.popTimeout)
+            msg = "BlockCache timeout at {} seconds".format(self.timeout)
             raise rioserrors.TimeoutError(msg)
 
         blockData = self.popCompleteBlock(nextBlock)
@@ -782,10 +783,11 @@ class ReadWorkerMgr:
     Simple class to hold all the things we need to sustain for
     the read worker threads
     """
-    def __init__(self, threadPool, workerList, readTaskQue):
+    def __init__(self, threadPool, workerList, readTaskQue, forceExit):
         self.threadPool = threadPool
         self.workerList = workerList
         self.readTaskQue = readTaskQue
+        self.forceExit = forceExit
 
     def checkWorkerErrors(self):
         """
@@ -798,9 +800,11 @@ class ReadWorkerMgr:
             if worker.done():
                 e = worker.exception(timeout=0)
                 if e is not None:
-                    raise e
+                    traceback.print_exception(e)
 
     def shutdown(self):
+        self.checkWorkerErrors()
+        self.forceExit.set()
         futures.wait(self.workerList)
         self.threadPool.shutdown()
 

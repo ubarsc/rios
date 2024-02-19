@@ -4,6 +4,8 @@ from concurrent import futures
 import queue
 import subprocess
 import time
+import threading
+import traceback
 
 from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
@@ -73,6 +75,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         self.workerList = None
         self.taskQ = queue.Queue()
         self.outqueue = queue.Queue()
+        self.forceExit = threading.Event()
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
@@ -114,7 +117,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             blockDefn = taskQ.get(block=False)
         except queue.Empty:
             blockDefn = None
-        while blockDefn is not None:
+        while blockDefn is not None and not self.forceExit.is_set():
             readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
             with timings.interval('pop_incache'):
                 (blockDefn, inputs) = inBlockCache.popNextBlock()
@@ -149,12 +152,14 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             if worker.done():
                 e = worker.exception(timeout=0)
                 if e is not None:
-                    raise e
+                    traceback.print_exception(e)
 
     def shutdown(self):
         """
         Shut down the thread pool
         """
+        self.checkWorkerErrors()
+        self.forceExit.set()
         futures.wait(self.workerList)
         self.threadPool.shutdown()
 
