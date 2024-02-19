@@ -188,17 +188,6 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
     """
     computeWorkerKind = CW_PBS
 
-    def __init__(self):
-        try:
-            subprocess.Popen(['qsub'], stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, universal_newlines=True)
-            pbsInstalled = True
-        except FileNotFoundError:
-            pbsInstalled = False
-
-        if not pbsInstalled:
-            raise rioserrors.UnavailableError("PBS is not available")
-
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockCache=None, outBlockCache=None,
@@ -289,8 +278,14 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         open(scriptfile, 'w').write(scriptStr + "\n")
 
         submitCmdWords = ["qsub", scriptfile]
-        proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE, universal_newlines=True)
+        try:
+            proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, universal_newlines=True)
+            pbsAvailable = True
+        except FileNotFoundError:
+            pbsAvailable = False
+        if not pbsAvailable:
+            raise rioserrors.UnavailableError("PBS is not available")
         # The qsub command exits almost immediately, printing the PBS job id
         # to stdout. So, we just wait for the qsub to finish, and grab the
         # jobID string.
