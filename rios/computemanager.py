@@ -9,7 +9,7 @@ import traceback
 
 from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
-from .structures import CW_NONE, CW_THREADS, CW_PBS
+from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
 from .readerinfo import makeReaderInfo
 
 
@@ -50,6 +50,13 @@ def getComputeWorkerManager(cwKind):
     """
     Returns a compute-worker manager object of the requested kind.
     """
+    unImplemented = {CW_PBS: 'CW_PBS', CW_SLURM: 'CW_SLURM',
+        CW_AWSBATCH: 'CW_AWSBATCH'}
+    if cwKind in unImplemented:
+        msg = ("computeWorkerKind '{}' is known, " +
+            "but not yet implemented").format(unImplemented[cwKind])
+        raise NotImplementedError(msg)
+
     cwMgrClass = None
     subClasses = ComputeWorkerManager.__subclasses__()
     for c in subClasses:
