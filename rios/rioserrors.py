@@ -132,3 +132,7 @@ class ColorTableGenerationError(RiosError):
 
 class PermissionError(RiosError):
     "Error due to permissions on temp files"
+
+
+class TimeoutError(RiosError):
+    pass
