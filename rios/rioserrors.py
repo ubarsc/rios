@@ -135,4 +135,8 @@ class PermissionError(RiosError):
 
 
 class TimeoutError(RiosError):
-    pass
+    "Something timed out"
+
+
+class UnavailableError(RiosError):
+    "A dependency is unavailable"
