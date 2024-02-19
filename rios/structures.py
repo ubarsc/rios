@@ -17,6 +17,8 @@ import tempfile
 import numpy
 from osgeo import gdal
 
+from . import rioserrors
+
 
 CW_NONE = 1
 CW_THREADS = 2
@@ -340,6 +342,7 @@ class BlockCache:
         self.cache = {}
         self.completionEvents = {}
         self.popTimeout = popTimeout
+        self.nextBlockQ = queue.Queue()
 
         # This semaphore counts backwards for the number of blocks
         # currently in the cache. A semaphore value of zero would
@@ -384,6 +387,7 @@ class BlockCache:
                 self.completionEvents[blockDefn] = threading.Event()
             if self.cache[blockDefn].complete():
                 self.completionEvents[blockDefn].set()
+                self.nextBlockQ.put(blockDefn)
 
     def insertCompleteBlock(self, blockDefn, blockData):
         """
@@ -401,6 +405,7 @@ class BlockCache:
             if blockDefn not in self.completionEvents:
                 self.completionEvents[blockDefn] = threading.Event()
             self.completionEvents[blockDefn].set()
+            self.nextBlockQ.put(blockDefn)
 
     def popCompleteBlock(self, blockDefn):
         """
@@ -421,6 +426,24 @@ class BlockCache:
             blockData = None
 
         return blockData
+
+    def popNextBlock(self):
+        """
+        Pop the next completed block from the cache, without regard to
+        which block it is. Return a tuple of objects
+            (ApplierBlockDefn, BlockAssociations)
+
+        If it waits longer than timeout seconds, just return None.
+
+        """
+        try:
+            nextBlock = self.nextBlockQ.get(timeout=self.popTimeout)
+        except queue.Empty:
+            msg = "BlockCache timeout at {} seconds".format(self.popTimeout)
+            raise rioserrors.TimeoutError(msg)
+
+        blockData = self.popCompleteBlock(nextBlock)
+        return (nextBlock, blockData)
 
 
 class BlockCacheValue:
@@ -462,6 +485,11 @@ class ApplierBlockDefn:
         thisID = (self.top, self.left, self.nrows, self.ncols)
         otherID = (other.top, other.left, other.nrows, other.ncols)
         return (thisID == otherID)
+
+    def __lt__(self, other):
+        thisID = (self.top, self.left, self.nrows, self.ncols)
+        otherID = (other.top, other.left, other.nrows, other.ncols)
+        return (thisID < otherID)
 
     def __repr__(self):
         return 'ApplierBlockDefn({}, {}, {}, {})'.format(self.top,
