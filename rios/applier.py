@@ -45,7 +45,8 @@ from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockCache, Timers, TempfileManager, ApplierReturn
 from .structures import ReadWorkerMgr, ApplierBlockDefn, RasterizationMgr
-from .structures import CW_NONE, ConcurrencyStyle
+from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
+from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
 from .pixelgrid import PixelGridDefn, findCommonRegion
 from .readerinfo import makeReaderInfo
@@ -575,6 +576,33 @@ class ApplierControls(object):
         """
         self.approxStats = approxStats
 
+    def emulateOldJobManager(self):
+        """
+        Uses the new ConcurrencyStyle model to emulate the old JobManager
+        concurrency. The new stuff is much better, but this allows old
+        programs to use it without modification. Prints a deprecation
+        warning.
+        """
+        if self.numThreads != 1 and self.jobManagerType is not None:
+            msg = ("Warning: setNumThreads and setJobManagerType are " +
+                   "now deprecated. Please use setConcurrencyStyle " +
+                   "instead. Emulating jobManagerType '{}'")
+            msg = msg.format(self.jobManagerType)
+            print(msg)
+
+            numComputeWorkers = self.numThreads
+            jobMgrToCwKind = {
+                "pbs": CW_PBS, "multiprocessing": CW_THREADS,
+                "subproc": CW_THREADS, "slurm": CW_SLURM,
+                "mpi": CW_THREADS, "AWSBatch": CW_AWSBATCH
+            }
+            cwKind = jobMgrToCwKind[self.jobManagerType]
+            concurrency = ConcurrencyStyle(
+                numComputeWorkers=numComputeWorkers,
+                computeWorkerKind=cwKind, numReadWorkers=1
+            )
+            self.setConcurrencyStyle(concurrency)
+
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     """
@@ -632,6 +660,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     """
     if controls is None:
         controls = ApplierControls()
+    controls.emulateOldJobManager()
 
     # Includes ImageInfo and VectorFileInfo, keyed by (logicalname, seqNum)
     allInfo = readAllImgInfo(infiles)
