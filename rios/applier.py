@@ -805,11 +805,11 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         forceExit = False
         while blockNdx < numBlocks and not forceExit:
             with timings.interval('pop_outcache'):
-              try:
-                (blockDefn, outputs) = outBlockCache.popNextBlock()
-              except rioserrors.TimeoutError as e:
-                traceback.print_exception(e)
-                forceExit = True
+                try:
+                    (blockDefn, outputs) = outBlockCache.popNextBlock()
+                except rioserrors.TimeoutError as e:
+                    traceback.print_exception(e)
+                    forceExit = True
 
             if not forceExit:
                 with timings.interval('writing'):
