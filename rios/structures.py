@@ -438,7 +438,11 @@ class BlockCache:
         """
         try:
             nextBlock = self.nextBlockQ.get(timeout=self.popTimeout)
+            timedout = False
         except queue.Empty:
+            timedout = True
+
+        if timedout:
             msg = "BlockCache timeout at {} seconds".format(self.popTimeout)
             raise rioserrors.TimeoutError(msg)
 
