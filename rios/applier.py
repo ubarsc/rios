@@ -685,18 +685,22 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     if outBlockCache is None:
         gdalOutObjCache = {}
 
-    for blockDefn in blockList:
+    numBlocks = len(blockList)
+    blockNdx = 0
+    while blockNdx < numBlocks:
         if readWorkerMgr is not None:
             readWorkerMgr.checkWorkerErrors()
 
-        readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
         if inBlockCache is None:
+            blockDefn = blockList[blockNdx]
             with timings.interval('reading'):
                 inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
                     allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
         else:
             with timings.interval('add_incache'):
-                inputs = inBlockCache.popCompleteBlock(blockDefn)
+                (blockDefn, inputs) = inBlockCache.popNextBlock()
+
+        readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
 
         outputs = BlockAssociations()
         userArgs = (readerInfo, inputs, outputs)
@@ -713,6 +717,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         else:
             with timings.interval('add_outcache'):
                 outBlockCache.insertCompleteBlock(blockDefn, outputs)
+
+        blockNdx += 1
 
     if outBlockCache is None:
         closeOutfiles(gdalOutObjCache, outfiles, controls)
@@ -760,23 +766,21 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp)
 
     try:
-        i = 0
-        while i < len(blockList):
-            blockDefn = blockList[i]
-
+        numBlocks = len(blockList)
+        blockNdx = 0
+        while blockNdx < numBlocks:
             computeMgr.checkWorkerErrors()
             if readWorkerMgr is not None:
                 readWorkerMgr.checkWorkerErrors()
 
             with timings.interval('pop_outcache'):
-                outputs = outBlockCache.popCompleteBlock(blockDefn)
+                (blockDefn, outputs) = outBlockCache.popNextBlock()
 
-            if outputs is not None:
-                with timings.interval('writing'):
-                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
-                            controls, workinggrid)
+            with timings.interval('writing'):
+                writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                        controls, workinggrid)
 
-                i += 1
+            blockNdx += 1
 
         closeOutfiles(gdalOutObjCache, outfiles, controls)
     finally:
