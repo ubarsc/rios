@@ -99,8 +99,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
                 workerID)
             self.workerList.append(worker)
 
-    @staticmethod
-    def worker(userFunction, infiles, outfiles, otherArgs, controls,
+    def worker(self, userFunction, infiles, outfiles, otherArgs, controls,
             allInfo, workinggrid, taskQ, inBlockCache, outBlockCache,
             outqueue, workerID):
         """
@@ -118,7 +117,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         while blockDefn is not None:
             readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
             with timings.interval('pop_incache'):
-                inputs = inBlockCache.popCompleteBlock(blockDefn)
+                (blockDefn, inputs) = inBlockCache.popNextBlock()
             outputs = BlockAssociations()
             userArgs = (readerInfo, inputs, outputs)
             if otherArgs is not None:
