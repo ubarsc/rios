@@ -812,3 +812,6 @@ class ApplierReturn:
     """
     Hold all objects returned by the applier.apply() function
     """
+    def __init__(self):
+        self.timings = None
+        self.otherArgsList = None
