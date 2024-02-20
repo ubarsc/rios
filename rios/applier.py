@@ -758,8 +758,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         if outBlockCache is None:
             with timings.interval('writing'):
                 closeOutfiles(gdalOutObjCache, outfiles, controls)
-        if readWorkerMgr is not None:
-            readWorkerMgr.shutdown()
+    if readWorkerMgr is not None:
+        readWorkerMgr.shutdown()
 
     # Set up returns object
     rtn = ApplierReturn()
@@ -830,8 +830,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         # It is important that the computeMgr always be shut down, as it
         # could be running a NetworkDataChannel thread
         computeMgr.shutdown()
-    if readWorkerMgr is not None:
-        readWorkerMgr.shutdown()
+        if readWorkerMgr is not None:
+            readWorkerMgr.shutdown()
 
     # Assemble the return object
     rtn = ApplierReturn()
