@@ -22,9 +22,6 @@ point of entry in this module.
 
 import os
 import sys
-from concurrent import futures
-import queue
-import threading
 import traceback
 
 import numpy
@@ -35,7 +32,7 @@ from . import rioserrors
 from .imagereader import DEFAULTFOOTPRINT, DEFAULTWINDOWXSIZE
 from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP
 from .imagereader import DEFAULTLOGGINGSTREAM                         # noqa: F401
-from .imagereader import readBlockAllFiles, readBlockOneFile
+from .imagereader import readBlockAllFiles, ReadWorkerMgr
 from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS    # noqa: F401
 from .imagewriter import writeBlock, closeOutfiles
 from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F401
@@ -44,7 +41,7 @@ from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F4
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockCache, Timers, TempfileManager, ApplierReturn
-from .structures import ReadWorkerMgr, ApplierBlockDefn, RasterizationMgr
+from .structures import ApplierBlockDefn, RasterizationMgr
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
 from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
@@ -710,7 +707,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
             inBlockCache = BlockCache(infiles, concurrency.numReadWorkers,
                 concurrency.readBufferInsertTimeout,
                 concurrency.readBufferPopTimeout)
-            readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
+            readWorkerMgr = ReadWorkerMgr()
+            readWorkerMgr.startReadWorkers(blockList, infiles, allInfo,
                 controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache,
                 timings)
         else:
@@ -792,7 +790,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         concurrency.readBufferInsertTimeout,
         concurrency.readBufferPopTimeout)
     if not concurrency.computeWorkersRead:
-        readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
+        readWorkerMgr = ReadWorkerMgr()
+        readWorkerMgr.startReadWorkers(blockList, infiles, allInfo,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
             inBlockCache, timings)
 
@@ -845,72 +844,6 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         if isinstance(obj, OtherInputs)]
 
     return rtn
-
-
-def startReadWorkers(blockList, infiles, allInfo, controls, tmpfileMgr,
-        rasterizeMgr, workinggrid, inBlockCache, timings):
-    """
-    Start the requested number of read worker threads, within the current
-    process. All threads will read single blocks from individual files
-    and place them into the inBlockCache.
-
-    Return value is an instance of ReadWorkerMgr, which must remain
-    active until all reading is complete.
-
-    """
-    numWorkers = controls.concurrency.numReadWorkers
-    threadPool = futures.ThreadPoolExecutor(max_workers=numWorkers)
-    readTaskQue = queue.Queue()
-
-    # Put all read tasks into the queue. A single task is one block of
-    # input for one input file.
-    for blockDefn in blockList:
-        for (symName, seqNum, filename) in infiles:
-            task = (blockDefn, symName, seqNum, filename)
-            readTaskQue.put(task)
-
-    workerList = []
-    forceExit = threading.Event()
-    for i in range(numWorkers):
-        worker = threadPool.submit(readWorkerFunc, readTaskQue,
-            inBlockCache, controls, tmpfileMgr, rasterizeMgr, workinggrid,
-            allInfo, timings, forceExit)
-        workerList.append(worker)
-
-    return ReadWorkerMgr(threadPool, workerList, readTaskQue, forceExit)
-
-
-def readWorkerFunc(readTaskQue, blockCache, controls, tmpfileMgr,
-        rasterizeMgr, workinggrid, allInfo, timings, forceExit):
-    """
-    This function runs in each read worker thread. The readTaskQue gives
-    it tasks to perform (i.e. single blocks of data to read), and it loops
-    until there are no more to do. Each block is sent back through
-    the blockCache.
-
-    """
-    # Each instance of this readWorkerFunc has its own set of GDAL objects,
-    # as these cannot be shared between threads.
-    gdalObjCache = {}
-
-    try:
-        readTask = readTaskQue.get(block=False)
-    except queue.Empty:
-        readTask = None
-    while readTask is not None and not forceExit.is_set():
-        (blockDefn, symName, seqNum, filename) = readTask
-        with timings.interval('reading'):
-            arr = readBlockOneFile(blockDefn, symName, seqNum, filename,
-                gdalObjCache, controls, tmpfileMgr, rasterizeMgr,
-                workinggrid, allInfo)
-
-        with timings.interval('add_incache'):
-            blockCache.addBlockData(blockDefn, symName, seqNum, arr)
-
-        try:
-            readTask = readTaskQue.get(block=False)
-        except queue.Empty:
-            readTask = None
 
 
 def readAllImgInfo(infiles):

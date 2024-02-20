@@ -13,7 +13,6 @@ import time
 import contextlib
 import queue
 import tempfile
-import traceback
 
 import numpy
 from osgeo import gdal
@@ -810,40 +809,6 @@ class TempfileManager:
 
     def __del__(self):
         self.cleanup()
-
-
-class ReadWorkerMgr:
-    """
-    Simple class to hold all the things we need to sustain for
-    the read worker threads
-    """
-    def __init__(self, threadPool, workerList, readTaskQue, forceExit):
-        self.threadPool = threadPool
-        self.workerList = workerList
-        self.readTaskQue = readTaskQue
-        self.forceExit = forceExit
-
-    def checkWorkerErrors(self):
-        """
-        Check for Exceptions raised by the workers. If we don't check, then
-        exceptions are hidden and we don't see them. If we find one,
-        then re-raise it here. This function must be called from the main
-        thread.
-        """
-        for worker in self.workerList:
-            if worker.done():
-                e = worker.exception(timeout=0)
-                if e is not None:
-                    traceback.print_exception(e)
-
-    def shutdown(self):
-        self.checkWorkerErrors()
-        self.forceExit.set()
-        futures.wait(self.workerList)
-        self.threadPool.shutdown()
-
-    def __del__(self):
-        self.shutdown()
 
 
 class ApplierReturn:

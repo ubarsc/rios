@@ -20,6 +20,10 @@ Contains the ImageReader class
 import os
 import sys
 import copy
+from concurrent import futures
+import queue
+import threading
+import traceback
 
 import numpy
 from osgeo import gdal, osr, gdal_array
@@ -186,6 +190,108 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         bandObjList = [ds.GetRasterBand(i) for i in layerselection]
 
     return (ds, bandObjList)
+
+
+class ReadWorkerMgr:
+    """
+    Simple class to hold all the things we need to sustain for
+    the read worker threads
+    """
+    def __init__(self):
+        self.threadPool = None
+        self.workerList = None
+        self.readTaskQue = None
+        self.forceExit = None
+
+    def startReadWorkers(self, blockList, infiles, allInfo, controls,
+            tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache, timings):
+        """
+        Start the requested number of read worker threads, within the current
+        process. All threads will read single blocks from individual files
+        and place them into the inBlockCache.
+
+        Return value is an instance of ReadWorkerMgr, which must remain
+        active until all reading is complete.
+
+        """
+        numWorkers = controls.concurrency.numReadWorkers
+        threadPool = futures.ThreadPoolExecutor(max_workers=numWorkers)
+        readTaskQue = queue.Queue()
+
+        # Put all read tasks into the queue. A single task is one block of
+        # input for one input file.
+        for blockDefn in blockList:
+            for (symName, seqNum, filename) in infiles:
+                task = (blockDefn, symName, seqNum, filename)
+                readTaskQue.put(task)
+
+        workerList = []
+        forceExit = threading.Event()
+        for i in range(numWorkers):
+            worker = threadPool.submit(self.readWorkerFunc, readTaskQue,
+                inBlockCache, controls, tmpfileMgr, rasterizeMgr, workinggrid,
+                allInfo, timings, forceExit)
+            workerList.append(worker)
+
+        self.threadPool = threadPool
+        self.workerList = workerList
+        self.readTaskQue = readTaskQue
+        self.forceExit = forceExit
+
+    @staticmethod
+    def readWorkerFunc(readTaskQue, blockCache, controls, tmpfileMgr,
+            rasterizeMgr, workinggrid, allInfo, timings, forceExit):
+        """
+        This function runs in each read worker thread. The readTaskQue gives
+        it tasks to perform (i.e. single blocks of data to read), and it loops
+        until there are no more to do. Each block is sent back through
+        the blockCache.
+
+        """
+        # Each instance of this readWorkerFunc has its own set of GDAL objects,
+        # as these cannot be shared between threads.
+        gdalObjCache = {}
+
+        try:
+            readTask = readTaskQue.get(block=False)
+        except queue.Empty:
+            readTask = None
+        while readTask is not None and not forceExit.is_set():
+            (blockDefn, symName, seqNum, filename) = readTask
+            with timings.interval('reading'):
+                arr = readBlockOneFile(blockDefn, symName, seqNum, filename,
+                    gdalObjCache, controls, tmpfileMgr, rasterizeMgr,
+                    workinggrid, allInfo)
+
+            with timings.interval('add_incache'):
+                blockCache.addBlockData(blockDefn, symName, seqNum, arr)
+
+            try:
+                readTask = readTaskQue.get(block=False)
+            except queue.Empty:
+                readTask = None
+
+    def checkWorkerErrors(self):
+        """
+        Check for Exceptions raised by the workers. If we don't check, then
+        exceptions are hidden and we don't see them. If we find one,
+        then re-raise it here. This function must be called from the main
+        thread.
+        """
+        for worker in self.workerList:
+            if worker.done():
+                e = worker.exception(timeout=0)
+                if e is not None:
+                    traceback.print_exception(e)
+
+    def shutdown(self):
+        self.checkWorkerErrors()
+        self.forceExit.set()
+        futures.wait(self.workerList)
+        self.threadPool.shutdown()
+
+    def __del__(self):
+        self.shutdown()
 
 
 class ImageIterator(object):
