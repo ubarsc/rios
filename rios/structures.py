@@ -515,6 +515,21 @@ class ApplierBlockDefn:
         otherID = (other.top, other.left, other.nrows, other.ncols)
         return (thisID < otherID)
 
+    def __gt__(self, other):
+        thisID = (self.top, self.left, self.nrows, self.ncols)
+        otherID = (other.top, other.left, other.nrows, other.ncols)
+        return (thisID > otherID)
+
+    def __le__(self, other):
+        thisID = (self.top, self.left, self.nrows, self.ncols)
+        otherID = (other.top, other.left, other.nrows, other.ncols)
+        return (thisID <= otherID)
+
+    def __ge__(self, other):
+        thisID = (self.top, self.left, self.nrows, self.ncols)
+        otherID = (other.top, other.left, other.nrows, other.ncols)
+        return (thisID >= otherID)
+
     def __repr__(self):
         return 'ApplierBlockDefn({}, {}, {}, {})'.format(self.top,
             self.left, self.nrows, self.ncols)
