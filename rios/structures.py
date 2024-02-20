@@ -122,6 +122,16 @@ class ConcurrencyStyle:
             line of the batch jobs, which is notionally publicly visible and
             so less secure.
 
+    Buffering Timeouts (seconds)
+        readBufferInsertTimeout: int
+            Time to wait insert a block into the read buffer
+        readBufferPopTimeout: int
+            Time to wait to pop a block out of the read buffer
+        computeBufferInsertTimeout: int
+            Time to wait to insert a block into the compute buffer
+        computeBufferPopTimeout: int
+            Time to wait to pop a block out of the compute buffer
+
     Note that not all possible combinations of parameters are supported,
     and some combinations make no sense at all.
 
@@ -130,13 +140,22 @@ class ConcurrencyStyle:
                  computeWorkerKind=CW_NONE,
                  computeWorkersRead=False,
                  singleBlockComputeWorkers=False,
-                 haveSharedTemp=True):
+                 haveSharedTemp=True,
+                 readBufferInsertTimeout=10,
+                 readBufferPopTimeout=10,
+                 computeBufferInsertTimeout=10,
+                 computeBufferPopTimeout=10,
+                 ):
         self.numReadWorkers = numReadWorkers
         self.numComputeWorkers = numComputeWorkers
         self.computeWorkerKind = computeWorkerKind
         self.computeWorkersRead = computeWorkersRead
         self.singleBlockComputeWorkers = singleBlockComputeWorkers
         self.haveSharedTemp = haveSharedTemp
+        self.readBufferInsertTimeout = readBufferInsertTimeout
+        self.readBufferPopTimeout = readBufferPopTimeout
+        self.computeBufferInsertTimeout = computeBufferInsertTimeout
+        self.computeBufferPopTimeout = computeBufferPopTimeout
 
         # Perform checks for any invalid combinations of parameters
 
@@ -337,12 +356,14 @@ class BlockCache:
     within a given process, so includes locking mechanisms to
     make it thread-safe.
     """
-    def __init__(self, filenameAssoc, numWorkers, timeout):
+    def __init__(self, filenameAssoc, numWorkers,
+            insertTimeout, popTimeout):
         self.CACHEMAX = 2 * numWorkers
         self.lock = threading.Lock()
         self.cache = {}
         self.completionEvents = {}
-        self.timeout = timeout
+        self.insertTimeout = insertTimeout
+        self.popTimeout = popTimeout
         self.nextBlockQ = queue.Queue()
 
         # This semaphore counts backwards for the number of blocks
@@ -371,7 +392,7 @@ class BlockCache:
         """
         # Acquire (i.e. decrement) this semaphore, in case we are about
         # to add a whole new block
-        self.cacheCount.acquire(timeout=self.timeout)
+        self.cacheCount.acquire(timeout=self.insertTimeout)
 
         with self.lock:
             if blockDefn not in self.cache:
@@ -394,7 +415,7 @@ class BlockCache:
         """
         Use when inserting a complete BlockAssociations object at once
         """
-        self.cacheCount.acquire(self.timeout)
+        self.cacheCount.acquire(self.insertTimeout)
         with self.lock:
             if blockDefn in self.cache:
                 # We did not actually add a new entry, so increment
@@ -413,7 +434,7 @@ class BlockCache:
         Returns the BlockAssociations object for the given blockDefn,
         and removes it from the cache
         """
-        completed = self.waitCompletion(blockDefn, timeout=self.timeout)
+        completed = self.waitCompletion(blockDefn, timeout=self.popTimeout)
         if completed:
             with self.lock:
                 blockData = self.cache[blockDefn].blockData
@@ -434,17 +455,15 @@ class BlockCache:
         which block it is. Return a tuple of objects
             (ApplierBlockDefn, BlockAssociations)
 
-        If it waits longer than timeout seconds, just return None.
-
         """
         try:
-            nextBlock = self.nextBlockQ.get(timeout=self.timeout)
+            nextBlock = self.nextBlockQ.get(timeout=self.popTimeout)
             timedout = False
         except queue.Empty:
             timedout = True
 
         if timedout:
-            msg = "BlockCache timeout at {} seconds".format(self.timeout)
+            msg = "BlockCache timeout at {} seconds".format(self.popTimeout)
             raise rioserrors.TimeoutError(msg)
 
         blockData = self.popCompleteBlock(nextBlock)

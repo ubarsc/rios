@@ -707,7 +707,9 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     gdalObjCache = None
     if inBlockCache is None:
         if concurrency.numReadWorkers > 0:
-            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 10)
+            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers,
+                concurrency.readBufferInsertTimeout,
+                concurrency.readBufferPopTimeout)
             readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
                 controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache,
                 timings)
@@ -780,11 +782,15 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     timings = Timers()
 
     numComputeWorkers = concurrency.numComputeWorkers
-    outBlockCache = BlockCache(outfiles, numComputeWorkers, 10)
+    outBlockCache = BlockCache(outfiles, numComputeWorkers,
+        concurrency.computeBufferInsertTimeout,
+        concurrency.computeBufferPopTimeout)
     gdalOutObjCache = {}
 
     readWorkerMgr = None
-    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers, 10)
+    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers,
+        concurrency.readBufferInsertTimeout,
+        concurrency.readBufferPopTimeout)
     if not concurrency.computeWorkersRead:
         readWorkerMgr = startReadWorkers(blockList, infiles, allInfo,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
