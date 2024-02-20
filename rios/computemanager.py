@@ -25,7 +25,7 @@ class ComputeWorkerManager(ABC):
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
-            blockList=None, inBlockCache=None, outBlockCache=None,
+            blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
             haveSharedTemp=True):
@@ -86,7 +86,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
-            blockList=None, inBlockCache=None, outBlockCache=None,
+            blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
             haveSharedTemp=True):
@@ -95,8 +95,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         """
         # Put all blockDefn objects into a queue. The compute workers will
         # get() their next job from this. The actual data will come from the
-        # inBlockCache, where the read workers have placed it, but the taskQ
-        # tells them which block to look for in inBlockCache.
+        # inBlockBuffer, where the read workers have placed it, but the taskQ
+        # tells them which block to look for in inBlockBuffer.
         for blockDefn in blockList:
             self.taskQ.put(blockDefn)
 
@@ -105,12 +105,12 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         for workerID in range(numWorkers):
             worker = self.threadPool.submit(self.worker, userFunction, infiles,
                 outfiles, otherArgs, controls, allInfo, workinggrid,
-                self.taskQ, inBlockCache, outBlockCache, self.outqueue,
+                self.taskQ, inBlockBuffer, outBlockBuffer, self.outqueue,
                 workerID)
             self.workerList.append(worker)
 
     def worker(self, userFunction, infiles, outfiles, otherArgs, controls,
-            allInfo, workinggrid, taskQ, inBlockCache, outBlockCache,
+            allInfo, workinggrid, taskQ, inBlockBuffer, outBlockBuffer,
             outqueue, workerID):
         """
         This function is a worker for a single thread.
@@ -126,8 +126,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             blockDefn = None
         while blockDefn is not None and not self.forceExit.is_set():
             readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
-            with timings.interval('pop_incache'):
-                (blockDefn, inputs) = inBlockCache.popNextBlock()
+            with timings.interval('pop_inbuffer'):
+                (blockDefn, inputs) = inBlockBuffer.popNextBlock()
             outputs = BlockAssociations()
             userArgs = (readerInfo, inputs, outputs)
             if otherArgs is not None:
@@ -136,8 +136,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             with timings.interval('userfunction'):
                 userFunction(*userArgs)
 
-            with timings.interval('add_outcache'):
-                outBlockCache.insertCompleteBlock(blockDefn, outputs)
+            with timings.interval('add_outbuffer'):
+                outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
             try:
                 blockDefn = taskQ.get(block=False)
@@ -190,7 +190,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
-            blockList=None, inBlockCache=None, outBlockCache=None,
+            blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
             haveSharedTemp=True):
@@ -226,7 +226,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             workerLocalData[workerID] = allSublists[workerID]
 
         self.dataChan = NetworkDataChannel(workerCommonData,
-            workerLocalData, inBlockCache, outBlockCache)
+            workerLocalData, inBlockBuffer, outBlockBuffer)
 
         self.addressFile = None
         if self.haveSharedTemp:

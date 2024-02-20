@@ -40,7 +40,7 @@ from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
 from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
-from .structures import BlockCache, Timers, TempfileManager, ApplierReturn
+from .structures import BlockBuffer, Timers, TempfileManager, ApplierReturn
 from .structures import ApplierBlockDefn, RasterizationMgr
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
 from .structures import ConcurrencyStyle
@@ -684,8 +684,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
 
 def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
-        controls, allInfo, workinggrid, blockList, outBlockCache,
-        inBlockCache):
+        controls, allInfo, workinggrid, blockList, outBlockBuffer,
+        inBlockBuffer):
     """
     Apply function for simplest configuration, with no compute concurrency.
     Does have possible read concurrency.
@@ -702,32 +702,32 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     rasterizeMgr = RasterizationMgr()
     readWorkerMgr = None
     gdalObjCache = None
-    if inBlockCache is None:
+    if inBlockBuffer is None:
         if concurrency.numReadWorkers > 0:
-            inBlockCache = BlockCache(infiles, concurrency.numReadWorkers,
+            inBlockBuffer = BlockBuffer(infiles, concurrency.numReadWorkers,
                 concurrency.readBufferInsertTimeout,
                 concurrency.readBufferPopTimeout)
             readWorkerMgr = ReadWorkerMgr()
             readWorkerMgr.startReadWorkers(blockList, infiles, allInfo,
-                controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache,
+                controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockBuffer,
                 timings)
         else:
             gdalObjCache = {}
-    if outBlockCache is None:
+    if outBlockBuffer is None:
         gdalOutObjCache = {}
 
     numBlocks = len(blockList)
     blockNdx = 0
     forceExit = False
     while blockNdx < numBlocks and not forceExit:
-        if inBlockCache is None:
+        if inBlockBuffer is None:
             blockDefn = blockList[blockNdx]
             with timings.interval('reading'):
                 inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
                     allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
         else:
-            with timings.interval('add_incache'):
-                (blockDefn, inputs) = inBlockCache.popNextBlock()
+            with timings.interval('add_inbuffer'):
+                (blockDefn, inputs) = inBlockBuffer.popNextBlock()
 
         readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
 
@@ -744,18 +744,18 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
             forceExit = True
 
         if not forceExit:
-            if outBlockCache is None:
+            if outBlockBuffer is None:
                 with timings.interval('writing'):
                     writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
                         controls, workinggrid)
             else:
-                with timings.interval('add_outcache'):
-                    outBlockCache.insertCompleteBlock(blockDefn, outputs)
+                with timings.interval('add_outbuffer'):
+                    outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
         blockNdx += 1
 
     if not forceExit:
-        if outBlockCache is None:
+        if outBlockBuffer is None:
             with timings.interval('writing'):
                 closeOutfiles(gdalOutObjCache, outfiles, controls)
     if readWorkerMgr is not None:
@@ -780,25 +780,25 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     timings = Timers()
 
     numComputeWorkers = concurrency.numComputeWorkers
-    outBlockCache = BlockCache(outfiles, numComputeWorkers,
+    outBlockBuffer = BlockBuffer(outfiles, numComputeWorkers,
         concurrency.computeBufferInsertTimeout,
         concurrency.computeBufferPopTimeout)
     gdalOutObjCache = {}
 
     readWorkerMgr = None
-    inBlockCache = BlockCache(infiles, concurrency.numReadWorkers,
+    inBlockBuffer = BlockBuffer(infiles, concurrency.numReadWorkers,
         concurrency.readBufferInsertTimeout,
         concurrency.readBufferPopTimeout)
     if not concurrency.computeWorkersRead:
         readWorkerMgr = ReadWorkerMgr()
         readWorkerMgr.startReadWorkers(blockList, infiles, allInfo,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
-            inBlockCache, timings)
+            inBlockBuffer, timings)
 
     computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
         userFunction=userFunction, infiles=infiles, outfiles=outfiles,
         otherArgs=otherArgs, controls=controls, blockList=blockList,
-        inBlockCache=inBlockCache, outBlockCache=outBlockCache,
+        inBlockBuffer=inBlockBuffer, outBlockBuffer=outBlockBuffer,
         workinggrid=workinggrid, allInfo=allInfo,
         computeWorkersRead=concurrency.computeWorkersRead,
         singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
@@ -809,9 +809,9 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         blockNdx = 0
         forceExit = False
         while blockNdx < numBlocks and not forceExit:
-            with timings.interval('pop_outcache'):
+            with timings.interval('pop_outbuffer'):
                 try:
-                    (blockDefn, outputs) = outBlockCache.popNextBlock()
+                    (blockDefn, outputs) = outBlockBuffer.popNextBlock()
                 except rioserrors.TimeoutError as e:
                     traceback.print_exception(e)
                     forceExit = True

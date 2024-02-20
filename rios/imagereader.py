@@ -204,11 +204,11 @@ class ReadWorkerMgr:
         self.forceExit = None
 
     def startReadWorkers(self, blockList, infiles, allInfo, controls,
-            tmpfileMgr, rasterizeMgr, workinggrid, inBlockCache, timings):
+            tmpfileMgr, rasterizeMgr, workinggrid, inBlockBuffer, timings):
         """
         Start the requested number of read worker threads, within the current
         process. All threads will read single blocks from individual files
-        and place them into the inBlockCache.
+        and place them into the inBlockBuffer.
 
         Return value is an instance of ReadWorkerMgr, which must remain
         active until all reading is complete.
@@ -229,7 +229,7 @@ class ReadWorkerMgr:
         forceExit = threading.Event()
         for i in range(numWorkers):
             worker = threadPool.submit(self.readWorkerFunc, readTaskQue,
-                inBlockCache, controls, tmpfileMgr, rasterizeMgr, workinggrid,
+                inBlockBuffer, controls, tmpfileMgr, rasterizeMgr, workinggrid,
                 allInfo, timings, forceExit)
             workerList.append(worker)
 
@@ -239,13 +239,13 @@ class ReadWorkerMgr:
         self.forceExit = forceExit
 
     @staticmethod
-    def readWorkerFunc(readTaskQue, blockCache, controls, tmpfileMgr,
+    def readWorkerFunc(readTaskQue, blockBuffer, controls, tmpfileMgr,
             rasterizeMgr, workinggrid, allInfo, timings, forceExit):
         """
         This function runs in each read worker thread. The readTaskQue gives
         it tasks to perform (i.e. single blocks of data to read), and it loops
         until there are no more to do. Each block is sent back through
-        the blockCache.
+        the blockBuffer.
 
         """
         # Each instance of this readWorkerFunc has its own set of GDAL objects,
@@ -263,8 +263,8 @@ class ReadWorkerMgr:
                     gdalObjCache, controls, tmpfileMgr, rasterizeMgr,
                     workinggrid, allInfo)
 
-            with timings.interval('add_incache'):
-                blockCache.addBlockData(blockDefn, symName, seqNum, arr)
+            with timings.interval('add_inbuffer'):
+                blockBuffer.addBlockData(blockDefn, symName, seqNum, arr)
 
             try:
                 readTask = readTaskQue.get(block=False)

@@ -347,7 +347,7 @@ class OtherInputs(object):
     pass
 
 
-class BlockCache:
+class BlockBuffer:
     """
     Cache of blocks of data which have been read in. Blocks
     may exist but be incomplete, as individual inputs are
@@ -395,7 +395,7 @@ class BlockCache:
 
         with self.lock:
             if blockDefn not in self.cache:
-                self.cache[blockDefn] = BlockCacheValue(
+                self.cache[blockDefn] = BlockBufferValue(
                     filenameAssoc=self.filenameAssoc)
             else:
                 # We are not adding a new block, so release (increment)
@@ -421,7 +421,7 @@ class BlockCache:
                 # the semaphore
                 self.cacheCount.release()
 
-            val = BlockCacheValue(blockData=blockData)
+            val = BlockBufferValue(blockData=blockData)
             self.cache[blockDefn] = val
             if blockDefn not in self.completionEvents:
                 self.completionEvents[blockDefn] = threading.Event()
@@ -462,14 +462,14 @@ class BlockCache:
             timedout = True
 
         if timedout:
-            msg = "BlockCache timeout at {} seconds".format(self.popTimeout)
+            msg = "BlockBuffer timeout at {} seconds".format(self.popTimeout)
             raise rioserrors.TimeoutError(msg)
 
         blockData = self.popCompleteBlock(nextBlock)
         return (nextBlock, blockData)
 
 
-class BlockCacheValue:
+class BlockBufferValue:
     def __init__(self, filenameAssoc=None, blockData=None):
         if filenameAssoc is not None:
             self.blockData = BlockAssociations(filenameAssoc)
@@ -594,8 +594,8 @@ class Timers:
             "{:14s}       {:13s}".format("Timer", "Total (sec)"),
             ("-" * 31)
         ]
-        fieldOrder = ['reading', 'userfunction', 'writing', 'add_incache',
-            'pop_incache', 'add_outcache', 'pop_outcache']
+        fieldOrder = ['reading', 'userfunction', 'writing', 'add_inbuffer',
+            'pop_inbuffer', 'add_outbuffer', 'pop_outbuffer']
         for name in fieldOrder:
             if name in d:
                 line = "{:14s}    {:8.1f}".format(name, d[name]['tot'])
@@ -614,10 +614,10 @@ class NetworkDataChannel:
             to all workers. 
         workerLocalData is a dictionary, keyed by workerID, of objects
             which are local to each worker.
-        inBlockCache is None if compute workers are doing their own reading,
-            otherwise it is a BlockCache supplying input data to the
+        inBlockBuffer is None if compute workers are doing their own reading,
+            otherwise it is a BlockBuffer supplying input data to the
             compute workers.
-        outBlockCache is a BlockCache where completed 'outputs' objects are
+        outBlockBuffer is a BlockBuffer where completed 'outputs' objects are
             placed, ready for writing.
         outqueue is a Queue. It is used for any non-pixel output data
             coming from each compute worker, such as modified otherArgs
@@ -625,7 +625,7 @@ class NetworkDataChannel:
             main thread after all compute workers have completed.
 
     If the constructor is given the workerCommonData, workerLocalData,
-    inBlockCache and outBlockCache arguments, then this is the server of
+    inBlockBuffer and outBlockBuffer arguments, then this is the server of
     these objects, and they are served to the network on a selected port
     number. The address of this server is available on the instance as
     hostname, portnum and authkey attributes. The server will create its
@@ -641,13 +641,13 @@ class NetworkDataChannel:
 
     """
     def __init__(self, workerCommonData=None, workerLocalData=None,
-            inBlockCache=None, outBlockCache=None, hostname=None,
+            inBlockBuffer=None, outBlockBuffer=None, hostname=None,
             portnum=None, authkey=None):
         class DataChannelMgr(BaseManager):
             pass
 
-        if None not in (workerCommonData, workerLocalData, inBlockCache,
-                outBlockCache):
+        if None not in (workerCommonData, workerLocalData, inBlockBuffer,
+                outBlockBuffer):
             self.hostname = socket.gethostname()
             # Authkey is a big long random bytes string. Making one which is
             # also printable ascii.
@@ -655,18 +655,18 @@ class NetworkDataChannel:
 
             self.workerCommonData = workerCommonData
             self.workerLocalData = workerLocalData
-            self.inBlockCache = inBlockCache
-            self.outBlockCache = outBlockCache
+            self.inBlockBuffer = inBlockBuffer
+            self.outBlockBuffer = outBlockBuffer
             self.outqueue = queue.Queue()
 
             DataChannelMgr.register("get_commondata",
                 callable=lambda: self.workerCommonData)
             DataChannelMgr.register("get_localdata",
                 callable=lambda: self.workerLocalData)
-            DataChannelMgr.register("get_inblockcache",
-                callable=lambda: self.inBlockCache)
-            DataChannelMgr.register("get_outblockcache",
-                callable=lambda: self.outBlockCache)
+            DataChannelMgr.register("get_inblockbuffer",
+                callable=lambda: self.inBlockBuffer)
+            DataChannelMgr.register("get_outblockbuffer",
+                callable=lambda: self.outBlockBuffer)
             DataChannelMgr.register("get_outqueue",
                 callable=lambda: self.outqueue)
 
@@ -681,8 +681,8 @@ class NetworkDataChannel:
         elif None not in (hostname, portnum, authkey):
             DataChannelMgr.register("get_commondata")
             DataChannelMgr.register("get_localdata")
-            DataChannelMgr.register("get_outblockcache")
-            DataChannelMgr.register("get_inblockcache")
+            DataChannelMgr.register("get_outblockbuffer")
+            DataChannelMgr.register("get_inblockbuffere")
             DataChannelMgr.register("get_outqueue")
 
             self.mgr = DataChannelMgr(address=(hostname, portnum),
@@ -695,8 +695,8 @@ class NetworkDataChannel:
             # Get the proxy objects.
             self.workerCommonData = self.mgr.get_commondata()
             self.workerLocalData = self.mgr.get_localdata()
-            self.inBlockCache = self.mgr.get_inblockcache()
-            self.outBlockCache = self.mgr.get_outblockcache()
+            self.inBlockBuffer = self.mgr.get_inblockbuffer()
+            self.outBlockBuffer = self.mgr.get_outblockbuffer()
             self.outqueue = self.mgr.get_outqueue()
         else:
             msg = ("Must supply either (filenameAssoc & numWorkers) or " +
