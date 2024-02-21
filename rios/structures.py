@@ -134,7 +134,7 @@ class ConcurrencyStyle:
         increasing the timeout period.
 
         readBufferInsertTimeout: int
-            Time to wait insert a block into the read buffer
+            Time to wait to insert a block into the read buffer
         readBufferPopTimeout: int
             Time to wait to pop a block out of the read buffer
         computeBufferInsertTimeout: int
