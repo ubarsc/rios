@@ -64,7 +64,9 @@ High level functions
 .. toctree::
     :maxdepth: 1
 
+    RIOS Basic Examples <applierexamples>
     Processing Raster and Vector files with rios.applier <rios_applier>
+    Understanding RIOS's concurrency model <concurrency>
     Processing Raster Attribute Tables with rios.ratapplier <rios_ratapplier>
     Obtaining information on files with rios.fileinfo <rios_fileinfo>
     RIOS Environment Variables <environmentvars>
@@ -76,6 +78,8 @@ Low level functions
 
     rios_imagereader
     rios_imagewriter
+    rios_computemanager
+    rios_structures
     rios_parallel
     rios_parallel_aws_batch
     rios_rat

@@ -41,7 +41,7 @@ class ConcurrencyStyle:
 
     Concurrency in computation is supported at the block level. Each
     block of data is computed by a single call to the user function,
-    and these can be distributed to a number of compute workers,
+    and these calls can be distributed to a number of compute workers,
     with a choice of different distributed paradigms.
 
     Concurrency in computation is likely to be of benefit only when
@@ -77,9 +77,9 @@ class ConcurrencyStyle:
             (<numReadWorkers> for each compute worker)
 
     Compute Concurrency
-        computeWorkerKind: one of CW_NONE, CW_THREADS, CW_PBS,
-                           CW_SLURM, CW_AWSBATCH
-            Choose the paradigm used to distribute compute workers.
+        computeWorkerKind:
+            Choose the paradigm used to distribute compute workers. Available
+            values are {CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH}.
             The CW_THREADS option means a pool of compute threads
             running within the same process as the rest of RIOS.
             The PBS, SLURM and AWSBATCH options all refer to different
@@ -122,6 +122,17 @@ class ConcurrencyStyle:
             so less secure.
 
     Buffering Timeouts (seconds)
+        The block buffers have several timeout periods defined, with default
+        values. These can be over-ridden here. Mostly these timeouts should
+        not be reached, but it is vital to have them. In the event of errors
+        in one or more workers, whatever is waiting for that worker to respond
+        would otherwise wait forever, with no explanation. The times given 
+        are all in terms of the wait for a single block of data to become 
+        available. For very slow input devices or very long computations, 
+        they may need to be increased, but generally, if a timeout occurs, 
+        one should first rule out any errors in the relevant workers before 
+        increasing the timeout period.
+
         readBufferInsertTimeout: int
             Time to wait insert a block into the read buffer
         readBufferPopTimeout: int

@@ -102,7 +102,7 @@ class ApplierControls(object):
     with the 'set' methods given. 
     
     Some 'set' methods take an optional imagename argument. If given, this should be 
-    the same internal name used for a given image as in the :class:`rios.applier.FilenameAssociations`
+    the same internal name used for a given image as in the :class:`rios.structures.FilenameAssociations`
     objects. This is the internal name for that image, and the method will set 
     the parameter in question for that specific image, which will over-ride the
     global value set when no imagename is given. 
@@ -174,7 +174,7 @@ class ApplierControls(object):
         the given imagename, then use that. 
         
         The imagename is the same internal name as used for the image
-        in the :class:`rios.applier.FilenameAssociations` objects. 
+        in the :class:`rios.structures.FilenameAssociations` objects. 
         
         """
         value = getattr(self, option)
@@ -606,14 +606,14 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     Apply the given 'userFunction' to the given
     input and output files. 
 
-    infiles and outfiles are :class:`rios.applier.FilenameAssociations` objects to 
+    infiles and outfiles are :class:`rios.structures.FilenameAssociations` objects to 
     define associations between internal variable names and
     external filenames, for the raster file inputs and outputs. 
 
     otherArgs is an object of extra arguments to be passed to the 
     userFunction, each with a sensible name on the object. These 
     can be either input or output arguments, entirely at the discretion
-    of userFunction(). otherArgs should be in instance of :class:`rios.applier.OtherInputs`
+    of userFunction(). otherArgs should be in instance of :class:`rios.structures.OtherInputs`
 
     The userFunction has the following call sequence::
 
