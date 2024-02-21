@@ -589,8 +589,7 @@ class Timers:
         for name in self.pairs:
             intervals = numpy.array(self.getDurationsForName(name))
             tot = intervals.sum()
-            mean = intervals.mean()
-            d[name] = {'mean': mean, 'tot': tot}
+            d[name] = {'tot': tot}
         return d
 
     def formatReport(self):
