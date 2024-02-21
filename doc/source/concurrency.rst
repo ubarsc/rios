@@ -126,10 +126,10 @@ affected are
 * The entire InputCollection class
 * The entire VectorReader class
 * The old parallel computation code within rios.parallel. This was never very
-  efficient, and is now not used. Existing applications which use should 
-  should update to the new concurrency style. Until then, they will run,
-  by using the new style to emulate the old, with guesses at appropriate 
-  parameters. 
+  efficient, and is now not used. Existing applications which use it 
+  should update to the new concurrency style. Until then, they will still run,
+  but internall the new style is used to emulate the old, with guesses at
+  appropriate parameters. 
 
 Any application code which makes direct use of these classes should be reviewed
 with this in mind.
