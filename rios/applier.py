@@ -578,7 +578,8 @@ class ApplierControls(object):
         Uses the new ConcurrencyStyle model to emulate the old JobManager
         concurrency. The new stuff is much better, but this allows old
         programs to use it without modification. Prints a deprecation
-        warning.
+        warning. This routine is called automatically if the old JobManager
+        settings have been invoked.
         """
         if self.numThreads != 1 and self.jobManagerType is not None:
             msg = ("Warning: setNumThreads and setJobManagerType are " +
