@@ -32,7 +32,7 @@ from . import rioserrors
 from .imagereader import DEFAULTFOOTPRINT, DEFAULTWINDOWXSIZE
 from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP
 from .imagereader import DEFAULTLOGGINGSTREAM                         # noqa: F401
-from .imagereader import readBlockAllFiles, ReadWorkerMgr
+from .imagereader import readBlockAllFiles, ReadWorkerMgr, specialProjFixes
 from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS    # noqa: F401
 from .imagewriter import writeBlock, closeOutfiles
 from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F401
@@ -895,9 +895,10 @@ def makeWorkingGrid(infiles, allInfo, controls):
     pixgridList = []
     for info in allInfo.values():
         if isinstance(info, ImageInfo):
-            pixgrid = PixelGridDefn(projection=info.projection,
-                        geotransform=info.transform,
-                        nrows=info.nrows, ncols=info.ncols)
+            pixgrid = PixelGridDefn(
+                projection=specialProjFixes(info.projection),
+                geotransform=info.transform,
+                nrows=info.nrows, ncols=info.ncols)
             pixgridList.append(pixgrid)
 
     # Work out the reference pixel grid

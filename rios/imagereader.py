@@ -26,7 +26,7 @@ import threading
 import traceback
 
 import numpy
-from osgeo import gdal, osr, gdal_array
+from osgeo import gdal, gdal_array
 
 from . import imageio
 from . import inputcollection
@@ -168,13 +168,13 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         if controls.getOptionForImagename('allowOverviewsGdalwarp',
                 symbolicName):
             overviewLevel = 'AUTO'
-        dstSrs = osr.SpatialReference()
-        dstSrs.ImportFromWkt(workinggrid.projection)
+        srcSrs = specialProjFixes(fileInfo.projection)
+        dstSrs = workinggrid.projection
         resampleMethod = controls.getOptionForImagename('resampleMethod',
             symbolicName)
         warpOptions = gdal.WarpOptions(format="VRT", outputBounds=outBounds,
-            xRes=xRes, yRes=yRes, srcNodata=nullval,
-            dstNodata=nullval, dstSRS=dstSrs, overviewLevel=overviewLevel,
+            xRes=xRes, yRes=yRes, srcNodata=nullval, srcSRS=srcSrs,
+            dstSRS=dstSrs, dstNodata=nullval, overviewLevel=overviewLevel,
             resampleAlg=resampleMethod)
         # Have to remove the vrtfile, because gdal.Warp won't over-write.
         os.remove(vrtfile)
@@ -190,6 +190,33 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         bandObjList = [ds.GetRasterBand(i) for i in layerselection]
 
     return (ds, bandObjList)
+
+
+def specialProjFixes(projwkt):
+    """
+    Does any special fixes required for the projection. Returns the fixed
+    projection WKT string.
+
+    Specifically this does two things, both of which are to cope with rubbish
+    that Imagine has put into the projection. Firstly, it removes the
+    crappy TOWGS84 parameters which Imagine uses for GDA94, and secondly
+    removes the crappy name which Imagine gives to the correct GDA94.
+
+    If neither of these things is found, returns the string unchanged.
+
+    """
+    dodgyTOWGSstring = "TOWGS84[-16.237,3.51,9.939,1.4157e-06,2.1477e-06,1.3429e-06,1.91e-07]"
+    properTOWGSstring = "TOWGS84[0,0,0,0,0,0,0]"
+    if projwkt.find('"GDA94"') > 0 or projwkt.find('"Geocentric_Datum_of_Australia_1994"') > 0:
+        newWkt = projwkt.replace(dodgyTOWGSstring, properTOWGSstring)
+    else:
+        newWkt = projwkt
+
+    # Imagine's name for the correct GDA94 also causes problems, so
+    # replace it with something more standard.
+    newWkt = newWkt.replace('GDA94-ICSM', 'GDA94')
+
+    return newWkt
 
 
 class ReadWorkerMgr:
