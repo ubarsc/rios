@@ -762,6 +762,10 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     if readWorkerMgr is not None:
         readWorkerMgr.shutdown()
 
+    if forceExit:
+        msg = "Earlier errors make it impossible to continue"
+        raise rioserrors.RiosError(msg)
+
     # Set up returns object
     rtn = ApplierReturn()
     rtn.timings = timings
@@ -833,6 +837,10 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         computeMgr.shutdown()
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
+
+    if forceExit:
+        msg = "Earlier errors make it impossible to continue"
+        raise rioserrors.RiosError(msg)
 
     # Assemble the return object
     rtn = ApplierReturn()
