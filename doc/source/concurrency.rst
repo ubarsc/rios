@@ -62,6 +62,52 @@ they are already confident it works well without.
 The routines for processing raster attribute tables (rios.ratapplier) are
 unaffected by any of the above, and still work entirely sequentially.
 
+Timing
+------
+Effective use of concurrency relies on understanding how time is spent within 
+the application. The RIOS apply function has some internal monitoring to assist
+with this. The apply() function returns an object with a field called timings.
+This timings object can generate a simple report on where time is being spent
+during the run. ::
+
+    rtn = apply(userFunc, infiles, outfiles)
+    timings = rtn.timings
+    reportStr = timings.formatReport()
+    print(reportStr)
+
+This will show a simple report like the following ::
+
+    Wall clock elapsed time: 11.8 seconds
+
+    Timer                Total (sec)  
+    -------------------------------
+    reading                6.6
+    userfunction          33.7
+    writing                4.2
+    add_inbuffer           2.3
+    pop_inbuffer           1.3
+    add_outbuffer          0.0
+    pop_outbuffer          7.6
+
+This example was run with 4 compute workers and 1 read worker. The total amount
+of time spent in each category is added up across threads, so will be larger
+than the elapsed wall clock time shown at the top. 
+
+The time spent waiting for the various buffers can provide important clues.
+If a lot of time is being spent waiting to add to the input buffer, this may 
+mean there are not enough compute workers taking blocks out. Similarly, a lot of
+time spent waiting to pop blocks out of the input buffer may indicate that
+adding some read workers would help. All of this depends on the hardware 
+configuration, of course. Adding more compute workers on a single core CPU
+will not usually help at all. 
+
+Time spent waiting to add to the output buffer probably indicates too many 
+compute workers, filling up the buffer faster than the writing thread can 
+empty it.
+
+The details will vary a lot with the applicationand the hardware available,
+but in general this timing report will assist in deciding the most useful
+parameters for the ConcurrencyStyle.
 
 Deprecated Code
 ---------------
