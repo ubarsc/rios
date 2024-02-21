@@ -105,7 +105,7 @@ Time spent waiting to add to the output buffer probably indicates too many
 compute workers, filling up the buffer faster than the writing thread can 
 empty it.
 
-The details will vary a lot with the applicationand the hardware available,
+The details will vary a lot with the application and the hardware available,
 but in general this timing report will assist in deciding the most useful
 parameters for the ConcurrencyStyle.
 
@@ -125,6 +125,11 @@ affected are
 * The entire ImageWriter class
 * The entire InputCollection class
 * The entire VectorReader class
+* The old parallel computation code within rios.parallel. This was never very
+  efficient, and is now not used. Existing applications which use should 
+  should update to the new concurrency style. Until then, they will run,
+  by using the new style to emulate the old, with guesses at appropriate 
+  parameters. 
 
 Any application code which makes direct use of these classes should be reviewed
 with this in mind.
