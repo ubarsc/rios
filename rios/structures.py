@@ -589,10 +589,17 @@ class Timers:
         for name in self.pairs:
             intervals = numpy.array(self.getDurationsForName(name))
             tot = intervals.sum()
-            d[name] = {'tot': tot}
+            minVal = intervals.min()
+            maxVal = intervals.max()
+            pcnt25 = numpy.percentile(intervals, 25)
+            pcnt50 = numpy.percentile(intervals, 50)
+            pcnt75 = numpy.percentile(intervals, 75)
+            d[name] = {'tot': tot, 'min': minVal, 'max': maxVal,
+                'lower': pcnt25, 'median': pcnt50, 'upper': pcnt75,
+                'N': len(intervals)}
         return d
 
-    def formatReport(self):
+    def formatReport(self, level=0):
         """
         Format a simple report. Return as a formatted string
         """
@@ -604,12 +611,25 @@ class Timers:
             "{:14s}       {:13s}".format("Timer", "Total (sec)"),
             ("-" * 31)
         ]
-        fieldOrder = ['reading', 'userfunction', 'writing', 'add_inbuffer',
-            'pop_inbuffer', 'add_outbuffer', 'pop_outbuffer']
+        fieldOrder = ['reading', 'userfunction', 'writing', 'closing',
+            'add_inbuffer', 'pop_inbuffer', 'add_outbuffer',
+            'pop_outbuffer']
         for name in fieldOrder:
             if name in d:
                 line = "{:14s}    {:8.1f}".format(name, d[name]['tot'])
                 reportLines.append(line)
+
+        if level > 0:
+            head = "{:14s}       {}".format("Timer",
+                "N,Min,Lower,Median,Upper,Max")
+            reportLines.extend(["", "", head, ("-" * len(head))])
+            for name in fieldOrder:
+                if name in d:
+                    s = d[name]
+                    line = "{:14s}    {},{:.4f},{:.4f},{:.4f},{:.4f},{:.4f}"
+                    line = line.format(name, s['N'], s['min'], s['lower'],
+                        s['median'], s['upper'], s['max'])
+                    reportLines.append(line)
         reportStr = '\n'.join(reportLines)
         return reportStr
 

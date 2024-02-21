@@ -757,7 +757,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
 
     if not forceExit:
         if outBlockBuffer is None:
-            with timings.interval('writing'):
+            with timings.interval('closing'):
                 closeOutfiles(gdalOutObjCache, outfiles, controls)
     if readWorkerMgr is not None:
         readWorkerMgr.shutdown()
@@ -825,7 +825,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             blockNdx += 1
 
         if not forceExit:
-            with timings.interval('writing'):
+            with timings.interval('closing'):
                 closeOutfiles(gdalOutObjCache, outfiles, controls)
     finally:
         # It is important that the computeMgr always be shut down, as it
