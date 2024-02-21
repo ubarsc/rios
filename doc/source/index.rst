@@ -80,11 +80,17 @@ Low level functions
     rios_imagewriter
     rios_computemanager
     rios_structures
-    rios_parallel
-    rios_parallel_aws_batch
     rios_rat
     rios_colortable
     rios_readerinfo
+
+Deprecated (see version 2.0 notes)
+----------------------------------
+.. toctree::
+    :maxdepth: 1
+
+    rios_parallel
+    rios_parallel_aws_batch
     
 
 Command Line Programs
