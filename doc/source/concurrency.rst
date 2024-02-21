@@ -55,3 +55,30 @@ contains a detailed explanation of how the various style parameters interact,
 and how to choose a good concurrency style for a particular problem and
 hardware configuration. 
 
+It is strongly recommended that a new program be largely debugged with
+no concurrency, and that developers only switch on the concurrency after 
+they are already confident it works well without.
+
+The routines for processing raster attribute tables (rios.ratapplier) are
+unaffected by any of the above, and still work entirely sequentially.
+
+
+Deprecated Code
+---------------
+As part of this new (version 2.0) update to the internals of RIOS, some
+sections of code were completely redesigned. The main interface to RIOS,
+via the applier.apply() function, is entirely unchanged, and should not 
+require any action from the user, and existing code should work exactly 
+as before. This will not be changed in the future. 
+
+However, some of the internal code is now obsolete, and is likely to be
+removed at some date in the future. The main sections which are likely to be
+affected are
+
+* The entire ImageReader class
+* The entire ImageWriter class
+* The entire InputCollection class
+* The entire VectorReader class
+
+Any application code which makes direct use of these classes should be reviewed
+with this in mind.
