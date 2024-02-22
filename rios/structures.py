@@ -684,8 +684,7 @@ class NetworkDataChannel:
         class DataChannelMgr(BaseManager):
             pass
 
-        if None not in (workerCommonData, workerLocalData, inBlockBuffer,
-                outBlockBuffer):
+        if None not in (workerCommonData, workerLocalData, outBlockBuffer):
             self.hostname = socket.gethostname()
             # Authkey is a big long random bytes string. Making one which is
             # also printable ascii.
