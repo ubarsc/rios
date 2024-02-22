@@ -19,9 +19,10 @@ writing modules
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import warnings
 from osgeo import gdal
 from osgeo import gdal_array
+
+from .rioserrors import deprecationWarning
 
 INTERSECTION = 0
 UNION = 1
@@ -53,9 +54,9 @@ def GDALTypeToNumpyType(gdaltype):
     Given a gdal data type returns the matching
     numpy data type
     """
-    warnings.warn("Future versions of RIOS may remove this function. " +
+    deprecationWarning("Future versions of RIOS may remove this function. " +
         "Use gdal_array.GDALTypeCodeToNumericTypeCode instead",
-        DeprecationWarning, stacklevel=2)
+        stacklevel=2)
     return gdal_array.GDALTypeCodeToNumericTypeCode(gdaltype)
 
 
@@ -64,7 +65,7 @@ def NumpyTypeToGDALType(numpytype):
     For a given numpy data type returns the matching
     GDAL data type
     """
-    warnings.warn("Future versions of RIOS may remove this function. " +
+    deprecationWarning("Future versions of RIOS may remove this function. " +
         "Use gdal_array.NumericTypeCodeToGDALTypeCode instead",
-        DeprecationWarning, stacklevel=2)
+        stacklevel=2)
     return gdal_array.NumericTypeCodeToGDALTypeCode(numpytype)
