@@ -444,6 +444,9 @@ class ImageWriter(object):
         If you pass info, these other values will be determined from that
         
         """
+        msg = "The ImageWriter class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
+
         self.filename = filename
         noninfoitems = [xsize, ysize, transform, projection, windowxsize,
             windowysize, overlap]

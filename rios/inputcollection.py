@@ -105,6 +105,9 @@ class InputCollection(object):
         rather than stdout.
         
         """
+        msg = "The InputCollection class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
+
         self.loggingstream = loggingstream
         # initialise our lists
         self.imageList = []

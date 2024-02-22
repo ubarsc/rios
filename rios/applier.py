@@ -187,6 +187,8 @@ class ApplierControls(object):
         """
         Set the rios logging stream to the given file-like object. 
         """
+        msg = "The loggingstream is deprecated and ignored (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
         self.loggingstream = loggingstream
         
     def setOverlap(self, overlap):
@@ -582,8 +584,8 @@ class ApplierControls(object):
         settings have been invoked.
         """
         if self.numThreads != 1 and self.jobManagerType is not None:
-            msg = ("setNumThreads and setJobManagerType are " +
-                   "now deprecated. Please use setConcurrencyStyle " +
+            msg = ("setNumThreads and setJobManagerType are now " +
+                   "deprecated (v2.0.0). Please use setConcurrencyStyle " +
                    "instead. Emulating jobManagerType '{}'")
             msg = msg.format(self.jobManagerType)
             rioserrors.deprecationWarning(msg, stacklevel=3)

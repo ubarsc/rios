@@ -419,6 +419,8 @@ class ImageReader(object):
         Default reads all layers. 
         
         """
+        msg = "The ImageReader class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
 
         # grab the imageContainer so we can always know what 
         # type of container they passed in
