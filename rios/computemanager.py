@@ -279,8 +279,12 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         computeWorkerCmd.extend(addressArgs)
         computeWorkerCmdStr = " ".join(computeWorkerCmd)
 
+        # Mark the start of outputs from the worker command in the log
+        scriptCmdList.append("echo 'Begin-rios-worker'")
         scriptCmdList.append(computeWorkerCmdStr)
-        # Make sure I can see the exit status from the command
+        # Mark the end of outputs from the worker command in the log
+        scriptCmdList.append("echo 'End-rios-worker'")
+        # Make sure the log includes the exit status from the command
         scriptCmdList.append("echo 'rios_computeworker status:' $?")
         scriptStr = '\n'.join(scriptCmdList)
 
@@ -339,8 +343,44 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 time.sleep(60)
 
     def checkWorkerErrors(self):
-        "Not yet implemented"
-        pass
+        """
+        Look for errors in the log files
+        """
+        numWorkers = len(self.scriptfileList)
+        for workerID in range(numWorkers):
+            logf = open(self.logfileList[workerID], 'r')
+            loglines = logf.readlines()
+            i = self.findLine(loglines, 'Begin-rios-worker') + 1
+            j = self.findLine(loglines, 'End-rios-worker')
+            if i is not None and j is not None:
+                workerOutLines = loglines[i:j]
+            else:
+                workerOutLines = ["Unable to find worker output in PBS log"]
+            statusNdx = self.findLine(loglines, 'rios_computeworker status:')
+            if statusNdx is not None:
+                statusLine = statusLine[0]
+                statusVal = int(statusLine.split(':')[-1])
+            else:
+                statusVal = None
+                workerOutLines.extend(["",
+                    "Could not find PBS job exit status"])
+            if statusVal != 0:
+                print("\nError in compute worker", workerID)
+                print('\n'.join(workerOutLines))
+                print()
+
+    @staticmethod
+    def findLine(linelist, s):
+        """
+        Find the first line which begins with the given string.
+        Return the index of that line, or None if not found.
+        """
+        ndx = None
+        for i in range(len(linelist)):
+            line = linelist[i]
+            if ndx is None and line.startswith(s):
+                ndx =  i
+        return i
 
     def shutdown(self):
         """
