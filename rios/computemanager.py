@@ -22,6 +22,7 @@ class ComputeWorkerManager(ABC):
     compute-workers. It should over-ride all abstract methods given here.
     """
     computeWorkerKind = CW_NONE
+    outObjList = None
 
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
@@ -156,11 +157,15 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         then re-raise it here. This function must be called from the main
         thread.
         """
+        workerID = 0
         for worker in self.workerList:
             if worker.done():
                 e = worker.exception(timeout=0)
                 if e is not None:
+                    print("\nError in compute worker", workerID)
                     traceback.print_exception(e)
+                    print()
+            workerID += 1
 
     def shutdown(self):
         """
@@ -449,8 +454,9 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         for (workerID, proc) in self.processes.items():
             retcode = proc.returncode
             if retcode is not None and retcode != 0:
-                print("Error in worker", workerID)
+                print("\nError in compute worker", workerID)
                 print(self.results[workerID]['stderrstr'])
+                print()
 
     def shutdown(self):
         """
