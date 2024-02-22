@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Utility class PixelGridDefn, which defines a pixel grid,
 plus useful operations on it. 

@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 This file contains definitions that are
 common to all the image reading and 
