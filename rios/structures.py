@@ -16,6 +16,7 @@ import tempfile
 
 import numpy
 from osgeo import gdal
+import cloudpickle
 
 from . import rioserrors
 
@@ -25,6 +26,7 @@ CW_THREADS = 2
 CW_PBS = 3
 CW_SLURM = 4
 CW_AWSBATCH = 5
+CW_SUBPROC = 10
 
 
 class ConcurrencyStyle:
@@ -549,9 +551,15 @@ class Timers:
     """
     Manage multiple named timers.
     """
-    def __init__(self):
-        self.pairs = {}
-        self.lock = threading.Lock()
+    def __init__(self, pairs=None, withlock=True):
+        if pairs is None:
+            self.pairs = {}
+        else:
+            self.pairs = pairs
+        if withlock:
+            self.lock = threading.Lock()
+        else:
+            self.lock = None
 
     @contextlib.contextmanager
     def interval(self, intervalName):
@@ -683,7 +691,7 @@ class NetworkDataChannel:
             # also printable ascii.
             self.authkey = secrets.token_hex()
 
-            self.workerCommonData = workerCommonData
+            self.workerCommonData = cloudpickle.dumps(workerCommonData)
             self.workerLocalData = workerLocalData
             self.inBlockBuffer = inBlockBuffer
             self.outBlockBuffer = outBlockBuffer
@@ -712,7 +720,7 @@ class NetworkDataChannel:
             DataChannelMgr.register("get_commondata")
             DataChannelMgr.register("get_localdata")
             DataChannelMgr.register("get_outblockbuffer")
-            DataChannelMgr.register("get_inblockbuffere")
+            DataChannelMgr.register("get_inblockbuffer")
             DataChannelMgr.register("get_outqueue")
 
             self.mgr = DataChannelMgr(address=(hostname, portnum),
@@ -723,7 +731,8 @@ class NetworkDataChannel:
             self.mgr.connect()
 
             # Get the proxy objects.
-            self.workerCommonData = self.mgr.get_commondata()
+            self.workerCommonData = cloudpickle.loads(eval(str(
+                self.mgr.get_commondata())))
             self.workerLocalData = self.mgr.get_localdata()
             self.inBlockBuffer = self.mgr.get_inblockbuffer()
             self.outBlockBuffer = self.mgr.get_outblockbuffer()
