@@ -675,7 +675,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         if (concurrency.computeWorkerKind == CW_NONE):
             rtn = apply_singleCompute(userFunction, infiles, outfiles,
                 otherArgs, controls, allInfo, workinggrid, blockList,
-                None, None)
+                None, None, None)
         else:
             rtn = apply_multipleCompute(userFunction, infiles, outfiles,
                 otherArgs, controls, allInfo, workinggrid, blockList)
@@ -686,7 +686,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
 def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         controls, allInfo, workinggrid, blockList, outBlockBuffer,
-        inBlockBuffer):
+        inBlockBuffer, workerID):
     """
     Apply function for simplest configuration, with no compute concurrency.
     Does have possible read concurrency.
@@ -790,11 +790,12 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         concurrency.computeBufferPopTimeout)
     gdalOutObjCache = {}
 
+    inBlockBuffer = None
     readWorkerMgr = None
-    inBlockBuffer = BlockBuffer(infiles, concurrency.numReadWorkers,
-        concurrency.readBufferInsertTimeout,
-        concurrency.readBufferPopTimeout)
     if not concurrency.computeWorkersRead:
+        inBlockBuffer = BlockBuffer(infiles, concurrency.numReadWorkers,
+            concurrency.readBufferInsertTimeout,
+            concurrency.readBufferPopTimeout)
         readWorkerMgr = ReadWorkerMgr()
         readWorkerMgr.startReadWorkers(blockList, infiles, allInfo,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
