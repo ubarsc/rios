@@ -465,7 +465,7 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
                     suffix='.chnl')
                 address = "{},{},{}".format(self.dataChan.hostname,
                     self.dataChan.portnum, self.dataChan.authkey)
-                open(self.addressFile, 'asdw').write(address + '\n')
+                open(self.addressFile, 'w').write(address + '\n')
 
             for workerID in workerIDnumList:
                 self.worker(workerID)
