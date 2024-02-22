@@ -23,7 +23,6 @@ class ComputeWorkerManager(ABC):
     """
     computeWorkerKind = CW_NONE
     outObjList = None
-    workersStarted = False
 
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
@@ -111,8 +110,6 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
                 self.taskQ, inBlockBuffer, outBlockBuffer, self.outqueue,
                 workerID)
             self.workerList.append(worker)
-
-        self.workersStarted = True
 
     def worker(self, userFunction, infiles, outfiles, otherArgs, controls,
             allInfo, workinggrid, taskQ, inBlockBuffer, outBlockBuffer,
@@ -239,22 +236,20 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             workerLocalData, inBlockBuffer, outBlockBuffer)
         self.outqueue = self.dataChan.outqueue
 
-        self.addressFile = None
-        if self.haveSharedTemp:
-            self.addressFile = tmpfileMgr.mktempfile(prefix='rios_pbs_',
-                suffix='.chnl')
-            address = "{},{},{}".format(self.dataChan.hostname,
-                self.dataChan.portnum, self.dataChan.authkey)
-            open(self.addressFile, 'w').write(address + '\n')
-
         try:
+            self.addressFile = None
+            if self.haveSharedTemp:
+                self.addressFile = tmpfileMgr.mktempfile(prefix='rios_pbs_',
+                    suffix='.chnl')
+                address = "{},{},{}".format(self.dataChan.hostname,
+                    self.dataChan.portnum, self.dataChan.authkey)
+                open(self.addressFile, 'w').write(address + '\n')
+
             for workerID in workerIDnumList:
                 self.worker(workerID, tmpfileMgr)
         except Exception as e:
             self.dataChan.shutdown()
             raise e
-
-        self.workersStarted = True
 
     def worker(self, workerID, tmpfileMgr):
         scriptfile = tmpfileMgr.mktempfile(prefix='rios_pbsscript_',
@@ -463,18 +458,20 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
             workerLocalData, inBlockBuffer, outBlockBuffer)
         self.outqueue = self.dataChan.outqueue
 
-        self.addressFile = None
-        if self.haveSharedTemp:
-            self.addressFile = tmpfileMgr.mktempfile(prefix='rios_subproc_',
-                suffix='.chnl')
-            address = "{},{},{}".format(self.dataChan.hostname,
-                self.dataChan.portnum, self.dataChan.authkey)
-            open(self.addressFile, 'w').write(address + '\n')
+        try:
+            self.addressFile = None
+            if self.haveSharedTemp:
+                self.addressFile = tmpfileMgr.mktempfile(prefix='rios_subproc_',
+                    suffix='.chnl')
+                address = "{},{},{}".format(self.dataChan.hostname,
+                    self.dataChan.portnum, self.dataChan.authkey)
+                open(self.addressFile, 'asdw').write(address + '\n')
 
-        for workerID in workerIDnumList:
-            self.worker(workerID)
-
-        self.workersStarted = True
+            for workerID in workerIDnumList:
+                self.worker(workerID)
+        except Exception as e:
+            self.dataChan.shutdown()
+            raise e
 
     def worker(self, workerID):
         """
