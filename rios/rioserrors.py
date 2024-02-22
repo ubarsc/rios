@@ -147,8 +147,9 @@ class UnavailableError(RiosError):
 def deprecationWarning(msg, stacklevel=2):
     """
     Print a deprecation warning to stderr. Includes the filename
-    and line number of the call to the function which called this
-    (i.e. the given number of levels above here in the stack)
+    and line number of the call to the function which called this.
+    The stacklevel argument controls how many stack levels above this
+    gives the line number.
 
     Implemented in mimcry of warnings.warn(), which seems very flaky.
     Sometimes it prints, and sometimes not, unless PYTHONWARNINGS is set
