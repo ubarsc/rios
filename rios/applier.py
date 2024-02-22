@@ -801,14 +801,19 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
             inBlockBuffer, timings)
 
-    computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
-        userFunction=userFunction, infiles=infiles, outfiles=outfiles,
-        otherArgs=otherArgs, controls=controls, blockList=blockList,
-        inBlockBuffer=inBlockBuffer, outBlockBuffer=outBlockBuffer,
-        workinggrid=workinggrid, allInfo=allInfo,
-        computeWorkersRead=concurrency.computeWorkersRead,
-        singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
-        tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp)
+    try:
+        computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
+            userFunction=userFunction, infiles=infiles, outfiles=outfiles,
+            otherArgs=otherArgs, controls=controls, blockList=blockList,
+            inBlockBuffer=inBlockBuffer, outBlockBuffer=outBlockBuffer,
+            workinggrid=workinggrid, allInfo=allInfo,
+            computeWorkersRead=concurrency.computeWorkersRead,
+            singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
+            tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp)
+    finally:
+        computeMgr.shutdown()
+        if readWorkerMgr is not None:
+            readWorkerMgr.shutdown()
 
     try:
         numBlocks = len(blockList)
