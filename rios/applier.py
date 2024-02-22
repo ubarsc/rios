@@ -582,11 +582,11 @@ class ApplierControls(object):
         settings have been invoked.
         """
         if self.numThreads != 1 and self.jobManagerType is not None:
-            msg = ("Warning: setNumThreads and setJobManagerType are " +
+            msg = ("setNumThreads and setJobManagerType are " +
                    "now deprecated. Please use setConcurrencyStyle " +
                    "instead. Emulating jobManagerType '{}'")
             msg = msg.format(self.jobManagerType)
-            print(msg)
+            rioserrors.deprecationWarning(msg, stacklevel=3)
 
             numComputeWorkers = self.numThreads
             jobMgrToCwKind = {
