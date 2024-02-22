@@ -727,7 +727,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                 inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
                     allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
         else:
-            with timings.interval('add_inbuffer'):
+            with timings.interval('pop_inbuffer'):
                 (blockDefn, inputs) = inBlockBuffer.popNextBlock()
 
         readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
