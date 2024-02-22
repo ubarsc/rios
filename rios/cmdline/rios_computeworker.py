@@ -7,7 +7,7 @@ import argparse
 from osgeo import gdal
 
 from rios import applier
-from rios.structures import NetworkDataChannel
+from rios.structures import NetworkDataChannel, Timers
 
 
 def getCmdargs():
@@ -46,6 +46,7 @@ def mainCmd():
 
     (host, port, authkey) = tuple(addrStr.split(','))
     port = int(port)
+    authkey = bytes(authkey, 'utf-8')
 
     dataChan = NetworkDataChannel(hostname=host, portnum=port, authkey=authkey)
 
@@ -65,16 +66,18 @@ def riosComputeWorker(workerID, dataChan):
     controls = dataChan.workerCommonData.get('controls', None)
     allInfo = dataChan.workerCommonData.get('allInfo', None)
     workinggrid = dataChan.workerCommonData.get('workinggrid', None)
-    inBlockCache = dataChan.workerCommonData.get('inBlockCache', None)
-    outBlockCache = dataChan.workerCommonData.get('outBlockCache', None)
+    inBlockBuffer = dataChan.inBlockBuffer
+    outBlockBuffer = dataChan.outBlockBuffer
 
     blockList = dataChan.workerLocalData.get(workerID, None)
 
     rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,
-        otherArgs, controls, allInfo, workinggrid, blockList, outBlockCache,
-        inBlockCache)
+        otherArgs, controls, allInfo, workinggrid, blockList, outBlockBuffer,
+        inBlockBuffer)
 
-    dataChan.outqueue.put(rtn.timings)
+    # Make a pickleable version of the timings
+    timings = Timers(pairs=rtn.timings.pairs, withlock=False)
+    dataChan.outqueue.put(timings)
     dataChan.outqueue.put(otherArgs)
 
 
