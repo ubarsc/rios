@@ -358,7 +358,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 workerOutLines = ["Unable to find worker output in PBS log"]
             statusNdx = self.findLine(loglines, 'rios_computeworker status:')
             if statusNdx is not None:
-                statusLine = statusLine[0]
+                statusLine = loglines[0]
                 statusVal = int(statusLine.split(':')[-1])
             else:
                 statusVal = None
@@ -379,7 +379,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         for i in range(len(linelist)):
             line = linelist[i]
             if ndx is None and line.startswith(s):
-                ndx =  i
+                ndx = i
         return i
 
     def shutdown(self):
