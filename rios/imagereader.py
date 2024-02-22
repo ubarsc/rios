@@ -155,7 +155,7 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         fileInfo = ImageInfo(filename)
 
     if isinstance(fileInfo, ImageInfo):
-        vrtfile = tmpfileMgr.mktempfile(suffix='.vrt')
+        vrtfile = tmpfileMgr.mktempfile(prefix='rios_', suffix='.vrt')
         margin = controls.overlap
         # The world coordinates of the extent. Note that we make
         # it bigger around the edges if we are working with an overlap
