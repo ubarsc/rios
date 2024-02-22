@@ -247,8 +247,12 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 self.dataChan.portnum, self.dataChan.authkey)
             open(self.addressFile, 'w').write(address + '\n')
 
-        for workerID in workerIDnumList:
-            self.worker(workerID, tmpfileMgr)
+        try:
+            for workerID in workerIDnumList:
+                self.worker(workerID, tmpfileMgr)
+        except Exception as e:
+            self.dataChan.shutdown()
+            raise e
 
         self.workersStarted = True
 
@@ -394,8 +398,6 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         shut down the data channel
         """
         self.waitOnJobs()
-        if self.addressFile is not None:
-            os.remove(self.addressFile)
         self.dataChan.shutdown()
 
         # Make a list of all the objects the workers put into outqueue
