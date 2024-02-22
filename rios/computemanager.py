@@ -10,6 +10,7 @@ import traceback
 from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
+from .structures import CW_SUBPROC
 from .readerinfo import makeReaderInfo
 
 
@@ -200,6 +201,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         self.haveSharedTemp = haveSharedTemp
         self.scriptfileList = []
         self.logfileList = []
+        self.pbsId = {}
         if singleBlockComputeWorkers:
             # We ignore numWorkers, and have a worker for each block
             numWorkers = len(blockList)
@@ -227,6 +229,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
 
         self.dataChan = NetworkDataChannel(workerCommonData,
             workerLocalData, inBlockBuffer, outBlockBuffer)
+        self.outqueue = self.dataChan.outqueue
 
         self.addressFile = None
         if self.haveSharedTemp:
@@ -236,7 +239,6 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 self.dataChan.portnum, self.dataChan.authkey)
             open(self.addressFile, 'w').write(address + '\n')
 
-        self.pbsId = {}
         for workerID in workerIDnumList:
             self.worker(workerID, tmpfileMgr)
 
@@ -273,6 +275,8 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         computeWorkerCmdStr = " ".join(computeWorkerCmd)
 
         scriptCmdList.append(computeWorkerCmdStr)
+        # Make sure I can see the exit status from the command
+        scriptCmdList.append("echo 'rios_computeworker status:' $?")
         scriptStr = '\n'.join(scriptCmdList)
 
         open(scriptfile, 'w').write(scriptStr + "\n")
@@ -353,3 +357,120 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 self.outObjList.append(outObj)
             except queue.Empty:
                 done = True
+
+
+class SubprocComputeWorkerManager(ComputeWorkerManager):
+    """
+    Purely for testing, not for normal use.
+
+    This class manages compute workers run through subprocess.Popen.
+    This is not normally any improvement over using CW_THREADS, and
+    should be avoided. I am using this purely as a test framework
+    to emulate the batch queue types of compute worker, which are
+    similarly disconnected from the main process, so I can work out the
+    right mechanisms to use for exception handling and such like,
+    and making sure the rios_computeworker command line works.
+
+    """
+    computeWorkerKind = CW_SUBPROC
+
+    def startWorkers(self, numWorkers=None, userFunction=None,
+            infiles=None, outfiles=None, otherArgs=None, controls=None,
+            blockList=None, inBlockBuffer=None, outBlockBuffer=None,
+            workinggrid=None, allInfo=None, computeWorkersRead=False,
+            singleBlockComputeWorkers=False, tmpfileMgr=None,
+            haveSharedTemp=True):
+        """
+        Start the specified compute workers
+        """
+        self.haveSharedTemp = haveSharedTemp
+        self.processes = {}
+        self.results = {}
+
+        workerIDnumList = range(numWorkers)
+
+        # Divide the block list into a sublist for each worker
+        allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
+        # Set up the data which is common for all workers
+        workerCommonData = {}
+        workerCommonData['userFunction'] = userFunction
+        workerCommonData['infiles'] = infiles
+        workerCommonData['outfiles'] = outfiles
+        workerCommonData['otherArgs'] = otherArgs
+        workerCommonData['controls'] = controls
+        workerCommonData['workinggrid'] = workinggrid
+        workerCommonData['allInfo'] = allInfo
+
+        # Set up the data which is local to each worker
+        workerLocalData = {}
+        for workerID in workerIDnumList:
+            workerLocalData[workerID] = allSublists[workerID]
+
+        self.dataChan = NetworkDataChannel(workerCommonData,
+            workerLocalData, inBlockBuffer, outBlockBuffer)
+        self.outqueue = self.dataChan.outqueue
+
+        self.addressFile = None
+        if self.haveSharedTemp:
+            self.addressFile = tmpfileMgr.mktempfile(prefix='rios_subproc_',
+                suffix='.chnl')
+            address = "{},{},{}".format(self.dataChan.hostname,
+                self.dataChan.portnum, self.dataChan.authkey)
+            open(self.addressFile, 'w').write(address + '\n')
+
+        for workerID in workerIDnumList:
+            self.worker(workerID)
+
+    def worker(self, workerID):
+        """
+        Start one worker
+        """
+        cmdList = ["rios_computeworker", "-i", str(workerID),
+            "--channaddrfile", self.addressFile]
+        self.processes[workerID] = subprocess.Popen(cmdList,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            universal_newlines=True)
+
+    def waitOnJobs(self):
+        """
+        Wait for all worker subprocesses to complete
+        """
+        for (workerID, proc) in self.processes.items():
+            (stdout, stderr) = proc.communicate()
+            results = {
+                'returncode': proc.returncode,
+                'stdoutstr': stdout,
+                'stderrstr': stderr
+            }
+            self.results[workerID] = results
+
+    def checkWorkerErrors(self):
+        "Check for errors in any workers"
+        for (workerID, proc) in self.processes.items():
+            retcode = proc.returncode
+            if retcode is not None and retcode != 0:
+                print("Error in worker", workerID)
+                print(self.results[workerID]['stderrstr'])
+
+    def shutdown(self):
+        """
+        Shutdown the compute manager. Wait on batch jobs, then
+        shut down the data channel
+        """
+        self.waitOnJobs()
+        self.checkWorkerErrors()
+        if self.addressFile is not None:
+            os.remove(self.addressFile)
+        self.dataChan.shutdown()
+
+        # Make a list of all the objects the workers put into outqueue
+        # on completion
+        self.outObjList = []
+        done = False
+        while not done:
+            try:
+                outObj = self.outqueue.get(block=False)
+                self.outObjList.append(outObj)
+            except queue.Empty:
+                done = True
+
