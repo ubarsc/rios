@@ -66,14 +66,17 @@ def riosComputeWorker(workerID, dataChan):
     controls = dataChan.workerCommonData.get('controls', None)
     allInfo = dataChan.workerCommonData.get('allInfo', None)
     workinggrid = dataChan.workerCommonData.get('workinggrid', None)
-    inBlockBuffer = dataChan.inBlockBuffer
     outBlockBuffer = dataChan.outBlockBuffer
+    if not controls.concurrency.computeWorkersRead:
+        inBlockBuffer = dataChan.inBlockBuffer
+    else:
+        inBlockBuffer = None
 
     blockList = dataChan.workerLocalData.get(workerID, None)
 
     rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,
         otherArgs, controls, allInfo, workinggrid, blockList, outBlockBuffer,
-        inBlockBuffer)
+        inBlockBuffer, workerID)
 
     # Make a pickleable version of the timings
     timings = Timers(pairs=rtn.timings.pairs, withlock=False)
