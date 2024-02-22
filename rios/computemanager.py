@@ -23,6 +23,7 @@ class ComputeWorkerManager(ABC):
     """
     computeWorkerKind = CW_NONE
     outObjList = None
+    workersStarted = False
 
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
@@ -110,6 +111,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
                 self.taskQ, inBlockBuffer, outBlockBuffer, self.outqueue,
                 workerID)
             self.workerList.append(worker)
+
+        self.workersStarted = True
 
     def worker(self, userFunction, infiles, outfiles, otherArgs, controls,
             allInfo, workinggrid, taskQ, inBlockBuffer, outBlockBuffer,
@@ -246,6 +249,8 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
 
         for workerID in workerIDnumList:
             self.worker(workerID, tmpfileMgr)
+
+        self.workersStarted = True
 
     def worker(self, workerID, tmpfileMgr):
         scriptfile = tmpfileMgr.mktempfile(prefix='rios_pbsscript_',
@@ -466,6 +471,8 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
 
         for workerID in workerIDnumList:
             self.worker(workerID)
+
+        self.workersStarted = True
 
     def worker(self, workerID):
         """
