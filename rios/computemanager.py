@@ -317,12 +317,13 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         """
         Wait for all PBS batch jobs to complete
         """
-        allFinished = False
 
         # Extract the actual PBS job ID strings, skipping the first element.
         # Express as a set, for efficiency later on
         pbsJobIdSet = set([pbsjob for pbsjob in self.pbsId.values()])
 
+        numJobs = len(pbsJobIdSet)
+        allFinished = (numJobs == 0)
         while not allFinished:
             qstatCmd = ["qstat"]
             proc = subprocess.Popen(qstatCmd, stdout=subprocess.PIPE,
