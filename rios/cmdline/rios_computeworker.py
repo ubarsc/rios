@@ -48,17 +48,16 @@ def mainCmd():
     port = int(port)
     authkey = bytes(authkey, 'utf-8')
 
+    riosRemoteComputeWorker(cmdargs.idnum, host, port, authkey)
+
+
+def riosRemoteComputeWorker(workerID, host, port, authkey):
+    """
+    The main routine to run a compute worker on a remote host.
+
+    """
     dataChan = NetworkDataChannel(hostname=host, portnum=port, authkey=authkey)
 
-    riosComputeWorker(cmdargs.idnum, dataChan)
-
-
-def riosComputeWorker(workerID, dataChan):
-    """
-    The main routine to run a compute worker. Has options for a number of
-    different modes of operation.
-
-    """
     userFunction = dataChan.workerCommonData.get('userFunction', None)
     infiles = dataChan.workerCommonData.get('infiles', None)
     outfiles = dataChan.workerCommonData.get('outfiles', None)
