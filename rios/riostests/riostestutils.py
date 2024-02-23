@@ -251,6 +251,16 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testavgthreads
+    ok = testavgthreads.run()
+    if not ok:
+        failureCount += 1
+
+    from . import testavgsubproc
+    ok = testavgsubproc.run()
+    if not ok:
+        failureCount += 1
+
     from . import testavgmulti
     ok = testavgmulti.run()
     if not ok:
