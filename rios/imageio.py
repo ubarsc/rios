@@ -49,14 +49,24 @@ def pix2wld(transform, x, y):
     return Coord(geox, geoy)
 
 
+# WARNING
+# WARNING
+# WARNING
+# WARNING
+# WARNING       All code below this point is deprecated (v2.0.0)
+# WARNING
+# WARNING
+# WARNING
+# WARNING
+
+
 def GDALTypeToNumpyType(gdaltype):
     """
     Given a gdal data type returns the matching
     numpy data type
     """
     deprecationWarning("Future versions of RIOS may remove this function. " +
-        "Use gdal_array.GDALTypeCodeToNumericTypeCode instead",
-        stacklevel=2)
+        "Use gdal_array.GDALTypeCodeToNumericTypeCode instead")
     return gdal_array.GDALTypeCodeToNumericTypeCode(gdaltype)
 
 
@@ -66,6 +76,5 @@ def NumpyTypeToGDALType(numpytype):
     GDAL data type
     """
     deprecationWarning("Future versions of RIOS may remove this function. " +
-        "Use gdal_array.NumericTypeCodeToGDALTypeCode instead",
-        stacklevel=2)
+        "Use gdal_array.NumericTypeCodeToGDALTypeCode instead")
     return gdal_array.NumericTypeCodeToGDALTypeCode(numpytype)
