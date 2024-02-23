@@ -1,7 +1,16 @@
 """
-This file contains definitions that are
-common to all the image reading and 
-writing modules
+The only things of value left in this module are the original definitions of
+UNION, INTERSECTION and BOUNDS_FROM_REFERENCE.
+
+There are also two functions wld2pix and pix2wld, and the Coord class they use.
+These should also be deprecated, in favour of GDAL's ApplyGeoTransform
+and InvGeoTransform (which they now use internally anyway).
+However, they are used in public-facing ways in the ReaderInfo object,
+so removing them would, in principle, be a breaking change.
+They are harmless enough, so they have been left here.
+
+In general, this module should be ignored.
+
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
