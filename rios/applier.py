@@ -779,6 +779,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     # Set up returns object
     rtn = ApplierReturn()
     rtn.timings = timings
+    rtn.otherArgsList = [otherArgs]
 
     return rtn
 
