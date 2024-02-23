@@ -81,6 +81,7 @@ class ConcurrencyStyle:
     Compute Concurrency
         computeWorkerKind: One of {CW_NONE, CW_THREADS, CW_PBS, CW_SLURM,
             CW_AWSBATCH}.
+
             Selects the paradigm used to distribute compute workers.
             The CW_THREADS option means a pool of compute threads
             running within the same process as the rest of RIOS.
@@ -353,7 +354,12 @@ class OtherInputs(object):
     inside the function being applied. This class was originally
     named for inputs, but in fact works just as well for outputs, 
     too. Any items stored on this will be persistent between 
-    iterations of the block loop. 
+    iterations of the block loop.
+
+    When using multiple compute workers, copies of this object are given
+    to each worker, where they can be modified as normal. A list of these
+    copies is then given back on the :class:`rios.structures.ApplierReturn`
+    object.
     """
     pass
 
@@ -482,6 +488,11 @@ class BlockBuffer:
 
 
 class BlockBufferValue:
+    """
+    Used to hold a BlockAssociations object, along with relevant information
+    about its completeness, and locking to ensure thread-safety. An instance
+    of this is used for each BlockAssociations object stored in a BlockBuffer.
+    """
     def __init__(self, filenameAssoc=None, blockData=None):
         if filenameAssoc is not None:
             self.blockData = BlockAssociations(filenameAssoc)
@@ -503,7 +514,7 @@ class BlockBufferValue:
 
 class ApplierBlockDefn:
     """
-    Defines a single block of the working grid.
+    Defines a single block of the working grid. Is hashable and ordered.
     """
     def __init__(self, top, left, nrows, ncols):
         self.top = top
@@ -548,7 +559,17 @@ class ApplierBlockDefn:
 
 class Timers:
     """
-    Manage multiple named timers.
+    Manage multiple named timers. See interval() method for example
+    usage.
+
+    Maintains a dictionary of pairs of start/finish times, before and
+    after particular operations. These are grouped by operation names,
+    and for each name, a list is accumulated of the pairs, for every
+    time when this operation was carried out.
+
+    The object is thread-safe, so multiple threads can accumulate to
+    the same names.
+
     """
     def __init__(self, pairs=None, withlock=True):
         if pairs is None:
@@ -562,6 +583,20 @@ class Timers:
 
     @contextlib.contextmanager
     def interval(self, intervalName):
+        """
+        Use as a context manager to time a particular named interval.
+
+        Example::
+
+            timings = Timers()
+            with timings.interval('some_action'):
+                # Code block required to perform the action
+
+        After exit from the `with` statement, the timings object will have
+        accumulated the start and end times around the code block. These
+        will then contribute to the reporting of time intervals.
+
+        """
         startTime = time.time()
         yield
         endTime = time.time()
@@ -579,7 +614,7 @@ class Timers:
 
     def merge(self, other):
         """
-        Merge another timers object into this one
+        Merge another Timers object into this one
         """
         with self.lock:
             for intervalName in other.pairs:
@@ -650,16 +685,23 @@ class NetworkDataChannel:
     a group of RIOS compute workers.
 
     Has five major attributes. 
-        workerCommonData is a dictionary of objects which are common
-            to all workers. 
-        workerLocalData is a dictionary, keyed by workerID, of objects
-            which are local to each worker.
-        inBlockBuffer is None if compute workers are doing their own reading,
+
+        workerCommonData
+            a dictionary of objects which are common to all workers.
+            This read-only, and cannot be modified by the workers
+        workerLocalData
+            a dictionary, keyed by workerID, of objects which are local to
+            each worker. This is read-only, and cannot be modified by the
+            workers.
+        inBlockBuffer
+            None, if compute workers are doing their own reading,
             otherwise it is a BlockBuffer supplying input data to the
             compute workers.
-        outBlockBuffer is a BlockBuffer where completed 'outputs' objects are
+        outBlockBuffer
+            a BlockBuffer where completed 'outputs' objects are
             placed, ready for writing.
-        outqueue is a Queue. It is used for any non-pixel output data
+        outqueue
+            a Queue. It is used for any non-pixel output data
             coming from each compute worker, such as modified otherArgs
             objects. Anything in this queue will be collected up by the
             main thread after all compute workers have completed.
@@ -786,7 +828,7 @@ class RasterizationMgr:
 
         Return the name of the temporary raster file.
 
-        This is thread-safe. Any other thread trying to raterize the
+        This is thread-safe. Any other thread trying to rasterize the
         same vector file will block until this has completed, and then
         be given exactly the same temporary raster file.
 
@@ -855,16 +897,18 @@ class ApplierReturn:
     """
     Hold all objects returned by the applier.apply() function
 
-    The timings field is an instance of :class:`rios.structures.Timers`.
+    Fields
+        timings: an instance of :class:`rios.structures.Timers`
 
-    The otheArgsList is a list of :class:`rios.structures.OtherInputs`
-    objects. By default, there is only one, and it is the same as the one
-    passed in to apply(). However, these objects are not thread-safe,
-    so when using multiple compute workers, each worker has its own copy
-    of otherArgs, which it can modify independently. These copies are
-    then collected up again after all workers have finished, and the list
-    of these is made available on this return object. The user is then
-    free to merge these in whatever way is suitable.
+        otherArgsList: list of :class:`rios.structures.OtherInputs`
+            By default, there is only one element, and it is the same as
+            the one passed in to apply(). However, these objects are not
+            thread-safe, so when using multiple compute workers, each worker
+            has its own copy of otherArgs, which it can modify independently.
+            These copies are then collected up again after all workers have
+            finished, and the list of these is made available on this return
+            object. The user is then free to merge these in whatever way is
+            suitable.
 
     """
     def __init__(self):
