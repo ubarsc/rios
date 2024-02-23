@@ -1,5 +1,8 @@
 """
-Contains the ImageReader class
+Contains the functions needed for opening and reading input files, and the
+ReadWorkerMgr class used to manage concurrent read workers.
+
+Also contains the now-deprecated ImageReader class.
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -319,6 +322,17 @@ class ReadWorkerMgr:
 
     def __del__(self):
         self.shutdown()
+
+
+# WARNING
+# WARNING
+# WARNING
+# WARNING
+# WARNING       All code below this point is deprecated (v2.0.0)
+# WARNING
+# WARNING
+# WARNING
+# WARNING
 
 
 class ImageIterator(object):

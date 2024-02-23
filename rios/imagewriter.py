@@ -1,6 +1,7 @@
-
 """
-Contains the ImageWriter class
+Contains functions used to write output files from applier.apply.
+
+Also contains the now-deprecated ImageWriter class
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -103,20 +104,6 @@ def setDefaultDriver():
 
 
 setDefaultDriver()
-    
-
-def allnotNone(items):
-    for i in items:
-        if i is None:
-            return False
-    return True
-    
-
-def anynotNone(items):
-    for i in items:
-        if i is not None:
-            return True
-    return False
 
 
 def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
@@ -387,6 +374,31 @@ def addAutoColorTable(filename, autoColorTableType):
                 ratObj.WriteArray(clrTbl[:, 3], alphaIdx)
             if not ratObj.ChangesAreWrittenToFile():
                 band.SetDefaultRAT(ratObj)
+
+
+# WARNING
+# WARNING
+# WARNING
+# WARNING
+# WARNING       All code below this point is deprecated (v2.0.0)
+# WARNING
+# WARNING
+# WARNING
+# WARNING
+
+
+def allnotNone(items):
+    for i in items:
+        if i is None:
+            return False
+    return True
+
+
+def anynotNone(items):
+    for i in items:
+        if i is not None:
+            return True
+    return False
 
 
 class ImageWriter(object):
