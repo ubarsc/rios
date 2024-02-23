@@ -261,6 +261,11 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testapplyreturn
+    ok = testapplyreturn.run()
+    if not ok:
+        failureCount += 1
+
     from . import testavgmulti
     ok = testavgmulti.run()
     if not ok:
