@@ -722,7 +722,9 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     numBlocks = len(blockList)
     blockNdx = 0
     forceExit = False
+    prog = ApplierProgress(controls, numBlocks)
     while blockNdx < numBlocks and not forceExit:
+        prog.update(blockNdx)
         if inBlockBuffer is None:
             blockDefn = blockList[blockNdx]
             with timings.interval('reading'):
@@ -756,6 +758,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                     outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
         blockNdx += 1
+    prog.update(blockNdx)
 
     if not forceExit:
         if outBlockBuffer is None:
@@ -821,7 +824,10 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         numBlocks = len(blockList)
         blockNdx = 0
         forceExit = False
+        prog = ApplierProgress(controls, numBlocks)
         while blockNdx < numBlocks and not forceExit:
+            prog.update(blockNdx)
+
             with timings.interval('pop_outbuffer'):
                 try:
                     (blockDefn, outputs) = outBlockBuffer.popNextBlock()
@@ -839,6 +845,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         if not forceExit:
             with timings.interval('closing'):
                 closeOutfiles(gdalOutObjCache, outfiles, controls)
+        prog.update(blockNdx)
     finally:
         # It is important that the computeMgr always be shut down, as it
         # could be running a NetworkDataChannel thread
@@ -984,13 +991,19 @@ def makeBlockList(workinggrid, controls):
     return blockList
 
 
-def updateProgress(controls, info, lastpercent):
+class ApplierProgress:
     """
-    Called by :func:`rios.applier.apply` to update progress
+    Wrapper around the controls progress object, just to simplify the
+    update call, and keeping track of whether the percentage has changed.
     """
-    if controls.progress is not None:
-        percent = info.getPercent()
-        if percent != lastpercent:
-            controls.progress.setProgress(percent)
-            lastpercent = percent
-    return lastpercent
+    def __init__(self, controls, numBlocks):
+        self.progress = controls.progress
+        self.numBlocks = numBlocks
+        self.lastpercent = 0
+
+    def update(self, blockNdx):
+        if self.progress is not None:
+            percent = int(round(100 * blockNdx / self.numBlocks))
+            if percent != self.lastpercent:
+                self.progress.setProgress(percent)
+                self.lastpercent = percent
