@@ -608,7 +608,10 @@ class Timers:
 
     def formatReport(self, level=0):
         """
-        Format a simple report. Return as a formatted string
+        Format a simple report on the timing for the individual named
+        timers.
+
+        Return as a formatted string
         """
         d = self.makeSummaryDict()
         reportLines = [
@@ -851,6 +854,18 @@ class TempfileManager:
 class ApplierReturn:
     """
     Hold all objects returned by the applier.apply() function
+
+    The timings field is an instance of :class:`rios.structures.Timers`.
+
+    The otheArgsList is a list of :class:`rios.structures.OtherInputs`
+    objects. By default, there is only one, and it is the same as the one
+    passed in to apply(). However, these objects are not thread-safe,
+    so when using multiple compute workers, each worker has its own copy
+    of otherArgs, which it can modify independently. These copies are
+    then collected up again after all workers have finished, and the list
+    of these is made available on this return object. The user is than
+    free to merge these in whatever way is suitable.
+
     """
     def __init__(self):
         self.timings = None

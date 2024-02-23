@@ -656,7 +656,9 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     The controls argument, if given, is an instance of the 
     :class:`rios.applier.ApplierControls` class, which allows control of various 
     aspects of the reading and writing of images. See the class 
-    documentation for further details. 
+    documentation for further details.
+
+    The apply function returns a :class:`rios.structures.ApplierReturn` object.
 
     There is a page dedicated to :doc:`applierexamples`.
 
