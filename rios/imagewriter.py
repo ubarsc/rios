@@ -233,27 +233,8 @@ def deleteIfExisting(filename):
 
     """
     if os.path.exists(filename):
-        # Save the current exception-use state
-        usingExceptions = gdal.GetUseExceptions()
-        if not usingExceptions:
-            gdal.UseExceptions()
-
-        # Try opening it for read, to find out whether it is
-        # a valid GDAL file, and which driver it goes with
-        try:
-            ds = gdal.Open(str(filename))
-        except RuntimeError:
-            ds = None
-        finally:
-            # Restore exception-use state
-            if not usingExceptions:
-                gdal.DontUseExceptions()
-
-        if ds is not None:
-            # It is apparently a valid GDAL file, so get the driver
-            # appropriate for it, and use that to delete the file.
-            drvr = ds.GetDriver()
-            del ds
+        drvr = gdal.IdentifyDriver(filename)
+        if drvr is not None:
             drvr.Delete(filename)
         else:
             # Apparently not a valid GDAL file, for whatever reason,
