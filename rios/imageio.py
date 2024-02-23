@@ -62,8 +62,10 @@ def pix2wld(transform, x, y):
 
 def GDALTypeToNumpyType(gdaltype):
     """
-    Given a gdal data type returns the matching
-    numpy data type
+    This function is deprecated.
+    Use gdal_array.GDALTypeCodeToNumericTypeCode instead.
+
+    Given a gdal data type returns the matching numpy data type
     """
     deprecationWarning("Future versions of RIOS may remove this function. " +
         "Use gdal_array.GDALTypeCodeToNumericTypeCode instead")
@@ -72,8 +74,10 @@ def GDALTypeToNumpyType(gdaltype):
 
 def NumpyTypeToGDALType(numpytype):
     """
-    For a given numpy data type returns the matching
-    GDAL data type
+    This function is deprecated.
+    Use gdal_array.NumericTypeCodeToGDALTypeCode instead.
+
+    For a given numpy data type returns the matching GDAL data type
     """
     deprecationWarning("Future versions of RIOS may remove this function. " +
         "Use gdal_array.NumericTypeCodeToGDALTypeCode instead")
