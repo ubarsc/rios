@@ -144,6 +144,9 @@ class UnavailableError(RiosError):
     "A dependency is unavailable"
 
 
+deprecationAlreadyWarned = set()
+
+
 def deprecationWarning(msg, stacklevel=2):
     """
     Print a deprecation warning to stderr. Includes the filename
@@ -174,6 +177,8 @@ def deprecationWarning(msg, stacklevel=2):
         filename = frame.f_code.co_filename
         lineno = frame.f_lineno
 
-    # Now print a standardized message, to stderr
-    print("{} (line {}):\n    WARNING: {}".format(filename, lineno, msg),
-        file=sys.stderr)
+    key = (filename, lineno)
+    if key not in deprecationAlreadyWarned:
+        print("{} (line {}):\n    WARNING: {}".format(filename, lineno, msg),
+            file=sys.stderr)
+        deprecationAlreadyWarned.add(key)
