@@ -863,7 +863,7 @@ class ApplierReturn:
     so when using multiple compute workers, each worker has its own copy
     of otherArgs, which it can modify independently. These copies are
     then collected up again after all workers have finished, and the list
-    of these is made available on this return object. The user is than
+    of these is made available on this return object. The user is then
     free to merge these in whatever way is suitable.
 
     """
