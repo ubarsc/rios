@@ -54,7 +54,7 @@ class ConcurrencyStyle:
 
     Concurrency in reading is supported in two ways. Firstly,
     a pool of threads can read single blocks of data from individual
-    files, which are then cached, ready for use in computation. This
+    files, which are placed in a buffer, ready for use in computation. This
     allows for reading multiple input files at the same time, and for
     reading ahead of the computation. Secondly, each compute worker can
     do its own reading (assuming that the input files are accessible
@@ -362,7 +362,7 @@ class OtherInputs(object):
 
 class BlockBuffer:
     """
-    Cache of blocks of data which have been read in. Blocks
+    Buffer of blocks of data which have been read in. Blocks
     may exist but be incomplete, as individual inputs are
     added to them. This structure is shared by all read workers
     within a given process, so includes locking mechanisms to
@@ -370,18 +370,18 @@ class BlockBuffer:
     """
     def __init__(self, filenameAssoc, numWorkers,
             insertTimeout, popTimeout):
-        self.CACHEMAX = 2 * numWorkers
+        self.BUFFERMAX = 2 * numWorkers
         self.lock = threading.Lock()
-        self.cache = {}
+        self.buffer = {}
         self.completionEvents = {}
         self.insertTimeout = insertTimeout
         self.popTimeout = popTimeout
         self.nextBlockQ = queue.Queue()
 
         # This semaphore counts backwards for the number of blocks
-        # currently in the cache. A semaphore value of zero would
-        # mean the cache is full
-        self.cacheCount = threading.BoundedSemaphore(self.CACHEMAX)
+        # currently in the buffer. A semaphore value of zero would
+        # mean the buffer is full
+        self.bufferCount = threading.BoundedSemaphore(self.BUFFERMAX)
 
         # Save the filenameAssoc so we can replicate its structure
         self.filenameAssoc = filenameAssoc
@@ -404,22 +404,22 @@ class BlockBuffer:
         """
         # Acquire (i.e. decrement) this semaphore, in case we are about
         # to add a whole new block
-        self.cacheCount.acquire(timeout=self.insertTimeout)
+        self.bufferCount.acquire(timeout=self.insertTimeout)
 
         with self.lock:
-            if blockDefn not in self.cache:
-                self.cache[blockDefn] = BlockBufferValue(
+            if blockDefn not in self.buffer:
+                self.buffer[blockDefn] = BlockBufferValue(
                     filenameAssoc=self.filenameAssoc)
             else:
                 # We are not adding a new block, so release (increment)
                 # the semaphore back again
-                self.cacheCount.release()
+                self.bufferCount.release()
 
-            self.cache[blockDefn].addData(name, seqNum, arr)
+            self.buffer[blockDefn].addData(name, seqNum, arr)
 
             if blockDefn not in self.completionEvents:
                 self.completionEvents[blockDefn] = threading.Event()
-            if self.cache[blockDefn].complete():
+            if self.buffer[blockDefn].complete():
                 self.completionEvents[blockDefn].set()
                 self.nextBlockQ.put(blockDefn)
 
@@ -427,15 +427,15 @@ class BlockBuffer:
         """
         Use when inserting a complete BlockAssociations object at once
         """
-        self.cacheCount.acquire(self.insertTimeout)
+        self.bufferCount.acquire(self.insertTimeout)
         with self.lock:
-            if blockDefn in self.cache:
+            if blockDefn in self.buffer:
                 # We did not actually add a new entry, so increment
                 # the semaphore
-                self.cacheCount.release()
+                self.bufferCount.release()
 
             val = BlockBufferValue(blockData=blockData)
-            self.cache[blockDefn] = val
+            self.buffer[blockDefn] = val
             if blockDefn not in self.completionEvents:
                 self.completionEvents[blockDefn] = threading.Event()
             self.completionEvents[blockDefn].set()
@@ -444,18 +444,18 @@ class BlockBuffer:
     def popCompleteBlock(self, blockDefn):
         """
         Returns the BlockAssociations object for the given blockDefn,
-        and removes it from the cache
+        and removes it from the buffer
         """
         completed = self.waitCompletion(blockDefn, timeout=self.popTimeout)
         if completed:
             with self.lock:
-                blockData = self.cache[blockDefn].blockData
+                blockData = self.buffer[blockDefn].blockData
 
-                # Now remove this block from the cache
-                self.cache.pop(blockDefn)
+                # Now remove this block from the buffer
+                self.buffer.pop(blockDefn)
                 self.completionEvents.pop(blockDefn)
-                # One less block in the cache, so increment the semaphore
-                self.cacheCount.release()
+                # One less block in the buffer, so increment the semaphore
+                self.bufferCount.release()
         else:
             blockData = None
 
@@ -463,7 +463,7 @@ class BlockBuffer:
 
     def popNextBlock(self):
         """
-        Pop the next completed block from the cache, without regard to
+        Pop the next completed block from the buffer, without regard to
         which block it is. Return a tuple of objects
 
             (ApplierBlockDefn, BlockAssociations)
