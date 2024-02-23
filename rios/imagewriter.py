@@ -223,7 +223,7 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls):
             # anomaly, from when calcStats was the only time that the null
             # value was set. In the current version, it is set when the file
             # is created.
-            calcstats.calcStats(ds, progress, statsIgnore,
+            calcstats.addStatistics(ds, progress, statsIgnore,
                 approx_ok=approxStats)
 
         # This is doing everything I can to ensure the file gets fully closed
