@@ -465,6 +465,7 @@ class BlockBuffer:
         """
         Pop the next completed block from the cache, without regard to
         which block it is. Return a tuple of objects
+
             (ApplierBlockDefn, BlockAssociations)
 
         """

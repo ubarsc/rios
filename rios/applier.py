@@ -61,6 +61,15 @@ class ApplierControls(object):
     This object starts with default values for all controls, and 
     has methods for setting each of them to something else. 
     
+    Default values are provided for all attributes, and can then be over-ridden
+    with the 'set' methods given.
+
+    Some 'set' methods take an optional imagename argument. If given, this shouldbe 
+    the same internal name used for a given image as in the :class:`rios.structures.FilenameAssociations`
+    objects. This is the internal name for that image, and the method will set
+    the parameter in question for that specific image, which will over-ride the
+    global value set when no imagename is given.
+
     Attributes are:
         * **windowxsize**     X size of rios block (pixels)
         * **windowysize**     Y size of rios block (pixels)
@@ -82,11 +91,13 @@ class ApplierControls(object):
         * **overviewAggType** Aggregation type for calculating overviews
         * **tempdir**         Name of directory for temp files (resampling, etc.)
         * **resampleMethod**  String for resample method, when required (as per GDAL)
-        * **numThreads**      Number of parallel threads used for processing each image block
-        * **jobManagerType**  Which :class:`rios.parallel.jobmanager.JobManager` sub-class to use for parallel processing (by name)
+        * **numThreads**      Deprecated. Number of parallel threads used for processing each image block
+        * **jobManagerType**  Deprecated. Which :class:`rios.parallel.jobmanager.JobManager` sub-class to use for parallel processing (by name)
+        * **concurrency**     Instance of :class:`rios.structures.ConcurrencyStyle` (use instead of numThreads/jobManagerType)
         * **autoColorTableType** Type of color table to be automatically added to thematic output rasters
         * **allowOverviewsGdalwarp** Allow use of overviews in input resample (dangerous, do not use)
         * **approxStats**       Allow approx stats (much faster)
+        * **layerselection**  List of selected layer numbers for input
     
     Options relating to vector input files
         * **burnvalue**       Value to burn into raster from vector
@@ -96,16 +107,6 @@ class ApplierControls(object):
         * **vectorlayer**     Number (or name) of vector layer
         * **vectordatatype**  Numpy datatype to use for raster created from vector
         * **vectornull**      Rasterised vector is initialised to this value, before burning
-        
-    
-    Default values are provided for all attributes, and can then be over-ridden
-    with the 'set' methods given. 
-    
-    Some 'set' methods take an optional imagename argument. If given, this should be 
-    the same internal name used for a given image as in the :class:`rios.structures.FilenameAssociations`
-    objects. This is the internal name for that image, and the method will set 
-    the parameter in question for that specific image, which will over-ride the
-    global value set when no imagename is given. 
     
     """
     def __init__(self):
@@ -277,10 +278,12 @@ class ApplierControls(object):
         projection. If neither referenceImage nor referencePixgrid are set, 
         then no resampling will be allowed. Only set one of referenceImage or
         referencePixgrid. 
-        
-        Note that this is the external filename, not the internal name (which 
-        unfortunately is a bit inconsistent with everything else). 
-        
+
+        The reference image can be given as either the internal name, as given
+        on infiles, or the external filename. The internal name is
+        preferred, and consistent with other usage, but the filename is
+        allowed for backward compatibility.
+
         """
         self.referenceImage = referenceImage
         
@@ -690,12 +693,14 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         controls, allInfo, workinggrid, blockList, outBlockBuffer,
         inBlockBuffer, workerID):
     """
+    Called internally from the apply() function. Not to be called directly.
+
     Apply function for simplest configuration, with no compute concurrency.
     Does have possible read concurrency.
 
-    This is also called for each compute worker in the batch-oriented
-    compute worker styles, where each worker is an instance of a
-    single-compute case.
+    This function is also called for each compute worker in the
+    batch-oriented compute worker styles, where each worker is an instance
+    of a single-compute case.
 
     """
     timings = Timers()
@@ -781,7 +786,12 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
 def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         controls, allInfo, workinggrid, blockList):
     """
-    Multiple compute workers
+    Called internally from the apply() function. Not to be called directly.
+
+    Apply function for the multiple compute cases. Starts a number of
+    compute workers, each of which calls the user function on inputs
+    and creates outputs, which this function writes to the output files.
+
     """
     concurrency = controls.concurrency
     tmpfileMgr = TempfileManager(controls.tempdir)
