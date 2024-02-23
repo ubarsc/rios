@@ -69,19 +69,19 @@ class ConcurrencyStyle:
     disk, it is unlikely that these techniques will improve on the caching
     and buffering already provided by a sensible operating system.
 
+    Note that not all possible combinations of parameters are supported,
+    and some combinations make no sense at all.
+
     Read Concurrency
         numReadWorkers: int
             The number of read workers. A value of 0 means that reading
-            happens sequentially within the main processing loop.
-        computeWorkersRead: bool
-            If True, then each compute worker does its own reading,
-            either sequentially or with its own pool of read workers
-            (<numReadWorkers> for each compute worker)
+            happens sequentially within the main processing loop. Also
+            see computeWorkersRead, below.
 
     Compute Concurrency
-        computeWorkerKind:
-            Choose the paradigm used to distribute compute workers. Available
-            values are {CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH}.
+        computeWorkerKind: One of {CW_NONE, CW_THREADS, CW_PBS, CW_SLURM,
+            CW_AWSBATCH}.
+            Selects the paradigm used to distribute compute workers.
             The CW_THREADS option means a pool of compute threads
             running within the same process as the rest of RIOS.
             The PBS, SLURM and AWSBATCH options all refer to different
@@ -94,7 +94,8 @@ class ConcurrencyStyle:
             The number of distinct compute workers
         computeWorkersRead: bool
             If True, then each compute worker does its own reading,
-            in accordance with the read concurrency parameters. This
+            possibly with its own pool of read worker threads
+            (<numReadWorkers> threads for each compute worker). This
             is likely to be a good option when used with the batch
             queue oriented compute workers. If False, then all reading
             is done by the main RIOS process (possibly using one or
@@ -143,9 +144,6 @@ class ConcurrencyStyle:
             Time to wait to insert a block into the compute buffer
         computeBufferPopTimeout: int
             Time to wait to pop a block out of the compute buffer
-
-    Note that not all possible combinations of parameters are supported,
-    and some combinations make no sense at all.
 
     """
     def __init__(self, numReadWorkers=0, numComputeWorkers=0,
