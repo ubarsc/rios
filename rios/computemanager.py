@@ -6,6 +6,7 @@ import subprocess
 import time
 import threading
 import traceback
+import copy
 
 from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
@@ -105,15 +106,17 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         self.threadPool = futures.ThreadPoolExecutor(max_workers=numWorkers)
         self.workerList = []
         for workerID in range(numWorkers):
+            # otherArgs are not thread-safe, so each worker gets its own copy
+            otherArgsCopy = copy.deepcopy(otherArgs)
             worker = self.threadPool.submit(self.worker, userFunction, infiles,
-                outfiles, otherArgs, controls, allInfo, workinggrid,
-                self.taskQ, inBlockBuffer, outBlockBuffer, self.outqueue,
-                workerID)
+                outfiles, otherArgsCopy, controls, allInfo,
+                workinggrid, self.taskQ, inBlockBuffer, outBlockBuffer,
+                self.outqueue, workerID)
             self.workerList.append(worker)
 
-    def worker(self, userFunction, infiles, outfiles, otherArgs, controls,
-            allInfo, workinggrid, taskQ, inBlockBuffer, outBlockBuffer,
-            outqueue, workerID):
+    def worker(self, userFunction, infiles, outfiles, otherArgs,
+            controls, allInfo, workinggrid, taskQ, inBlockBuffer,
+            outBlockBuffer, outqueue, workerID):
         """
         This function is a worker for a single thread.
 
