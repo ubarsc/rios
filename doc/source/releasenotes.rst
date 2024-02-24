@@ -1,6 +1,48 @@
 Release Notes
 =============
 
+Version 2.0.0 (unknown date)
+----------------------------
+New Features
+  * New options for concurrency, strongly supported by a new internal 
+    architecture. The previous parallel processing had been tacked on to
+    a non-parallel architecture, and was never very good.
+
+    - New concurrency model is more efficient and more flexible and
+      configurable. See :class:`rios.structures.ConcurrencyStyle`.
+    - Allows overlapping of read, compute, and write operations.
+    - Supports a number of different parallel system configurations,
+      including multiple threads within one process, compute workers
+      as batch queue jobs with PBS or SLURM queues, or running on
+      separate nodes in an AWS cloud configuration
+
+  * The apply() function now returns a :class:`rios.structures.ApplierReturn`
+    object, with the following attributes
+
+    - timings. A Timers object, which allows reporting of the time spent
+      in different parts of RIOS. This is very useful in tuning the best
+      combination of concurrency parameters.
+    - otherArgsList. This is a list of :class:`rios.structures.OtherInputs`
+      objects which were given to individual compute workers, allowing them
+      to be recombined in whatever way makes sense.
+
+Deprecations
+  * Old parallel computation facilities are no longer supported, but will
+    be emulated using the new concurrency support (with a deprecation warning).
+  * Many old classes for reading and writing imagery are now deprecated,
+    and likely to be removed from the system in future releases. This includes
+    ImageReader, ImageWriter, InputCollections, and a number of other components.
+  * controls.setLoggingStream now does nothing. The old loggingstream was
+    hardly used internally anyway, and is now not used at all.
+
+Changed Behaviour
+  * All existing RIOS scripts should work as before. Deprecation warnings may
+    be printed to stderr for certain situations.
+  * Vector inputs are still handled as before, but if there is a reprojection
+    involved, it now happens after rasterization instead of before. This means
+    that polygon edges can now become curved lines in the working grid
+    coordinate system. Neither the old or new approach is more correct, but
+    the difference could lead to slightly different results.
 
 Version 1.4.16 (2023-09-28)
 ---------------------------
