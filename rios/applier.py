@@ -775,8 +775,11 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         readWorkerMgr.shutdown()
 
     if forceExit:
-        msg = "Earlier errors make it impossible to continue"
-        raise rioserrors.RiosError(msg)
+        if outBlockBuffer is None:
+            msg = "Earlier errors make it impossible to continue"
+            raise rioserrors.RiosError(msg)
+        else:
+            sys.exit(1)
 
     # Set up returns object
     rtn = ApplierReturn()
