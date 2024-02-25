@@ -53,7 +53,7 @@ def getComputeWorkerManager(cwKind):
     """
     Returns a compute-worker manager object of the requested kind.
     """
-    unImplemented = {CW_PBS: 'CW_PBS', CW_SLURM: 'CW_SLURM',
+    unImplemented = {CW_SLURM: 'CW_SLURM',
         CW_AWSBATCH: 'CW_AWSBATCH'}
     if cwKind in unImplemented:
         msg = ("computeWorkerKind '{}' is known, " +
@@ -288,10 +288,12 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         # Mark the start of outputs from the worker command in the log
         scriptCmdList.append("echo 'Begin-rios-worker'")
         scriptCmdList.append(computeWorkerCmdStr)
+        # Capture the exit status from the command
+        scriptCmdList.append("WORKERCMDSTAT=$?")
         # Mark the end of outputs from the worker command in the log
         scriptCmdList.append("echo 'End-rios-worker'")
         # Make sure the log includes the exit status from the command
-        scriptCmdList.append("echo 'rios_computeworker status:' $?")
+        scriptCmdList.append("echo 'rios_computeworker status:' $WORKERCMDSTAT")
         scriptStr = '\n'.join(scriptCmdList)
 
         open(scriptfile, 'w').write(scriptStr + "\n")
@@ -356,7 +358,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         numWorkers = len(self.scriptfileList)
         for workerID in range(numWorkers):
             logf = open(self.logfileList[workerID], 'r')
-            loglines = logf.readlines()
+            loglines = [line.strip('\n') for line in logf.readlines()]
             i = self.findLine(loglines, 'Begin-rios-worker') + 1
             j = self.findLine(loglines, 'End-rios-worker')
             if i is not None and j is not None:
@@ -365,7 +367,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 workerOutLines = ["Unable to find worker output in PBS log"]
             statusNdx = self.findLine(loglines, 'rios_computeworker status:')
             if statusNdx is not None:
-                statusLine = loglines[0]
+                statusLine = loglines[statusNdx]
                 statusVal = int(statusLine.split(':')[-1])
             else:
                 statusVal = None
@@ -384,10 +386,10 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         """
         ndx = None
         for i in range(len(linelist)):
-            line = linelist[i]
+            line = linelist[i].strip()
             if ndx is None and line.startswith(s):
                 ndx = i
-        return i
+        return ndx
 
     def shutdown(self):
         """
@@ -395,6 +397,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         shut down the data channel
         """
         self.waitOnJobs()
+        self.checkWorkerErrors()
         self.dataChan.shutdown()
 
         # Make a list of all the objects the workers put into outqueue
@@ -505,7 +508,8 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
             retcode = proc.returncode
             if retcode is not None and retcode != 0:
                 print("\nError in compute worker", workerID)
-                print(self.results[workerID]['stderrstr'])
+                stderrStr = self.results[workerID]['stderrstr']
+                print(stderrStr.strip('\n'))
                 print()
 
     def shutdown(self):
