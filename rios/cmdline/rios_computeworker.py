@@ -58,20 +58,21 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
     """
     dataChan = NetworkDataChannel(hostname=host, portnum=port, authkey=authkey)
 
-    userFunction = dataChan.workerCommonData.get('userFunction', None)
-    infiles = dataChan.workerCommonData.get('infiles', None)
-    outfiles = dataChan.workerCommonData.get('outfiles', None)
-    otherArgs = dataChan.workerCommonData.get('otherArgs', None)
-    controls = dataChan.workerCommonData.get('controls', None)
-    allInfo = dataChan.workerCommonData.get('allInfo', None)
-    workinggrid = dataChan.workerCommonData.get('workinggrid', None)
+    userFunction = dataChan.workerInitData.get('userFunction', None)
+    infiles = dataChan.workerInitData.get('infiles', None)
+    outfiles = dataChan.workerInitData.get('outfiles', None)
+    otherArgs = dataChan.workerInitData.get('otherArgs', None)
+    controls = dataChan.workerInitData.get('controls', None)
+    allInfo = dataChan.workerInitData.get('allInfo', None)
+    workinggrid = dataChan.workerInitData.get('workinggrid', None)
     outBlockBuffer = dataChan.outBlockBuffer
     if not controls.concurrency.computeWorkersRead:
         inBlockBuffer = dataChan.inBlockBuffer
     else:
         inBlockBuffer = None
 
-    blockList = dataChan.workerLocalData.get(workerID, None)
+    blockListByWorker = dataChan.workerInitData.get('blockListByWorker', None)
+    blockList = blockListByWorker[workerID]
 
     rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,
         otherArgs, controls, allInfo, workinggrid, blockList, outBlockBuffer,

@@ -219,24 +219,23 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         # Divide the block list into a sublist for each worker
         allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
         # Set up the data which is common for all workers
-        workerCommonData = {}
-        workerCommonData['userFunction'] = userFunction
-        workerCommonData['infiles'] = infiles
-        workerCommonData['outfiles'] = outfiles
-        workerCommonData['otherArgs'] = otherArgs
-        workerCommonData['controls'] = controls
-        workerCommonData['workinggrid'] = workinggrid
-        workerCommonData['allInfo'] = allInfo
+        workerInitData = {}
+        workerInitData['userFunction'] = userFunction
+        workerInitData['infiles'] = infiles
+        workerInitData['outfiles'] = outfiles
+        workerInitData['otherArgs'] = otherArgs
+        workerInitData['controls'] = controls
+        workerInitData['workinggrid'] = workinggrid
+        workerInitData['allInfo'] = allInfo
 
         # Set up the data which is local to each worker
-        workerLocalData = {}
+        blockListByWorker = {}
+        workerInitData['blockListByWorker'] = blockListByWorker
         for workerID in workerIDnumList:
-            # The only per-worker value is the block sublist. Maybe there
-            # should be other things ?????
-            workerLocalData[workerID] = allSublists[workerID]
+            blockListByWorker[workerID] = allSublists[workerID]
 
-        self.dataChan = NetworkDataChannel(workerCommonData,
-            workerLocalData, inBlockBuffer, outBlockBuffer)
+        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
+            outBlockBuffer)
         self.outqueue = self.dataChan.outqueue
 
         try:
@@ -443,22 +442,23 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         # Divide the block list into a sublist for each worker
         allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
         # Set up the data which is common for all workers
-        workerCommonData = {}
-        workerCommonData['userFunction'] = userFunction
-        workerCommonData['infiles'] = infiles
-        workerCommonData['outfiles'] = outfiles
-        workerCommonData['otherArgs'] = otherArgs
-        workerCommonData['controls'] = controls
-        workerCommonData['workinggrid'] = workinggrid
-        workerCommonData['allInfo'] = allInfo
+        workerInitData = {}
+        workerInitData['userFunction'] = userFunction
+        workerInitData['infiles'] = infiles
+        workerInitData['outfiles'] = outfiles
+        workerInitData['otherArgs'] = otherArgs
+        workerInitData['controls'] = controls
+        workerInitData['workinggrid'] = workinggrid
+        workerInitData['allInfo'] = allInfo
 
         # Set up the data which is local to each worker
-        workerLocalData = {}
+        blockListByWorker = {}
+        workerInitData['blockListByWorker'] = blockListByWorker
         for workerID in workerIDnumList:
-            workerLocalData[workerID] = allSublists[workerID]
+            blockListByWorker[workerID] = allSublists[workerID]
 
-        self.dataChan = NetworkDataChannel(workerCommonData,
-            workerLocalData, inBlockBuffer, outBlockBuffer)
+        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
+            outBlockBuffer)
         self.outqueue = self.dataChan.outqueue
 
         try:

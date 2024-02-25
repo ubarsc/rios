@@ -684,15 +684,11 @@ class NetworkDataChannel:
     A network-visible channel to serve out all the required information to
     a group of RIOS compute workers.
 
-    Has five major attributes. 
+    Has four major attributes.
 
-        workerCommonData
-            a dictionary of objects which are common to all workers.
-            This read-only, and cannot be modified by the workers
-        workerLocalData
-            a dictionary, keyed by workerID, of objects which are local to
-            each worker. This is read-only, and cannot be modified by the
-            workers.
+        workerInitData
+            a dictionary of objects which are used to initialize each
+            worker. This read-only, and cannot be modified by the workers.
         inBlockBuffer
             None, if compute workers are doing their own reading,
             otherwise it is a BlockBuffer supplying input data to the
@@ -706,12 +702,12 @@ class NetworkDataChannel:
             objects. Anything in this queue will be collected up by the
             main thread after all compute workers have completed.
 
-    If the constructor is given the workerCommonData, workerLocalData,
-    inBlockBuffer and outBlockBuffer arguments, then this is the server of
-    these objects, and they are served to the network on a selected port
-    number. The address of this server is available on the instance as
-    hostname, portnum and authkey attributes. The server will create its
-    own thread in which to run.
+    If the constructor is given the workerInitData, inBlockBuffer and
+    outBlockBuffer arguments, then this is the server of these objects,
+    and they are served to the network on a selected port number. The
+    address of this server is available on the instance as hostname,
+    portnum and authkey attributes. The server will create its own thread
+    in which to run.
 
     A client instance can be created using these three address attributes
     from the server as arguments to the constructor, in which case it will
@@ -722,28 +718,24 @@ class NetworkDataChannel:
     should always be called explicitly.
 
     """
-    def __init__(self, workerCommonData=None, workerLocalData=None,
-            inBlockBuffer=None, outBlockBuffer=None, hostname=None,
-            portnum=None, authkey=None):
+    def __init__(self, workerInitData=None, inBlockBuffer=None,
+            outBlockBuffer=None, hostname=None, portnum=None, authkey=None):
         class DataChannelMgr(BaseManager):
             pass
 
-        if None not in (workerCommonData, workerLocalData, outBlockBuffer):
+        if None not in (workerInitData, outBlockBuffer):
             self.hostname = socket.gethostname()
             # Authkey is a big long random bytes string. Making one which is
             # also printable ascii.
             self.authkey = secrets.token_hex()
 
-            self.workerCommonData = cloudpickle.dumps(workerCommonData)
-            self.workerLocalData = workerLocalData
+            self.workerInitData = cloudpickle.dumps(workerInitData)
             self.inBlockBuffer = inBlockBuffer
             self.outBlockBuffer = outBlockBuffer
             self.outqueue = queue.Queue()
 
-            DataChannelMgr.register("get_commondata",
-                callable=lambda: self.workerCommonData)
-            DataChannelMgr.register("get_localdata",
-                callable=lambda: self.workerLocalData)
+            DataChannelMgr.register("get_workerdata",
+                callable=lambda: self.workerInitData)
             DataChannelMgr.register("get_inblockbuffer",
                 callable=lambda: self.inBlockBuffer)
             DataChannelMgr.register("get_outblockbuffer",
@@ -760,8 +752,7 @@ class NetworkDataChannel:
             self.serverThread = self.threadPool.submit(
                 self.server.serve_forever)
         elif None not in (hostname, portnum, authkey):
-            DataChannelMgr.register("get_commondata")
-            DataChannelMgr.register("get_localdata")
+            DataChannelMgr.register("get_workerdata")
             DataChannelMgr.register("get_outblockbuffer")
             DataChannelMgr.register("get_inblockbuffer")
             DataChannelMgr.register("get_outqueue")
@@ -774,9 +765,8 @@ class NetworkDataChannel:
             self.mgr.connect()
 
             # Get the proxy objects.
-            self.workerCommonData = cloudpickle.loads(eval(str(
-                self.mgr.get_commondata())))
-            self.workerLocalData = self.mgr.get_localdata()
+            self.workerInitData = cloudpickle.loads(eval(str(
+                self.mgr.get_workerdata())))
             self.inBlockBuffer = self.mgr.get_inblockbuffer()
             self.outBlockBuffer = self.mgr.get_outblockbuffer()
             self.outqueue = self.mgr.get_outqueue()
