@@ -779,6 +779,9 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
             msg = "Earlier errors make it impossible to continue"
             raise rioserrors.RiosError(msg)
         else:
+            # In this case, we are inside a batch compute worker, so just
+            # exit with a non-zero status and things will be tidied up
+            # by the multipleCompute case.
             sys.exit(1)
 
     # Set up returns object
