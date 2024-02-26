@@ -13,6 +13,7 @@ import time
 import contextlib
 import queue
 import tempfile
+import traceback
 
 import numpy
 from osgeo import gdal
@@ -935,3 +936,18 @@ class ApplierReturn:
     def __init__(self):
         self.timings = None
         self.otherArgsList = None
+
+
+class WorkerErrorRecord:
+    """
+    Hold a record of an exception raised in a remote worker.
+    """
+    def __init__(self, workerID, exc):
+        self.workerID = workerID
+        self.formattedTraceback = traceback.format_exception(exc)
+
+    def __str__(self):
+        lines = ["Error in compute worker {}".format(self.workerID)]
+        lines.extend([line.strip('\n') for line in self.formattedTraceback])
+        s = '\n'.join(lines)
+        return s

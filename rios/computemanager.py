@@ -5,11 +5,11 @@ import queue
 import subprocess
 import time
 import threading
-import traceback
 import copy
 
 from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
+from .structures import WorkerErrorRecord
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
 from .structures import CW_SUBPROC
 from .readerinfo import makeReaderInfo
@@ -34,12 +34,6 @@ class ComputeWorkerManager(ABC):
             haveSharedTemp=True):
         """
         Start the specified compute workers
-        """
-
-    @abstractmethod
-    def checkWorkerErrors(self):
-        """
-        Check for errors in workers which might otherwise be hidden
         """
 
     @abstractmethod
@@ -124,57 +118,43 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         the worker exits
 
         """
-        timings = Timers()
         try:
-            blockDefn = taskQ.get(block=False)
-        except queue.Empty:
-            blockDefn = None
-        while blockDefn is not None and not self.forceExit.is_set():
-            readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
-            with timings.interval('pop_inbuffer'):
-                (blockDefn, inputs) = inBlockBuffer.popNextBlock()
-            outputs = BlockAssociations()
-            userArgs = (readerInfo, inputs, outputs)
-            if otherArgs is not None:
-                userArgs += (otherArgs, )
-
-            with timings.interval('userfunction'):
-                userFunction(*userArgs)
-
-            with timings.interval('add_outbuffer'):
-                outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
-
+            timings = Timers()
             try:
                 blockDefn = taskQ.get(block=False)
             except queue.Empty:
                 blockDefn = None
+            while blockDefn is not None and not self.forceExit.is_set():
+                readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
+                with timings.interval('pop_inbuffer'):
+                    (blockDefn, inputs) = inBlockBuffer.popNextBlock()
+                outputs = BlockAssociations()
+                userArgs = (readerInfo, inputs, outputs)
+                if otherArgs is not None:
+                    userArgs += (otherArgs, )
 
-        if otherArgs is not None:
-            outqueue.put(otherArgs)
-        outqueue.put(timings)
+                with timings.interval('userfunction'):
+                    userFunction(*userArgs)
 
-    def checkWorkerErrors(self):
-        """
-        Check for Exceptions raised by the workers. If we don't check, then
-        exceptions are hidden and we don't see them. If we find one,
-        then re-raise it here. This function must be called from the main
-        thread.
-        """
-        workerID = 0
-        for worker in self.workerList:
-            if worker.done():
-                e = worker.exception(timeout=0)
-                if e is not None:
-                    print("\nError in compute worker", workerID)
-                    traceback.print_exception(e)
-                    print()
-            workerID += 1
+                with timings.interval('add_outbuffer'):
+                    outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
+
+                try:
+                    blockDefn = taskQ.get(block=False)
+                except queue.Empty:
+                    blockDefn = None
+
+            if otherArgs is not None:
+                outqueue.put(otherArgs)
+            outqueue.put(timings)
+        except Exception as e:
+            workerErr = WorkerErrorRecord(workerID, e)
+            outqueue.put(workerErr)
 
     def shutdown(self):
         """
         Shut down the thread pool
         """
-        self.checkWorkerErrors()
         self.forceExit.set()
         futures.wait(self.workerList)
         self.threadPool.shutdown()
@@ -189,6 +169,11 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
                 self.outObjList.append(outObj)
             except queue.Empty:
                 done = True
+
+        for obj in self.outObjList:
+            if isinstance(obj, WorkerErrorRecord):
+                print(obj)
+                print()
 
 
 class PBSComputeWorkerMgr(ComputeWorkerManager):
@@ -351,9 +336,10 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 # Sleep for a bit before checking again
                 time.sleep(60)
 
-    def checkWorkerErrors(self):
+    def findExtraErrors(self):
         """
-        Look for errors in the log files
+        Look for errors in the log files. These would be errors which were
+        not reported via the data channel
         """
         numWorkers = len(self.scriptfileList)
         for workerID in range(numWorkers):
@@ -397,7 +383,6 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         shut down the data channel
         """
         self.waitOnJobs()
-        self.checkWorkerErrors()
         self.dataChan.shutdown()
 
         # Make a list of all the objects the workers put into outqueue
@@ -410,6 +395,13 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                 self.outObjList.append(outObj)
             except queue.Empty:
                 done = True
+
+        # Report on errors from the workers
+        for obj in self.outObjList:
+            if isinstance(obj, WorkerErrorRecord):
+                print(obj)
+                print()
+        self.findExtraErrors()
 
 
 class SubprocComputeWorkerManager(ComputeWorkerManager):
@@ -502,8 +494,11 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
             }
             self.results[workerID] = results
 
-    def checkWorkerErrors(self):
-        "Check for errors in any workers"
+    def findExtraErrors(self):
+        """
+        Check for errors in any worker stderr. These would be errors not
+        reported via the data channel
+        """
         for (workerID, proc) in self.processes.items():
             retcode = proc.returncode
             if retcode is not None and retcode != 0:
@@ -518,7 +513,6 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         shut down the data channel
         """
         self.waitOnJobs()
-        self.checkWorkerErrors()
         if self.addressFile is not None:
             os.remove(self.addressFile)
         self.dataChan.shutdown()
@@ -534,3 +528,9 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
             except queue.Empty:
                 done = True
 
+        # Report on errors from the workers
+        for obj in self.outObjList:
+            if isinstance(obj, WorkerErrorRecord):
+                print(obj)
+                print()
+        self.findExtraErrors()

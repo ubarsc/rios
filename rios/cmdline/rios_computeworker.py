@@ -7,7 +7,7 @@ import argparse
 from osgeo import gdal
 
 from rios import applier
-from rios.structures import NetworkDataChannel, Timers
+from rios.structures import NetworkDataChannel, Timers, WorkerErrorRecord
 
 
 def getCmdargs():
@@ -74,14 +74,19 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
     blockListByWorker = dataChan.workerInitData.get('blockListByWorker', None)
     blockList = blockListByWorker[workerID]
 
-    rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,
-        otherArgs, controls, allInfo, workinggrid, blockList, outBlockBuffer,
-        inBlockBuffer, workerID)
+    try:
+        rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,
+            otherArgs, controls, allInfo, workinggrid, blockList,
+            outBlockBuffer, inBlockBuffer, workerID)
 
-    # Make a pickleable version of the timings
-    timings = Timers(pairs=rtn.timings.pairs, withlock=False)
-    dataChan.outqueue.put(timings)
-    dataChan.outqueue.put(otherArgs)
+        # Make a pickleable version of the timings
+        timings = Timers(pairs=rtn.timings.pairs, withlock=False)
+        dataChan.outqueue.put(timings)
+        dataChan.outqueue.put(otherArgs)
+    except Exception as e:
+        # Send a printable version of the exception back to main thread
+        workerErr = WorkerErrorRecord(workerID, e)
+        dataChan.outqueue.put(workerErr)
 
 
 if __name__ == "__main__":

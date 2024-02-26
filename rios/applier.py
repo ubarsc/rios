@@ -22,7 +22,7 @@ point of entry in this module.
 
 import os
 import sys
-import traceback
+# import traceback
 
 import numpy
 
@@ -41,7 +41,7 @@ from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F4
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockBuffer, Timers, TempfileManager, ApplierReturn
-from .structures import ApplierBlockDefn, RasterizationMgr
+from .structures import ApplierBlockDefn, RasterizationMgr, WorkerErrorRecord
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
 from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
@@ -748,41 +748,25 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         if otherArgs is not None:
             userArgs += (otherArgs,)
 
-        try:
-            with timings.interval('userfunction'):
-                userFunction(*userArgs)
-        except Exception as e:
-            traceback.print_exception(e)
-            forceExit = True
+        with timings.interval('userfunction'):
+            userFunction(*userArgs)
 
-        if not forceExit:
-            if outBlockBuffer is None:
-                with timings.interval('writing'):
-                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
-                        controls, workinggrid)
-            else:
-                with timings.interval('add_outbuffer'):
-                    outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
+        if outBlockBuffer is None:
+            with timings.interval('writing'):
+                writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                    controls, workinggrid)
+        else:
+            with timings.interval('add_outbuffer'):
+                outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
         blockNdx += 1
     prog.update(blockNdx)
 
-    if not forceExit:
-        if outBlockBuffer is None:
-            with timings.interval('closing'):
-                closeOutfiles(gdalOutObjCache, outfiles, controls)
+    if outBlockBuffer is None:
+        with timings.interval('closing'):
+            closeOutfiles(gdalOutObjCache, outfiles, controls)
     if readWorkerMgr is not None:
         readWorkerMgr.shutdown()
-
-    if forceExit:
-        if outBlockBuffer is None:
-            msg = "Earlier errors make it impossible to continue"
-            raise rioserrors.RiosError(msg)
-        else:
-            # In this case, we are inside a batch compute worker, so just
-            # exit with a non-zero status and things will be tidied up
-            # by the multipleCompute case.
-            sys.exit(1)
 
     # Set up returns object
     rtn = ApplierReturn()
@@ -842,28 +826,21 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     try:
         numBlocks = len(blockList)
         blockNdx = 0
-        forceExit = False
         prog = ApplierProgress(controls, numBlocks)
-        while blockNdx < numBlocks and not forceExit:
+        while blockNdx < numBlocks:
             prog.update(blockNdx)
 
             with timings.interval('pop_outbuffer'):
-                try:
-                    (blockDefn, outputs) = outBlockBuffer.popNextBlock()
-                except rioserrors.TimeoutError as e:
-                    traceback.print_exception(e)
-                    forceExit = True
+                (blockDefn, outputs) = outBlockBuffer.popNextBlock()
 
-            if not forceExit:
-                with timings.interval('writing'):
-                    writeBlock(gdalOutObjCache, blockDefn, outfiles,
-                        outputs, controls, workinggrid)
+            with timings.interval('writing'):
+                writeBlock(gdalOutObjCache, blockDefn, outfiles,
+                    outputs, controls, workinggrid)
 
             blockNdx += 1
 
-        if not forceExit:
-            with timings.interval('closing'):
-                closeOutfiles(gdalOutObjCache, outfiles, controls)
+        with timings.interval('closing'):
+            closeOutfiles(gdalOutObjCache, outfiles, controls)
         prog.update(blockNdx)
     finally:
         # It is important that the computeMgr always be shut down, as it
@@ -872,13 +849,19 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
 
-    if forceExit:
-        msg = "Earlier errors make it impossible to continue"
-        raise rioserrors.RiosError(msg)
-
     # Assemble the return object
     rtn = ApplierReturn()
     outObjList = computeMgr.outObjList
+
+    # If errors in workers, then print them and raise an exception
+    workerErrList = [obj for obj in outObjList
+        if isinstance(obj, WorkerErrorRecord)]
+    if len(workerErrList) > 0:
+        for errRecord in workerErrList:
+            print(errRecord)
+        msg = "Earlier errors make it impossible to continue"
+        raise rioserrors.RiosError(msg)
+
     timingsList = [obj for obj in outObjList if isinstance(obj, Timers)]
     rtn.timings = timings
     for t in timingsList:

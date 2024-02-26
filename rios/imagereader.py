@@ -26,7 +26,6 @@ import copy
 from concurrent import futures
 import queue
 import threading
-import traceback
 
 import numpy
 from osgeo import gdal, gdal_array
@@ -305,20 +304,20 @@ class ReadWorkerMgr:
         """
         Check for Exceptions raised by the workers. If we don't check, then
         exceptions are hidden and we don't see them. If we find one,
-        then print the traceback from it. This function must be called from
+        then re-raise it in this thread. This function must be called from
         the main thread.
         """
         for worker in self.workerList:
             if worker.done():
                 e = worker.exception(timeout=0)
                 if e is not None:
-                    traceback.print_exception(e)
+                    raise e
 
     def shutdown(self):
-        self.checkWorkerErrors()
         self.forceExit.set()
         futures.wait(self.workerList)
         self.threadPool.shutdown()
+        self.checkWorkerErrors()
 
     def __del__(self):
         self.shutdown()
