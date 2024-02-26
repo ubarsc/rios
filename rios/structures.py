@@ -208,6 +208,19 @@ class FilenameAssociations(object):
     Each such attribute will be an image data block or a list of image
     data blocks, accordingly.
 
+    This object can be used as an iterator. Each iteration will return
+    a tuple of (symbolicName, sequenceNumber, filename). The symbolicName
+    is the name for each attribute on the object. If this corresponds
+    to a single filename, then the sequenceNumber is None. If it is a list,
+    then the iterator will return each of the files in the list as a new
+    iteration, with the sequenceNumber being the index in the list. In this
+    way, a single loop is able to iterate through all of the files defined
+    on the object, with full information about where they are found.
+
+    The object can also be indexed, using the tuple of
+    (symbolicName, sequenceNumber) as an index. The value at that index
+    is the corresponding filename. This cannot be used to set the filename.
+
     """
     def __getitem__(self, key):
         if isinstance(key, tuple):
@@ -282,6 +295,18 @@ class BlockAssociations:
     it populates the BlockAssociations object with None to match
     the same structure of names and sequences. Otherwise the object
     is empty.
+
+    This object can be indexed, using a tuple of
+    (symbolicName, sequenceNumber) as a key. This can be used for
+    both getting and setting an array of data on the object. If the
+    symbolicName corresponds to a list, then the sequenceNumber should
+    be an integer index value, but if the symbolicName corresponds to
+    a single filename, then the sequenceNumber should be None.
+
+    In order to set a value via indexing, the object must have been
+    created from a corresponding FilenameAssociations object, which
+    determines the structure of the object (i.e. the valid names and
+    index values).
 
     """
     def __init__(self, fnameAssoc=None):
