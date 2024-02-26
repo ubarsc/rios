@@ -359,20 +359,20 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         for workerID in range(numWorkers):
             logf = open(self.logfileList[workerID], 'r')
             loglines = [line.strip('\n') for line in logf.readlines()]
-            i = self.findLine(loglines, 'Begin-rios-worker') + 1
+            i = self.findLine(loglines, 'Begin-rios-worker')
+            if i is None:
+                i = -1
             j = self.findLine(loglines, 'End-rios-worker')
-            if i is not None and j is not None:
-                workerOutLines = loglines[i:j]
-            else:
-                workerOutLines = ["Unable to find worker output in PBS log"]
+            if j is None:
+                j = len(loglines)
+
+            workerOutLines = loglines[i + 1:j]
             statusNdx = self.findLine(loglines, 'rios_computeworker status:')
             if statusNdx is not None:
                 statusLine = loglines[statusNdx]
                 statusVal = int(statusLine.split(':')[-1])
             else:
-                statusVal = None
-                workerOutLines.extend(["",
-                    "Could not find PBS job exit status"])
+                statusVal = 1
             if statusVal != 0:
                 print("\nError in compute worker", workerID)
                 print('\n'.join(workerOutLines))
