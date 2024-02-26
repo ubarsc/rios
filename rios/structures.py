@@ -381,6 +381,7 @@ class BlockBuffer:
         self.insertTimeout = insertTimeout
         self.popTimeout = popTimeout
         self.nextBlockQ = queue.Queue()
+        self.numBlocksPopped = 0
 
         # This semaphore counts backwards for the number of blocks
         # currently in the buffer. A semaphore value of zero would
@@ -460,6 +461,9 @@ class BlockBuffer:
                 self.completionEvents.pop(blockDefn)
                 # One less block in the buffer, so increment the semaphore
                 self.bufferCount.release()
+                # Record how many blocks have been successfully popped. This
+                # is mainly used during error reporting.
+                self.numBlocksPopped += 1
         else:
             blockData = None
 
@@ -480,7 +484,9 @@ class BlockBuffer:
             timedout = True
 
         if timedout:
-            msg = "BlockBuffer timeout at {} seconds".format(self.popTimeout)
+            msg = ("BlockBuffer timeout at {} seconds. Number of blocks " +
+                "already popped: {}").format(
+                self.popTimeout, self.numBlocksPopped)
             raise rioserrors.TimeoutError(msg)
 
         blockData = self.popCompleteBlock(nextBlock)
