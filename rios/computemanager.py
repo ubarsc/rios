@@ -54,6 +54,7 @@ class ComputeWorkerManager(ABC):
     """
     computeWorkerKind = CW_NONE
     outObjList = None
+    outqueue = None
 
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
