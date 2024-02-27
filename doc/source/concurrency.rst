@@ -2,6 +2,9 @@
 Concurrency
 ===========
 
+Overview
+--------
+
 Beginning with version 2.0, RIOS now has strong capacity for concurrency
 in both reading and computation. With suitable hardware configurations, 
 reading of input files can be divided between a number of read worker threads,
@@ -47,13 +50,14 @@ writing thread to write it to the output files.
 There is only a single writing thread, and it writes individual blocks to 
 all of the output files. It waits for completed blocks to become available
 in the output block buffer, and as soon as they are ready, it writes the data
-to each of the output files. this runs concurrent with reading and computation
-on later blocks.
+to each of the output files. This runs concurrently with reading and
+computation of later blocks.
 
 The docstring for the :class:`rios.structures.ConcurrencyStyle` class
-contains a detailed explanation of how the various style parameters interact,
-and how to choose a good concurrency style for a particular problem and
-hardware configuration. 
+contains a more detailed explanation of how the various style parameters 
+interact, and how to choose a good concurrency style for a particular 
+problem and hardware configuration. The `Compute Worker Kinds`_ section
+has deeper discussion on appropriate use of each compute worker kind.
 
 It is strongly recommended that a new program be largely debugged with
 no concurrency, and that developers only switch on the concurrency after 
@@ -109,6 +113,85 @@ The details will vary a lot with the application and the hardware available,
 but in general this timing report will assist in deciding the most useful
 parameters for the ConcurrencyStyle.
 
+Compute Worker Kinds
+--------------------
+**CW_THREADS**
+
+Each compute worker will be a separate thread within the current process. They
+are all running within the same Python interpreter, using 
+concurrent.futures.ThreadPoolExecutor.
+
+This is very efficient, and well suited when the program is running on a
+multi-CPU machine, with few restrictions on how many threads a single 
+program may use.Set the number of computeWorkers to be a little below the 
+number of CPUs (or CPU cores) available. Each compute worker does no reading
+of its own, and just uses the block buffers to supply it with blocks of
+data to compute with. The computeWorkersRead argument should be set to False.
+
+Since all threads are within the same Python instance, if the user is doing
+computation which does not release the Python GIL, then this may limit the
+amount of parallel computation. Most operations with tools like numpy and 
+scipy do release the GIL, and so it is not usually a problem.
+
+**CW_SUBPROC**
+
+This was implemented mainly for testing, and is not intended for general
+use.
+
+Each compute worker runs as a separate process, started with subprocess.Popen,
+and thus runs in its own Python interpreter. For this reason, it may be a
+useful alternative to CW_THREADS, for tasks which do not release the GIL. 
+However, apart from that, there is probably no good reason to use this, and
+CW_THREADS is preferred.
+
+Since all workers are on the same machine, there is no particular benefit to 
+having each worker do its own reading, so this should be used with
+computeWorkersRead=False.
+
+**CW_PBS**
+
+Each compute worker runs as a separate job on a PBS batch queue. This is one
+way to make effective use of a large cluster which is only accessible through
+a PBS queue, but it does have its limitations. Another effective way is to
+run jobs with use CW_THREADS, and set the numComputeWorkers to be less than
+the number of CPUs on a single node of the cluster.
+
+Using CW_PBS does assume that the batch cluster has relatively high
+availability. If the main script starts running, but the worker jobs are too
+slow to start as well, then the writer thread will timeout while waiting for
+compute workers to supply it with data to write. Such a timeout is important
+to have (otherwise failures would mean it may wait forever), but it does mean
+that if the worker jobs are queued for too long, then using CW_PBS may not
+be appropriate. 
+
+Since PBS is generally used to manage a whole cluster, each compute worker may
+be running on a separate machine. This makes it quite advantageous to have each
+worker do its own reading, so one would usually run with
+computeWorkersRead=True. However, in some situations, the batch nodes may be 
+unable to read the input data directly (e.g. they may be on a private network 
+with no direct access to the wider internet), in which case one would set 
+computeWorkersRead=False. 
+
+Communication between the jobs and the main thread is handled via a network
+socket, which is managed by an extra thread running in the main process. 
+That last point means there may be one more thread than you expect running
+in the main script.
+
+... something about PBS environment variables. Also about shared temp directory.
+Also about singleBlockComputeWorkers, as a way to make very effective use of
+a large cluster with high availability, but caution w.r.t. walltime limits
+on the main script.
+
+**CW_SLURM**
+
+This behaves exactly like the CW_PBS compute workers, but using the SLURM
+batch queue system instead. See the PBS description.
+
+**CW_AWSBATCH**
+
+Yet to do. 
+
+
 Deprecated Code
 ---------------
 As part of this new (version 2.0) update to the internals of RIOS, some
@@ -118,8 +201,7 @@ require any action from the user, and existing code should work exactly
 as before. This will not be changed in the future. 
 
 However, some of the internal code is now obsolete, and is likely to be
-removed at some date in the future. The main sections which are likely to be
-affected are
+removed at some date in the future. The main sections affected are
 
 * The entire ImageReader class
 * The entire ImageWriter class
@@ -128,7 +210,7 @@ affected are
 * The old parallel computation code within rios.parallel. This was never very
   efficient, and is now not used. Existing applications which use it 
   should update to the new concurrency style. Until then, they will still run,
-  but internall the new style is used to emulate the old, with guesses at
+  but internally the new style is used to emulate the old, with guesses at
   appropriate parameters. 
 
 Any application code which makes direct use of these classes should be reviewed

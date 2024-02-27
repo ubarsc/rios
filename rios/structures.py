@@ -88,10 +88,16 @@ class ConcurrencyStyle:
             running within the same process as the rest of RIOS.
             The PBS, SLURM and AWSBATCH options all refer to different
             batch queue systems, so that compute workers can run as jobs
-            on the batch queue. Not only do these run as separate
-            processes, they may also be running on separate machines.
+            on the batch queue. In those cases, not only do the workers
+            run as separate processes, they may also be running on separate
+            machines.
             A value of CW_NONE means that computation happens sequentially
             within the main processing loop.
+
+            See the `Concurrency <concurrency.html>`_ doc page
+            for a deeper discussion on suitable use of the different
+            kinds of compute worker.
+            
         numComputeWorkers: int
             The number of distinct compute workers
         computeWorkersRead: bool
@@ -120,11 +126,11 @@ class ConcurrencyStyle:
         haveSharedTemp: bool
             If True, then the compute workers are all able to see a shared
             temporary directory. This is ignored for some computeWorkerKinds,
-            but for the PBS and SLURM kinds, this is used to share a small
-            text file giving the network address for all other communication.
-            If False, then the address information is passed on the command
-            line of the batch jobs, which is notionally publicly visible and
-            so less secure.
+            but for the PBS and SLURM kinds, the temp dir is used to share a
+            small text file (only readable by the user) giving the network
+            address for all other communication. If False, then the address
+            information is passed on the command line of the batch jobs,
+            which is publicly visible and so less secure.
 
     Buffering Timeouts (seconds)
         The block buffers have several timeout periods defined, with default
