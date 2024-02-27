@@ -22,7 +22,6 @@ point of entry in this module.
 
 import os
 import sys
-# import traceback
 
 import numpy
 
@@ -41,7 +40,7 @@ from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F4
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockBuffer, Timers, TempfileManager, ApplierReturn
-from .structures import ApplierBlockDefn, RasterizationMgr, WorkerErrorRecord
+from .structures import ApplierBlockDefn, RasterizationMgr
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
 from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
