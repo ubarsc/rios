@@ -67,8 +67,9 @@ class ConcurrencyStyle:
     on a device which scales well with high load, such as a cluster
     disk array. There is even more benefit when the device also has high
     latency, such as an AWS S3 bucket. If input data is on a single local
-    disk, it is unlikely that these techniques will improve on the caching
-    and buffering already provided by a sensible operating system.
+    disk, then adding a single read worker will allow reading to overlap
+    with computation, but more read workers are unlikely to improve on the
+    caching and buffering already provided by a sensible operating system.
 
     Note that not all possible combinations of parameters are supported,
     and some combinations make no sense at all.
@@ -120,9 +121,9 @@ class ConcurrencyStyle:
             numComputeWorkers is ignored, and a batch job is generated
             for every block to be processed. It is then up to the batch
             queue system's own load balancing to decide how many jobs are
-            running concurrently. This is likely to be the best option
-            for large shared PBS and SLURM batch queues, where the user
-            has no control over exactly when jobs run.
+            running concurrently. This is likely to be of most benefit
+            for large shared PBS and SLURM batch queues with plenty of
+            available nodes.
         haveSharedTemp: bool
             If True, then the compute workers are all able to see a shared
             temporary directory. This is ignored for some computeWorkerKinds,
