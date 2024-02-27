@@ -839,6 +839,13 @@ class NetworkDataChannel:
             futures.wait([self.serverThread])
             self.threadPool.shutdown()
 
+    def addressStr(self):
+        """
+        Return a single string encoding the network address of this channel
+        """
+        s = "{},{},{}".format(self.hostname, self.portnum, self.authkey)
+        return s
+
 
 class RasterizationMgr:
     """

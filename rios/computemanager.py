@@ -260,19 +260,16 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer)
 
-        host = self.dataChan.hostname
-        portnum = self.dataChan.portnum
-        authkey = self.dataChan.authkey
-        channAddr = "{},{},{}".format(host, portnum, authkey)
+        channAddr = self.dataChan.addressStr()
 
         jobQueue = self.stackOutputs['BatchProcessingJobQueueName']
         jobDefinition = self.stackOutputs['BatchProcessingJobDefinitionName']
-        workerCmd = "rios_computeworker -i {} --channaddr {}"
+        workerCmdTemplate = "rios_computeworker -i {} --channaddr {}"
 
         self.jobList = []
         for workerID in range(numWorkers):
-            cmd = workerCmd.format(workerID, channAddr)
-            containerOverrides = {"command": cmd}
+            workerCmd = workerCmdTemplate.format(workerID, channAddr)
+            containerOverrides = {"command": workerCmd}
             jobRtn = self.batchClient.submit_job(
                 jobName='RIOS_{}'.format(workerID),
                 jobQueue=jobQueue,
@@ -350,8 +347,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             if self.haveSharedTemp:
                 self.addressFile = tmpfileMgr.mktempfile(prefix='rios_pbs_',
                     suffix='.chnl')
-                address = "{},{},{}".format(self.dataChan.hostname,
-                    self.dataChan.portnum, self.dataChan.authkey)
+                address = self.dataChan.addressStr()
                 open(self.addressFile, 'w').write(address + '\n')
 
             for workerID in range(numWorkers):
@@ -385,10 +381,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         if self.addressFile is not None:
             addressArgs = ["--channaddrfile", self.addressFile]
         else:
-            (host, port, authkey) = (self.dataChan.hostname,
-                    self.dataChan.portnum, self.dataChan.authkey)
-            addressArgs = ["--channaddr",
-                "{},{},{}".format(host, port, authkey)]
+            addressArgs = ["--channaddr", self.dataChan.addressStr()]
         computeWorkerCmd.extend(addressArgs)
         computeWorkerCmdStr = " ".join(computeWorkerCmd)
 
@@ -549,8 +542,7 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
             if self.haveSharedTemp:
                 self.addressFile = tmpfileMgr.mktempfile(prefix='rios_subproc_',
                     suffix='.chnl')
-                address = "{},{},{}".format(self.dataChan.hostname,
-                    self.dataChan.portnum, self.dataChan.authkey)
+                address = self.dataChan.addressStr()
                 open(self.addressFile, 'w').write(address + '\n')
 
             for workerID in range(numWorkers):
