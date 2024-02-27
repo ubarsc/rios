@@ -8,6 +8,11 @@ import time
 import threading
 import copy
 
+try:
+    import boto3
+except ImportError:
+    boto3 = None
+
 from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
 from .structures import WorkerErrorRecord
@@ -43,13 +48,35 @@ class ComputeWorkerManager(ABC):
         Shutdown the computeWorkerManager
         """
 
+    def makeOutObjList(self):
+        """
+        Make a list of all the objects the workers put into outqueue
+        on completion
+        """
+        self.outObjList = []
+        done = False
+        while not done:
+            try:
+                outObj = self.outqueue.get(block=False)
+                self.outObjList.append(outObj)
+            except queue.Empty:
+                done = True
+
+    def reportWorkerExceptions(self):
+        """
+        Search outObjList for worker errors, and report them to stderr
+        """
+        for obj in self.outObjList:
+            if isinstance(obj, WorkerErrorRecord):
+                print(obj, file=sys.stderr)
+                print(file=sys.stderr)
+
 
 def getComputeWorkerManager(cwKind):
     """
     Returns a compute-worker manager object of the requested kind.
     """
-    unImplemented = {CW_SLURM: 'CW_SLURM',
-        CW_AWSBATCH: 'CW_AWSBATCH'}
+    unImplemented = {CW_SLURM: 'CW_SLURM'}
     if cwKind in unImplemented:
         msg = ("computeWorkerKind '{}' is known, " +
             "but not yet implemented").format(unImplemented[cwKind])
@@ -160,21 +187,113 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         futures.wait(self.workerList)
         self.threadPool.shutdown()
 
-        # Make a list of all the objects the workers put into outqueue
-        # on completion
-        self.outObjList = []
-        done = False
-        while not done:
-            try:
-                outObj = self.outqueue.get(block=False)
-                self.outObjList.append(outObj)
-            except queue.Empty:
-                done = True
+        self.makeOutObjList()
+        self.reportWorkerExceptions()
 
-        for obj in self.outObjList:
-            if isinstance(obj, WorkerErrorRecord):
-                print(obj, file=sys.stderr)
-                print(file=sys.stderr)
+
+class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
+    """
+    Manage compute workers using AWS Batch.
+    """
+    computeWorkerKind = CW_AWSBATCH
+
+    def startWorkers(self, numWorkers=None, userFunction=None,
+            infiles=None, outfiles=None, otherArgs=None, controls=None,
+            blockList=None, inBlockBuffer=None, outBlockBuffer=None,
+            workinggrid=None, allInfo=None, computeWorkersRead=False,
+            singleBlockComputeWorkers=False, tmpfileMgr=None,
+            haveSharedTemp=True):
+        """
+        Start <numWorkers> AWS Batch jobs to process blocks of data
+        """
+        if boto3 is None:
+            raise rioserrors.UnavailableError("boto3 is unavailable")
+
+        self.STACK_NAME = os.getenv('RIOS_AWSBATCH_STACK', default='RIOS')
+        self.REGION = os.getenv('RIOS_AWSBATCH_REGION',
+            default='ap-southeast-2')
+
+        self.stackOutputs = self.getStackOutputs()
+        self.batchClient = boto3.client('batch', region_name=self.REGION)
+
+        # Divide the block list into a sublist for each worker
+        allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
+        # Set up the data which is common for all workers
+        workerInitData = {}
+        workerInitData['userFunction'] = userFunction
+        workerInitData['infiles'] = infiles
+        workerInitData['outfiles'] = outfiles
+        workerInitData['otherArgs'] = otherArgs
+        workerInitData['controls'] = controls
+        workerInitData['workinggrid'] = workinggrid
+        workerInitData['allInfo'] = allInfo
+
+        # Set up the data which is local to each worker
+        blockListByWorker = {}
+        workerInitData['blockListByWorker'] = blockListByWorker
+        for workerID in range(numWorkers):
+            blockListByWorker[workerID] = allSublists[workerID]
+
+        # Create the network-visible data channel
+        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
+            outBlockBuffer)
+        self.outqueue = self.dataChan.outqueue
+        host = self.dataChan.hostname
+        portnum = self.dataChan.portnum
+        authkey = self.dataChan.authkey
+        channAddr = "{},{},{}".format(host, portnum, authkey)
+
+        jobQueue = self.stackOutputs['BatchProcessingJobQueueName']
+        jobDefinition = self.stackOutputs['BatchProcessingJobDefinitionName']
+        workerCmd = "rios_computeworker -i {} --channaddr {}"
+
+        self.jobList = []
+        for workerID in range(numWorkers):
+            cmd = workerCmd.format(workerID, channAddr)
+            containerOverrides = {"command": cmd}
+            jobRtn = self.batchClient.submit_job(
+                jobName='RIOS_{}'.format(workerID),
+                jobQueue=jobQueue,
+                jobDefinition=jobDefinition,
+                containerOverrides=containerOverrides)
+            self.jobList.append(jobRtn)
+
+    def shutdown(self):
+        """
+        Shut down the job pool
+        """
+        # Should I wait for jobs to terminate???? They should all be finished
+        # at this point anyway, and don't understand AWS's waiter thingy.
+
+        for job in self.jobList:
+            self.batchClient.terminate_job(jobId=job['jobId'],
+                reason="Shutdown")
+
+        self.makeOutObjList()
+        self.reportWorkerExceptions()
+
+    def getStackOutputs(self):
+        """
+        Helper function to query the CloudFormation stack for outputs.
+
+        Uses the RIOS_AWSBATCH_STACK and RIOS_AWSBATCH_REGION env vars to
+        determine which stack and region to query.
+        """
+        client = boto3.client('cloudformation', region_name=self.REGION)
+        resp = client.describe_stacks(StackName=self.STACK_NAME)
+        if len(resp['Stacks']) == 0:
+            msg = "AWS Batch stack '{}' is not available".format(
+                self.STACK_NAME)
+            raise rioserrors.UnavailableError(msg)
+
+        outputsRaw = resp['Stacks'][0]['Outputs']
+        # convert to a normal dictionary
+        outputs = {}
+        for out in outputsRaw:
+            key = out['OutputKey']
+            value = out['OutputValue']
+            outputs[key] = value
+        return outputs
 
 
 class PBSComputeWorkerMgr(ComputeWorkerManager):
@@ -386,22 +505,8 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         self.waitOnJobs()
         self.dataChan.shutdown()
 
-        # Make a list of all the objects the workers put into outqueue
-        # on completion
-        self.outObjList = []
-        done = False
-        while not done:
-            try:
-                outObj = self.outqueue.get(block=False)
-                self.outObjList.append(outObj)
-            except queue.Empty:
-                done = True
-
-        # Report on errors from the workers
-        for obj in self.outObjList:
-            if isinstance(obj, WorkerErrorRecord):
-                print(obj, file=sys.stderr)
-                print(file=sys.stderr)
+        self.makeOutObjList()
+        self.reportWorkerExceptions()
         self.findExtraErrors()
 
 
@@ -518,20 +623,6 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
             os.remove(self.addressFile)
         self.dataChan.shutdown()
 
-        # Make a list of all the objects the workers put into outqueue
-        # on completion
-        self.outObjList = []
-        done = False
-        while not done:
-            try:
-                outObj = self.outqueue.get(block=False)
-                self.outObjList.append(outObj)
-            except queue.Empty:
-                done = True
-
-        # Report on errors from the workers
-        for obj in self.outObjList:
-            if isinstance(obj, WorkerErrorRecord):
-                print(obj, file=sys.stderr)
-                print(file=sys.stderr)
+        self.makeOutObjList()
+        self.reportWorkerExceptions()
         self.findExtraErrors()
