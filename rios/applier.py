@@ -728,45 +728,47 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
 
     numBlocks = len(blockList)
     blockNdx = 0
-    forceExit = False
     prog = ApplierProgress(controls, numBlocks)
-    while blockNdx < numBlocks and not forceExit:
+    try:
+        while blockNdx < numBlocks:
+            prog.update(blockNdx)
+            if inBlockBuffer is None:
+                blockDefn = blockList[blockNdx]
+                with timings.interval('reading'):
+                    inputs = readBlockAllFiles(infiles, workinggrid,
+                        blockDefn, allInfo, gdalObjCache, controls,
+                        tmpfileMgr, rasterizeMgr)
+            else:
+                with timings.interval('pop_inbuffer'):
+                    (blockDefn, inputs) = inBlockBuffer.popNextBlock()
+
+            readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
+
+            outputs = BlockAssociations()
+            userArgs = (readerInfo, inputs, outputs)
+            if otherArgs is not None:
+                userArgs += (otherArgs,)
+
+            with timings.interval('userfunction'):
+                userFunction(*userArgs)
+
+            if outBlockBuffer is None:
+                with timings.interval('writing'):
+                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                        controls, workinggrid)
+            else:
+                with timings.interval('add_outbuffer'):
+                    outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
+
+            blockNdx += 1
         prog.update(blockNdx)
-        if inBlockBuffer is None:
-            blockDefn = blockList[blockNdx]
-            with timings.interval('reading'):
-                inputs = readBlockAllFiles(infiles, workinggrid, blockDefn,
-                    allInfo, gdalObjCache, controls, tmpfileMgr, rasterizeMgr)
-        else:
-            with timings.interval('pop_inbuffer'):
-                (blockDefn, inputs) = inBlockBuffer.popNextBlock()
-
-        readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
-
-        outputs = BlockAssociations()
-        userArgs = (readerInfo, inputs, outputs)
-        if otherArgs is not None:
-            userArgs += (otherArgs,)
-
-        with timings.interval('userfunction'):
-            userFunction(*userArgs)
 
         if outBlockBuffer is None:
-            with timings.interval('writing'):
-                writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
-                    controls, workinggrid)
-        else:
-            with timings.interval('add_outbuffer'):
-                outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
-
-        blockNdx += 1
-    prog.update(blockNdx)
-
-    if outBlockBuffer is None:
-        with timings.interval('closing'):
-            closeOutfiles(gdalOutObjCache, outfiles, controls)
-    if readWorkerMgr is not None:
-        readWorkerMgr.shutdown()
+            with timings.interval('closing'):
+                closeOutfiles(gdalOutObjCache, outfiles, controls)
+    finally:
+        if readWorkerMgr is not None:
+            readWorkerMgr.shutdown()
 
     # Set up returns object
     rtn = ApplierReturn()
