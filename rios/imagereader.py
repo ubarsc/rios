@@ -304,8 +304,7 @@ class ReadWorkerMgr:
         """
         Check for Exceptions raised by the workers. If we don't check, then
         exceptions are hidden and we don't see them. If we find one,
-        then re-raise it in this thread. This function must be called from
-        the main thread.
+        then re-raise it in this thread.
         """
         for worker in self.workerList:
             if worker.done():
