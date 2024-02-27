@@ -854,16 +854,6 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     # Assemble the return object
     rtn = ApplierReturn()
     outObjList = computeMgr.outObjList
-
-    # If errors in workers, then print them and raise an exception
-    workerErrList = [obj for obj in outObjList
-        if isinstance(obj, WorkerErrorRecord)]
-    if len(workerErrList) > 0:
-        for errRecord in workerErrList:
-            print(errRecord)
-        msg = "Earlier errors make it impossible to continue"
-        raise rioserrors.RiosError(msg)
-
     timingsList = [obj for obj in outObjList if isinstance(obj, Timers)]
     rtn.timings = timings
     for t in timingsList:
