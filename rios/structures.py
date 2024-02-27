@@ -683,7 +683,9 @@ class Timers:
     def formatReport(self, level=0):
         """
         Format a simple report on the timing for the individual named
-        timers.
+        timers. Passing level=0 produces a simple report with mean values
+        for each named timer, level=1 adds some extra reporting summarizing
+        the distribution of durations for each named timer.
 
         Return as a formatted string
         """
