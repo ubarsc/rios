@@ -115,6 +115,9 @@ parameters for the ConcurrencyStyle.
 
 Compute Worker Kinds
 --------------------
+This section describes the details of each of the different kinds of
+compute worker.
+
 **CW_THREADS**
 
 Each compute worker will be a separate thread within the current process. They
