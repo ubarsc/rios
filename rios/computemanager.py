@@ -1,3 +1,4 @@
+import sys
 import os
 from abc import ABC, abstractmethod
 from concurrent import futures
@@ -172,8 +173,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
 
         for obj in self.outObjList:
             if isinstance(obj, WorkerErrorRecord):
-                print(obj)
-                print()
+                print(obj, file=sys.stderr)
+                print(file=sys.stderr)
 
 
 class PBSComputeWorkerMgr(ComputeWorkerManager):
@@ -360,9 +361,9 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             else:
                 statusVal = 1
             if statusVal != 0:
-                print("\nError in compute worker", workerID)
-                print('\n'.join(workerOutLines))
-                print()
+                print("\nError in compute worker", workerID, file=sys.stderr)
+                print('\n'.join(workerOutLines), file=sys.stderr)
+                print(file=sys.stderr)
 
     @staticmethod
     def findLine(linelist, s):
@@ -399,8 +400,8 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         # Report on errors from the workers
         for obj in self.outObjList:
             if isinstance(obj, WorkerErrorRecord):
-                print(obj)
-                print()
+                print(obj, file=sys.stderr)
+                print(file=sys.stderr)
         self.findExtraErrors()
 
 
@@ -502,10 +503,10 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         for (workerID, proc) in self.processes.items():
             retcode = proc.returncode
             if retcode is not None and retcode != 0:
-                print("\nError in compute worker", workerID)
+                print("\nError in compute worker", workerID, file=sys.stderr)
                 stderrStr = self.results[workerID]['stderrstr']
-                print(stderrStr.strip('\n'))
-                print()
+                print(stderrStr.strip('\n'), file=sys.stderr)
+                print(file=sys.stderr)
 
     def shutdown(self):
         """
@@ -531,6 +532,6 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         # Report on errors from the workers
         for obj in self.outObjList:
             if isinstance(obj, WorkerErrorRecord):
-                print(obj)
-                print()
+                print(obj, file=sys.stderr)
+                print(file=sys.stderr)
         self.findExtraErrors()
