@@ -340,8 +340,6 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             # We ignore numWorkers, and have a worker for each block
             numWorkers = len(blockList)
 
-        workerIDnumList = range(numWorkers)
-
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer)
@@ -355,7 +353,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
                     self.dataChan.portnum, self.dataChan.authkey)
                 open(self.addressFile, 'w').write(address + '\n')
 
-            for workerID in workerIDnumList:
+            for workerID in range(numWorkers):
                 self.worker(workerID, tmpfileMgr)
         except Exception as e:
             self.dataChan.shutdown()
@@ -541,8 +539,6 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         self.processes = {}
         self.results = {}
 
-        workerIDnumList = range(numWorkers)
-
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer)
@@ -556,7 +552,7 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
                     self.dataChan.portnum, self.dataChan.authkey)
                 open(self.addressFile, 'w').write(address + '\n')
 
-            for workerID in workerIDnumList:
+            for workerID in range(numWorkers):
                 self.worker(workerID)
         except Exception as e:
             self.dataChan.shutdown()
