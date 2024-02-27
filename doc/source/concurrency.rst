@@ -133,20 +133,9 @@ computation which does not release the Python GIL, then this may limit the
 amount of parallel computation. Most operations with tools like numpy and 
 scipy do release the GIL, and so it is not usually a problem.
 
-**CW_SUBPROC**
+**CW_AWSBATCH**
 
-This was implemented mainly for testing, and is not intended for general
-use.
-
-Each compute worker runs as a separate process, started with subprocess.Popen,
-and thus runs in its own Python interpreter. For this reason, it may be a
-useful alternative to CW_THREADS, for tasks which do not release the GIL. 
-However, apart from that, there is probably no good reason to use this, and
-CW_THREADS is preferred.
-
-Since all workers are on the same machine, there is no particular benefit to 
-having each worker do its own reading, so this should be used with
-computeWorkersRead=False.
+Yet to do. 
 
 **CW_PBS**
 
@@ -187,10 +176,20 @@ on the main script.
 This behaves exactly like the CW_PBS compute workers, but using the SLURM
 batch queue system instead. See the PBS description.
 
-**CW_AWSBATCH**
+**CW_SUBPROC**
 
-Yet to do. 
+This was implemented mainly for testing, and is not intended for general
+use.
 
+Each compute worker runs as a separate process, started with subprocess.Popen,
+and thus runs in its own Python interpreter. For this reason, it may be a
+useful alternative to CW_THREADS, for tasks which do not release the GIL. 
+However, apart from that, there is probably no good reason to use this, and
+CW_THREADS is preferred.
+
+Since all workers are on the same machine, there is no particular benefit to 
+having each worker do its own reading, so this should be used with
+computeWorkersRead=False.
 
 Deprecated Code
 ---------------
