@@ -21,6 +21,30 @@ from .structures import CW_SUBPROC
 from .readerinfo import makeReaderInfo
 
 
+def getComputeWorkerManager(cwKind):
+    """
+    Returns a compute-worker manager object of the requested kind.
+    """
+    unImplemented = {CW_SLURM: 'CW_SLURM'}
+    if cwKind in unImplemented:
+        msg = ("computeWorkerKind '{}' is known, " +
+            "but not yet implemented").format(unImplemented[cwKind])
+        raise NotImplementedError(msg)
+
+    cwMgrClass = None
+    subClasses = ComputeWorkerManager.__subclasses__()
+    for c in subClasses:
+        if c.computeWorkerKind == cwKind:
+            cwMgrClass = c
+
+    if cwMgrClass is None:
+        msg = "Unknown compute-worker kind '{}'".format(cwKind)
+        raise ValueError(msg)
+
+    cwMgrObj = cwMgrClass()
+    return cwMgrObj
+
+
 class ComputeWorkerManager(ABC):
     """
     Abstract base class for all compute-worker manager subclasses
@@ -70,30 +94,6 @@ class ComputeWorkerManager(ABC):
             if isinstance(obj, WorkerErrorRecord):
                 print(obj, file=sys.stderr)
                 print(file=sys.stderr)
-
-
-def getComputeWorkerManager(cwKind):
-    """
-    Returns a compute-worker manager object of the requested kind.
-    """
-    unImplemented = {CW_SLURM: 'CW_SLURM'}
-    if cwKind in unImplemented:
-        msg = ("computeWorkerKind '{}' is known, " +
-            "but not yet implemented").format(unImplemented[cwKind])
-        raise NotImplementedError(msg)
-
-    cwMgrClass = None
-    subClasses = ComputeWorkerManager.__subclasses__()
-    for c in subClasses:
-        if c.computeWorkerKind == cwKind:
-            cwMgrClass = c
-
-    if cwMgrClass is None:
-        msg = "Unknown compute-worker kind '{}'".format(cwKind)
-        raise ValueError(msg)
-
-    cwMgrObj = cwMgrClass()
-    return cwMgrObj
 
 
 class ThreadsComputeWorkerMgr(ComputeWorkerManager):
