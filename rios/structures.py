@@ -145,14 +145,20 @@ class ConcurrencyStyle:
         one should first rule out any errors in the relevant workers before 
         increasing the timeout period.
 
+        These timeout values can each be set to None, in which case the
+        corresponding wait will never timeout.
+
         readBufferInsertTimeout: int
-            Time to wait to insert a block into the read buffer
+            Time to wait to insert a new (empty) block into the read buffer
         readBufferPopTimeout: int
-            Time to wait to pop a block out of the read buffer
+            Time to wait to pop a complete block out of the read buffer,
+            for a compute worker to use
         computeBufferInsertTimeout: int
-            Time to wait to insert a block into the compute buffer
+            Time to wait to insert a completed block into the compute buffer,
+            ready for the writing thread
         computeBufferPopTimeout: int
-            Time to wait to pop a block out of the compute buffer
+            Time to wait to pop a block out of the compute buffer, to
+            write it to the outfiles
 
     """
     def __init__(self, numReadWorkers=0, numComputeWorkers=0,

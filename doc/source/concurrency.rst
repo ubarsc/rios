@@ -154,7 +154,9 @@ slow to start as well, then the writer thread will timeout while waiting for
 compute workers to supply it with data to write. Such a timeout is important
 to have (otherwise failures would mean it may wait forever), but it does mean
 that if the worker jobs are queued for too long, then using CW_PBS may not
-be appropriate. 
+be appropriate. If the writer timeout becomes a problem, it can be set to None
+(computeBufferPopTimeout=None), in which case it will never timeout. Obviously
+this should be used with caution.
 
 Since PBS is generally used to manage a whole cluster, each compute worker may
 be running on a separate machine. This makes it quite advantageous to have each
