@@ -72,6 +72,45 @@ class ComputeWorkerManager(ABC):
         Shutdown the computeWorkerManager
         """
 
+    def setupNetworkCommunication(self, userFunction, infiles, outfiles,
+            otherArgs, controls, workinggrid, allInfo, blockList,
+            numWorkers, inBlockBuffer, outBlockBuffer):
+        """
+        Set up the standard methods of network communication between
+        the workers and the main thread. This is expected to be the
+        same for all workers running on separate machines from the
+        main thread.
+
+        Creates the dataChan and outqueue attributes.
+
+        This routine is not needed for the Threads subclass, because it
+        does not use the network versions of these communications.
+
+        """
+        # Divide the block list into a sublist for each worker
+        allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
+
+        # Set up the data which is common for all workers
+        workerInitData = {}
+        workerInitData['userFunction'] = userFunction
+        workerInitData['infiles'] = infiles
+        workerInitData['outfiles'] = outfiles
+        workerInitData['otherArgs'] = otherArgs
+        workerInitData['controls'] = controls
+        workerInitData['workinggrid'] = workinggrid
+        workerInitData['allInfo'] = allInfo
+
+        # Set up the data which is local to each worker
+        blockListByWorker = {}
+        workerInitData['blockListByWorker'] = blockListByWorker
+        for workerID in range(numWorkers):
+            blockListByWorker[workerID] = allSublists[workerID]
+
+        # Create the network-visible data channel
+        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
+            outBlockBuffer)
+        self.outqueue = self.dataChan.outqueue
+
     def makeOutObjList(self):
         """
         Make a list of all the objects the workers put into outqueue
@@ -216,28 +255,10 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         self.stackOutputs = self.getStackOutputs()
         self.batchClient = boto3.client('batch', region_name=self.REGION)
 
-        # Divide the block list into a sublist for each worker
-        allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
-        # Set up the data which is common for all workers
-        workerInitData = {}
-        workerInitData['userFunction'] = userFunction
-        workerInitData['infiles'] = infiles
-        workerInitData['outfiles'] = outfiles
-        workerInitData['otherArgs'] = otherArgs
-        workerInitData['controls'] = controls
-        workerInitData['workinggrid'] = workinggrid
-        workerInitData['allInfo'] = allInfo
+        self.setupNetworkCommunication(userFunction, infiles, outfiles,
+            otherArgs, controls, workinggrid, allInfo, blockList,
+            numWorkers, inBlockBuffer, outBlockBuffer)
 
-        # Set up the data which is local to each worker
-        blockListByWorker = {}
-        workerInitData['blockListByWorker'] = blockListByWorker
-        for workerID in range(numWorkers):
-            blockListByWorker[workerID] = allSublists[workerID]
-
-        # Create the network-visible data channel
-        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
-            outBlockBuffer)
-        self.outqueue = self.dataChan.outqueue
         host = self.dataChan.hostname
         portnum = self.dataChan.portnum
         authkey = self.dataChan.authkey
@@ -321,27 +342,9 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
 
         workerIDnumList = range(numWorkers)
 
-        # Divide the block list into a sublist for each worker
-        allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
-        # Set up the data which is common for all workers
-        workerInitData = {}
-        workerInitData['userFunction'] = userFunction
-        workerInitData['infiles'] = infiles
-        workerInitData['outfiles'] = outfiles
-        workerInitData['otherArgs'] = otherArgs
-        workerInitData['controls'] = controls
-        workerInitData['workinggrid'] = workinggrid
-        workerInitData['allInfo'] = allInfo
-
-        # Set up the data which is local to each worker
-        blockListByWorker = {}
-        workerInitData['blockListByWorker'] = blockListByWorker
-        for workerID in workerIDnumList:
-            blockListByWorker[workerID] = allSublists[workerID]
-
-        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
-            outBlockBuffer)
-        self.outqueue = self.dataChan.outqueue
+        self.setupNetworkCommunication(userFunction, infiles, outfiles,
+            otherArgs, controls, workinggrid, allInfo, blockList,
+            numWorkers, inBlockBuffer, outBlockBuffer)
 
         try:
             self.addressFile = None
@@ -540,27 +543,9 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
 
         workerIDnumList = range(numWorkers)
 
-        # Divide the block list into a sublist for each worker
-        allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
-        # Set up the data which is common for all workers
-        workerInitData = {}
-        workerInitData['userFunction'] = userFunction
-        workerInitData['infiles'] = infiles
-        workerInitData['outfiles'] = outfiles
-        workerInitData['otherArgs'] = otherArgs
-        workerInitData['controls'] = controls
-        workerInitData['workinggrid'] = workinggrid
-        workerInitData['allInfo'] = allInfo
-
-        # Set up the data which is local to each worker
-        blockListByWorker = {}
-        workerInitData['blockListByWorker'] = blockListByWorker
-        for workerID in workerIDnumList:
-            blockListByWorker[workerID] = allSublists[workerID]
-
-        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
-            outBlockBuffer)
-        self.outqueue = self.dataChan.outqueue
+        self.setupNetworkCommunication(userFunction, infiles, outfiles,
+            otherArgs, controls, workinggrid, allInfo, blockList,
+            numWorkers, inBlockBuffer, outBlockBuffer)
 
         try:
             self.addressFile = None
