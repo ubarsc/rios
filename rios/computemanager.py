@@ -380,6 +380,9 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
             raise rioserrors.UnavailableError(msg)
 
     def worker(self, workerID, tmpfileMgr):
+        """
+        Assemble a worker job and submit it to the batch queue
+        """
         scriptfile = tmpfileMgr.mktempfile(prefix='rios_batch_',
             suffix='.sh')
         logfile = tmpfileMgr.mktempfile(prefix='rios_batch_',
@@ -424,7 +427,7 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         # If there was something in stderr from the submit command, then
         # probably something bad happened, so we pass it on to the user
         # in the form of an exception.
-        if len(stderr) > 0:
+        if (len(stderr) > 0) or (self.jobId[workerID] is None):
             msg = "Error from submit command. Message:\n" + stderr
             raise rioserrors.JobMgrError(msg)
 
@@ -562,6 +565,8 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         """
         if self.computeWorkerKind == CW_PBS:
             jobID = stdout.strip()
+            if len(jobID) == 0:
+                jobID = None
         elif self.computeWorkerKind == CW_SLURM:
             slurmOutputList = stdout.strip().split()
             jobID = None
