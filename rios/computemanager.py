@@ -25,23 +25,22 @@ def getComputeWorkerManager(cwKind):
     """
     Returns a compute-worker manager object of the requested kind.
     """
-    unImplemented = {CW_SLURM: 'CW_SLURM'}
-    if cwKind in unImplemented:
-        msg = ("computeWorkerKind '{}' is known, " +
-            "but not yet implemented").format(unImplemented[cwKind])
-        raise NotImplementedError(msg)
+    if cwKind in (CW_PBS, CW_SLURM):
+        cwMgrObj = ClassicBatchComputeWorkerMgr()
+        cwMgrObj.computeWorkerKind = cwKind
+    else:
+        cwMgrClass = None
+        subClasses = ComputeWorkerManager.__subclasses__()
+        for c in subClasses:
+            if c.computeWorkerKind == cwKind:
+                cwMgrClass = c
 
-    cwMgrClass = None
-    subClasses = ComputeWorkerManager.__subclasses__()
-    for c in subClasses:
-        if c.computeWorkerKind == cwKind:
-            cwMgrClass = c
+        if cwMgrClass is None:
+            msg = "Unknown compute-worker kind '{}'".format(cwKind)
+            raise ValueError(msg)
 
-    if cwMgrClass is None:
-        msg = "Unknown compute-worker kind '{}'".format(cwKind)
-        raise ValueError(msg)
+        cwMgrObj = cwMgrClass()
 
-    cwMgrObj = cwMgrClass()
     return cwMgrObj
 
 
@@ -315,11 +314,15 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         return outputs
 
 
-class PBSComputeWorkerMgr(ComputeWorkerManager):
+class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
     """
-    Manage compute workers using the PBS batch queue.
+    Manage compute workers using a classic batch queue, notably
+    PBS or SLURM. Initially constructed with computeWorkerKind = None,
+    one must then assign computeWorkerKind as either CW_PBS or CW_SLURM
+    before use.
+
     """
-    computeWorkerKind = CW_PBS
+    computeWorkerKind = None
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
@@ -328,12 +331,13 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             singleBlockComputeWorkers=False, tmpfileMgr=None,
             haveSharedTemp=True):
         """
-        Start <numWorkers> PBS jobs to process blocks of data
+        Start <numWorkers> PBS or SLURM jobs to process blocks of data
         """
+        self.checkBatchSystemAvailable()
         self.haveSharedTemp = haveSharedTemp
         self.scriptfileList = []
         self.logfileList = []
-        self.pbsId = {}
+        self.jobId = {}
         if singleBlockComputeWorkers:
             # We ignore numWorkers, and have a worker for each block
             numWorkers = len(blockList)
@@ -345,7 +349,7 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
         try:
             self.addressFile = None
             if self.haveSharedTemp:
-                self.addressFile = tmpfileMgr.mktempfile(prefix='rios_pbs_',
+                self.addressFile = tmpfileMgr.mktempfile(prefix='rios_batch_',
                     suffix='.chnl')
                 address = self.dataChan.addressStr()
                 open(self.addressFile, 'w').write(address + '\n')
@@ -356,26 +360,34 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             self.dataChan.shutdown()
             raise e
 
+    def checkBatchSystemAvailable(self):
+        """
+        Check whether the selected batch queue system is available.
+        If not, raise UnavailableError
+        """
+        cmd = self.getQueueCmd()
+        try:
+            subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE, universal_newlines=True)
+            batchSysAvailable = True
+        except FileNotFoundError:
+            batchSysAvailable = False
+        if not batchSysAvailable:
+            if self.computeWorkerKind == CW_PBS:
+                msg = "PBS is not available"
+            elif self.computeWorkerKind == CW_SLURM:
+                msg = "SLURM is not available"
+            raise rioserrors.UnavailableError(msg)
+
     def worker(self, workerID, tmpfileMgr):
-        scriptfile = tmpfileMgr.mktempfile(prefix='rios_pbsscript_',
+        scriptfile = tmpfileMgr.mktempfile(prefix='rios_batch_',
             suffix='.sh')
-        logfile = tmpfileMgr.mktempfile(prefix='rios_pbsscript_',
+        logfile = tmpfileMgr.mktempfile(prefix='rios_batch_',
             suffix='.log')
         self.scriptfileList.append(scriptfile)
         self.logfileList.append(logfile)
 
-        qsubOptions = os.getenv('RIOS_PBSJOBMGR_QSUBOPTIONS')
-
-        scriptCmdList = [
-            "#!/bin/bash",
-            "#PBS -j oe -o %s" % logfile
-        ]
-        if qsubOptions is not None:
-            scriptCmdList.append("#PBS %s" % qsubOptions)
-
-        pbsInitCmds = os.getenv('RIOS_PBSJOBMGR_INITCMDS')
-        if pbsInitCmds is not None:
-            scriptCmdList.append(pbsInitCmds)
+        scriptCmdList = self.beginScript(logfile)
 
         computeWorkerCmd = ["rios_computeworker", "-i", str(workerID)]
         if self.addressFile is not None:
@@ -398,54 +410,48 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
 
         open(scriptfile, 'w').write(scriptStr + "\n")
 
-        submitCmdWords = ["qsub", scriptfile]
-        try:
-            proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE, universal_newlines=True)
-            pbsAvailable = True
-        except FileNotFoundError:
-            pbsAvailable = False
-        if not pbsAvailable:
-            raise rioserrors.UnavailableError("PBS is not available")
-        # The qsub command exits almost immediately, printing the PBS job id
-        # to stdout. So, we just wait for the qsub to finish, and grab the
-        # jobID string.
-        (stdout, stderr) = proc.communicate()
-        pbsJobID = stdout.strip()
-        self.pbsId[workerID] = pbsJobID
+        submitCmdWords = self.getSubmitCmd()
+        submitCmdWords.append(scriptfile)
+        proc = subprocess.Popen(submitCmdWords, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, universal_newlines=True)
 
-        # If there was something in stderr from the qsub command, then probably
-        # something bad happened, so we pass it on to the user in the form of
-        # an exception.
+        # The submit command exits almost immediately, printing the job id
+        # to stdout. So, we just wait for the command to finish, and grab
+        # the jobID string.
+        (stdout, stderr) = proc.communicate()
+        self.jobId[workerID] = self.getJobId(stdout)
+
+        # If there was something in stderr from the submit command, then
+        # probably something bad happened, so we pass it on to the user
+        # in the form of an exception.
         if len(stderr) > 0:
-            msg = "Error from qsub. Message:\n" + stderr
+            msg = "Error from submit command. Message:\n" + stderr
             raise rioserrors.JobMgrError(msg)
 
     def waitOnJobs(self):
         """
-        Wait for all PBS batch jobs to complete
+        Wait for all batch jobs to complete
         """
+        jobIdSet = set([jobId for jobId in self.jobId.values()])
 
-        # Extract the actual PBS job ID strings, skipping the first element.
-        # Express as a set, for efficiency later on
-        pbsJobIdSet = set([pbsjob for pbsjob in self.pbsId.values()])
-
-        numJobs = len(pbsJobIdSet)
+        numJobs = len(jobIdSet)
         allFinished = (numJobs == 0)
         while not allFinished:
-            qstatCmd = ["qstat"]
-            proc = subprocess.Popen(qstatCmd, stdout=subprocess.PIPE,
+            qlistCmd = self.getQueueCmd()
+            proc = subprocess.Popen(qlistCmd, stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE, universal_newlines=True)
             (stdout, stderr) = proc.communicate()
 
             stdoutLines = [line for line in stdout.split('\n')
                 if len(line) > 0]   # No blank lines
             # Skip header lines, and grab first word on each line,
-            # which is the PBS jobID
-            qstatJobIDlist = [line.split()[0] for line in stdoutLines[2:]]
-            qstatJobIDset = set(qstatJobIDlist)
+            # which is the jobID
+            nskip = self.getQlistHeaderCount()
+            qlistJobIDlist = [line.split()[0] for line in
+                stdoutLines[nskip:]]
+            qlistJobIDset = set(qlistJobIDlist)
 
-            allFinished = pbsJobIdSet.isdisjoint(qstatJobIDset)
+            allFinished = jobIdSet.isdisjoint(qlistJobIDset)
 
             if not allFinished:
                 # Sleep for a bit before checking again
@@ -491,6 +497,89 @@ class PBSComputeWorkerMgr(ComputeWorkerManager):
             if ndx is None and line.startswith(s):
                 ndx = i
         return ndx
+
+    def beginScript(self, logfile):
+        """
+        Return list of initial script commands, depending on
+        whether we are PBS or SLURM
+        """
+        if self.computeWorkerKind == CW_PBS:
+            scriptCmdList = [
+                "#!/bin/bash",
+                "#PBS -j oe -o %s" % logfile
+            ]
+            qsubOptions = os.getenv('RIOS_PBSJOBMGR_QSUBOPTIONS')
+            if qsubOptions is not None:
+                scriptCmdList.append("#PBS %s" % qsubOptions)
+
+            pbsInitCmds = os.getenv('RIOS_PBSJOBMGR_INITCMDS')
+            if pbsInitCmds is not None:
+                scriptCmdList.append(pbsInitCmds)
+        elif self.computeWorkerKind == CW_SLURM:
+            scriptCmdList = [
+                "#!/bin/bash",
+                "#SBATCH -o %s" % logfile,
+                "#SBATCH -e %s" % logfile
+            ]
+            sbatchOptions = os.getenv('RIOS_SLURMJOBMGR_SBATCHOPTIONS')
+            if sbatchOptions is not None:
+                scriptCmdList.append("#SBATCH %s" % sbatchOptions)
+
+            slurmInitCmds = os.getenv('RIOS_SLURMJOBMGR_INITCMDS')
+            if slurmInitCmds is not None:
+                scriptCmdList.append(slurmInitCmds)
+
+        return scriptCmdList
+
+    def getSubmitCmd(self):
+        """
+        Return the command name for submitting a job, depending on
+        whether we are PBS or SLURM. Return as a list of words,
+        ready to give to Popen.
+        """
+        if self.computeWorkerKind == CW_PBS:
+            cmd = ["qsub"]
+        elif self.computeWorkerKind == CW_SLURM:
+            cmd = ["sbatch"]
+        return cmd
+
+    def getQueueCmd(self):
+        """
+        Return the command name for listing the current jobs in the
+        batch queue, depending on whether we are PBS or SLURM. Return
+        as a list of words, ready to give to Popen.
+        """
+        if self.computeWorkerKind == CW_PBS:
+            cmd = ["qstat"]
+        elif self.computeWorkerKind == CW_SLURM:
+            cmd = ["squeue", "--noheader"]
+        return cmd
+
+    def getJobId(self, stdout):
+        """
+        Extract the jobId from the string returned when the job is
+        submitted, depending on whether we are PBS or SLURM
+        """
+        if self.computeWorkerKind == CW_PBS:
+            jobID = stdout.strip()
+        elif self.computeWorkerKind == CW_SLURM:
+            slurmOutputList = stdout.strip().split()
+            jobID = None
+            # slurm prints a sentence to the stdout:
+            # 'Submitted batch job X'
+            if len(slurmOutputList) >= 4:
+                jobID = slurmOutputList[3]
+        return jobID
+
+    def getQlistHeaderCount(self):
+        """
+        Number of lines to skip at the head of the qlist output
+        """
+        if self.computeWorkerKind == CW_PBS:
+            nskip = 0
+        elif self.computeWorkerKind == CW_SLURM:
+            nskip = 2
+        return nskip
 
     def shutdown(self):
         """
