@@ -126,7 +126,7 @@ concurrent.futures.ThreadPoolExecutor.
 
 This is very efficient, and well suited when the program is running on a
 multi-CPU machine, with few restrictions on how many threads a single 
-program may use.Set the number of computeWorkers to be a little below the 
+program may use. Set the number of computeWorkers to be a little below the
 number of CPUs (or CPU cores) available. Each compute worker does no reading
 of its own, and just uses the block buffers to supply it with blocks of
 data to compute with. The computeWorkersRead argument should be set to False.
@@ -134,7 +134,8 @@ data to compute with. The computeWorkersRead argument should be set to False.
 Since all threads are within the same Python instance, if the user is doing
 computation which does not release the Python GIL, then this may limit the
 amount of parallel computation. Most operations with tools like numpy and 
-scipy do release the GIL, and so it is not usually a problem.
+scipy do release the GIL, and so it is not usually a problem. See CW_SUBPROC
+as a possible alternative.
 
 **CW_AWSBATCH**
 
@@ -168,8 +169,8 @@ computeWorkersRead=False.
 
 Communication between the jobs and the main thread is handled via a network
 socket, which is managed by an extra thread running in the main process. 
-That last point means there may be one more thread than you expect running
-in the main script.
+That last point means that the main script may run one more thread than you
+expect.
 
 ... something about PBS environment variables. Also about shared temp directory.
 Also about singleBlockComputeWorkers, as a way to make very effective use of
