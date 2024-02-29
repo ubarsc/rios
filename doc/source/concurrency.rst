@@ -37,7 +37,7 @@ The reading of input data is divided up at the level of single blocks of data
 from each input file. These are used to assemble complete input blocks, 
 ready for the user function to operate on, which are placed in an input
 block buffer. The reading threads can run ahead of computation, up to the 
-limits of the buffer.
+buffer size limit.
 
 The computation is divided at the level of complete blocks of input data,
 i.e. single blocks from all the input files together. Each compute worker
@@ -79,29 +79,42 @@ during the run. ::
     reportStr = timings.formatReport()
     print(reportStr)
 
-This will show a simple report like the following ::
+This will show a simple report like the following::
 
-    Wall clock elapsed time: 11.8 seconds
+    Wall clock elapsed time: 10.6 seconds
 
-    Timer                Total (sec)  
+    Timer                Total (sec)
     -------------------------------
-    reading                6.6
-    userfunction          33.7
-    writing                4.2
+    reading                6.4
+    userfunction          34.1
+    writing                1.3
+    closing                1.8
     add_inbuffer           2.3
-    pop_inbuffer           1.3
+    pop_inbuffer           0.5
     add_outbuffer          0.0
-    pop_outbuffer          7.6
+    pop_outbuffer          7.5
 
 This example was run with 4 compute workers and 1 read worker. The total amount
 of time spent in each category is added up across threads, so will be larger
-than the elapsed wall clock time shown at the top. 
+than the elapsed wall clock time shown at the top.
+
+For comparison, when run with no concurrency, the same task has the following
+timings::
+
+    Wall clock elapsed time: 35.1 seconds
+
+    Timer                Total (sec)
+    -------------------------------
+    reading                4.4
+    userfunction          27.7
+    writing                1.2
+    closing                1.7
 
 The time spent waiting for the various buffers can provide important clues.
 If a lot of time is being spent waiting to add to the input buffer, this may 
 mean there are not enough compute workers taking blocks out. Similarly, a lot of
 time spent waiting to pop blocks out of the input buffer may indicate that
-adding some read workers would help. All of this depends on the hardware 
+adding some read workers might help. All of this depends on the hardware
 configuration, of course. Adding more compute workers on a single core CPU
 will not usually help at all. 
 

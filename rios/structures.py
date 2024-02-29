@@ -77,16 +77,24 @@ class ConcurrencyStyle:
     Read Concurrency
         numReadWorkers: int
             The number of read workers. A value of 0 means that reading
-            happens sequentially within the main processing loop. Also
-            see computeWorkersRead, below.
+            happens sequentially within the main processing loop. A value
+            greater than zero will start this many independent threads
+            within the main RIOS process to read blocks of data, placing
+            them in a buffer, ready for the computation to use them. This
+            can be used independently of whether any compute workers are
+            used.
+            Also see computeWorkersRead, below, for the interaction with
+            compute workers.
 
     Compute Concurrency
         computeWorkerKind: One of {CW_NONE, CW_THREADS, CW_PBS, CW_SLURM,
-            CW_AWSBATCH}.
+            CW_AWSBATCH, CW_SUBPROC}.
 
             Selects the paradigm used to distribute compute workers.
             The CW_THREADS option means a pool of compute threads
-            running within the same process as the rest of RIOS.
+            running within the same process as the rest of RIOS. This is
+            almost certainly the best option to start exploring concurrency
+            in RIOS.
             The PBS, SLURM and AWSBATCH options all refer to different
             batch queue systems, so that compute workers can run as jobs
             on the batch queue. In those cases, not only do the workers
@@ -100,20 +108,23 @@ class ConcurrencyStyle:
             kinds of compute worker.
             
         numComputeWorkers: int
-            The number of distinct compute workers
+            The number of distinct compute workers. If zero, then
+            computation happens within the main processing loop.
         computeWorkersRead: bool
             If True, then each compute worker does its own reading,
             possibly with its own pool of read worker threads
             (<numReadWorkers> threads for each compute worker). This
             is likely to be a good option when used with the batch
-            queue oriented compute workers. If False, then all reading
-            is done by the main RIOS process (possibly using one or
-            more read workers) and data is sent directly to each compute
-            worker. This is required for CW_THREADS compute workers,
-            but may also be useful in cases when batch queue nodes are
-            on an internal network, but input files are not accessible
-            to the batch nodes, and must be read by a process on the
-            gateway machine.
+            queue oriented compute workers, with workers running on
+            separate machines.
+
+            If False, then all reading is done by the main RIOS process
+            (possibly using one or more read workers) and data is sent
+            directly to each compute worker. False is required for CW_THREADS
+            compute workers, but may also be useful in cases when batch
+            queue nodes are on an internal network, but input files are
+            not accessible to the batch nodes, and must be read by a process
+            on the gateway machine.
         singleBlockComputeWorkers: bool
             This applies only to the batch queue paradigms. In some
             batch configurations, it is advantageous to run many small,
@@ -123,7 +134,8 @@ class ConcurrencyStyle:
             queue system's own load balancing to decide how many jobs are
             running concurrently. This is likely to be of most benefit
             for large shared PBS and SLURM batch queues with plenty of
-            available nodes.
+            available nodes. However, it should be used with caution, with
+            regard to the timouts which could occur (see below).
         haveSharedTemp: bool
             If True, then the compute workers are all able to see a shared
             temporary directory. This is ignored for some computeWorkerKinds,
@@ -700,8 +712,8 @@ class Timers:
             "Wall clock elapsed time: {:.1f} seconds".format(
                 d['walltime']['tot']),
             "",
-            "{:14s}       {:13s}".format("Timer", "Total (sec)"),
-            ("-" * 31)
+            "{:14s}       {:11s}".format("Timer", "Total (sec)"),
+            ("-" * 32)
         ]
         fieldOrder = ['reading', 'userfunction', 'writing', 'closing',
             'add_inbuffer', 'pop_inbuffer', 'add_outbuffer',

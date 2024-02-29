@@ -45,7 +45,8 @@ Changed Behaviour
     the difference could lead to slightly different results.
   * controls.setReferenceImage will now accept either an external filename
     (the old behaviour) or an internal symbolic name (more consistent with
-    everything else).
+    everything else). The old behaviour is still perfectly valid, and will
+    be kept into the future.
 
 Version 1.4.16 (2023-09-28)
 ---------------------------
