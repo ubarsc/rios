@@ -229,14 +229,15 @@ to the ConcurrencyStyle constructor.
      - Creates *n* read worker threads, which feed data into the input block
        buffer. The main loop is as before, but the 'read' step just pops
        available blocks of data out of the buffer, and then does compute-write
-       in the main thread. There is a total of *n+1* threads running
+       in the main thread. There is a total of *n+1* threads running. In an
+       I/O bound task, this may well be sufficient.
    * - numReadWorkers=n computeWorkerKind=CW_THREADS numComputeWorkers=m
      - Creates *n* read worker threads and *m* compute worker threads, all
        within the current process. The read workers put data into the input
        buffer, the compute workers take data from there and put computed blocks
        into the output buffer. The main loop pops available blocks from the
        output buffer and writes them. There is a total of *n+m+1* threads
-       running
+       running. In a compute-bound task, just 1 read worker may be enough.
    * - numReadWorkers=n computeWorkerKind=CW_AWSBATCH numComputeWorkers=m
        computeWorkersRead=True
      - Runs *m* batch jobs with a single compute worker thread each, on
@@ -246,9 +247,9 @@ to the ConcurrencyStyle constructor.
        of the output buffer and writes them. It maintains 1 extra thread to
        manage the socket for communicating with worker machines. The
        originating process thus has 2 threads, while each of the *m* batch
-       jobs has *n+1* threads.
+       jobs has a single process with a total of *n+1* threads.
 
-       This description also fits CW_PBS and CW_SLURM kinds.
+       This description also applies to CW_PBS and CW_SLURM.
 
 Deprecated Code
 ---------------
