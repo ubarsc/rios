@@ -210,6 +210,44 @@ Since all workers are on the same machine, there is no particular benefit to
 having each worker do its own reading, so this should be used with
 computeWorkersRead=False.
 
+Style Summary Table
+-------------------
+This table summarizes a few of the most common combinations of parameters
+to the ConcurrencyStyle constructor.
+
+.. csv-table::
+   :header: "Main Parameters", "Description"
+   :widths: 30, 50
+
+   "numReadWorkers=0, computeWorkerKind=CW_NONE, numComputeWorkers=0", "This
+   is the default. No concurrency is enabled. There is a single loop over all
+   blocks, and each iteration does read-compute-write in sequence."
+
+   "numReadWorkers=n, computeWorkerKind=CW_NONE, numComputeWorkers=0", "Creates
+   *n* read worker threads, which feed data into the input block buffer. The
+   main loop is as before, but the 'read' step just pops available blocks of
+   data out of the buffer, and then does compute-write in the main thread.
+   There is a total of *n+1* threads running."
+
+   "numReadWorkers=n, computeWorkerKind=CW_THREADS, numComputeWorkers=m", "Creates
+   *n* read worker threads and *m* compute worker threads, all within the
+   current process. The read workers put data into the input buffer, the
+   compute workers take data from there and put computed blocks into the
+   output buffer. The main loop pops available blocks from the output buffer
+   and writes them. There is a total of *n+m+1* threads running."
+
+   "numReadWorkers=n, computeWorkerKind=CW_AWSBATCH, numComputeWorkers=m,
+   computeWorkersRead=True", "Runs *m* batch jobs with a single compute worker
+   thread each, on separate machines. Each compute worker has *n* read worker
+   threads, plus the compute thread. They complete blocks are put into the
+   output buffer. The main thread, on the originating machine, pops blocks
+   out of the output buffer and writes them. It maintains 1 extra thread to
+   manage the socket for communicating with worker machines. The originating
+   process thus has 2 threads, while each of the *m* batch jobs has *n+1*
+   threads.
+
+   This descrition also fits CW_PBS and CW_SLURM kinds."
+
 Deprecated Code
 ---------------
 As part of this new (version 2.0) update to the internals of RIOS, some
