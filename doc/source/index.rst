@@ -9,7 +9,11 @@ A set of Python modules which makes it easy to write raster processing
 code in Python. Built on top of GDAL, it handles the details of 
 opening and closing files, checking alignment of projection and 
 raster grid, stepping through the raster in small blocks, etc., 
-allowing the programmer to concentrate on the processing involved. 
+allowing the programmer to concentrate on the processing involved.
+
+As of version 2.0, RIOS has strong support for parallel processing,
+in both reading and computation, supporting a range of paradigms.
+
 It is licensed under GPL 3.
 
 Example
