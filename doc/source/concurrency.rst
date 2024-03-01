@@ -214,7 +214,7 @@ Style Summary Table
 -------------------
 This table summarizes a few of the most common combinations of parameters
 to the ConcurrencyStyle constructor. See above for more details, and also
-in the docstring for the :class:`rios.structures.ConcurrencyStyle`.
+in the docstring for :class:`rios.structures.ConcurrencyStyle`.
 
 .. list-table::
    :widths: 30, 50
