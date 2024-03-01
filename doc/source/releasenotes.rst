@@ -48,6 +48,18 @@ Changed Behaviour
     everything else). The old behaviour is still perfectly valid, and will
     be kept into the future.
 
+Version 1.4.17 (2024-03-01)
+---------------------------
+
+Bug Fixes:
+  * Workaround for float images that are all the same value https://github.com/ubarsc/rios/pull/72
+
+Improvements:
+  * add section about command line programs in the docs https://github.com/ubarsc/rios/pull/71
+  * Improve doc for examples of controlling reading/writing https://github.com/ubarsc/rios/pull/73
+  * add new controls method 'setWindowSize' which allows X and Y window sizes to be set at once https://github.com/ubarsc/rios/pull/74
+  * use GDAL's type conversion functions instead https://github.com/ubarsc/rios/pull/75
+
 Version 1.4.16 (2023-09-28)
 ---------------------------
 
