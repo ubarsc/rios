@@ -213,7 +213,8 @@ computeWorkersRead=False.
 Style Summary Table
 -------------------
 This table summarizes a few of the most common combinations of parameters
-to the ConcurrencyStyle constructor.
+to the ConcurrencyStyle constructor. See above for more details, and also
+in the docstring for the :class:`rios.structures.ConcurrencyStyle`.
 
 .. list-table::
    :widths: 30, 50
@@ -221,7 +222,6 @@ to the ConcurrencyStyle constructor.
 
    * - Main Parameters
      - Description
-
    * - numReadWorkers=0 computeWorkerKind=CW_NONE numComputeWorkers=0
      - This is the default. No concurrency is enabled. There is a single loop
        over all blocks, and each iteration does read-compute-write in sequence
