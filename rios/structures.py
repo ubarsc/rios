@@ -221,6 +221,16 @@ class ConcurrencyStyle:
                    "to make numReadWorkers at least 1")
             raise ValueError(msg)
 
+        from multiprocessing import cpu_count
+        numCpus = cpu_count()
+        if ((computeWorkerKind == CW_THREADS) and
+                (numComputeWorkers > numCpus)):
+            msg = ("Number of CPUs = {}, numComputeWorkers = {}. " +
+                "For CW_THREADS, it is not sensible to have " +
+                "numComputeWorkers > numCpus").format(
+                numCpus, numComputeWorkers)
+            raise ValueError(msg)
+
 
 class FilenameAssociations(object):
     """
