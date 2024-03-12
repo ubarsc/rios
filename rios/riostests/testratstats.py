@@ -73,6 +73,7 @@ def run():
     trueStddev = ratValImgNonNull.std()
     trueMin = ratValImgNonNull.min()
     trueMax = ratValImgNonNull.max()
+    trueSum = ratValImgNonNull.sum()
     
     tolerance = 0.000001
     if not equalTol(ratStats.Value.mean, trueMean, tolerance):
@@ -90,6 +91,10 @@ def run():
     if not equalTol(ratStats.Value.max, trueMax, tolerance):
         riostestutils.report(TESTNAME, "Mismatched maxes: %s, %s" % 
             (repr(ratStats.Value.max), repr(trueMax)))
+        allOK = False
+    if not equalTol(ratStats.Value.sum, trueSum, tolerance):
+        riostestutils.report(TESTNAME, "Mismatched sums: %s, %s" % 
+            (repr(ratStats.Value.sum), repr(trueSum)))
         allOK = False
 
     riostestutils.removeRasterFile(imgfile)

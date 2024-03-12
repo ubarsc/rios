@@ -384,6 +384,7 @@ class ColumnStats(object):
         * **stddev**
         * **min**
         * **max**
+        * **sum**
         * **mode**            Not yet implemented
         * **median**          Not yet implemented
     
@@ -465,6 +466,7 @@ class ColumnStats(object):
                 self.max = blockMax
         
         self.count = count
+        self.sum = sumX
         
         # Finish mean and stddev
         self.mean = None
