@@ -920,7 +920,12 @@ def makeWorkingGrid(infiles, allInfo, controls):
             # so check both.
             if refImage in (symbolicName, filename):
                 refNdx = (symbolicName, seqNum)
-        refInfo = allInfo[refNdx]
+
+        if refNdx is not None:
+            refInfo = allInfo[refNdx]
+        else:
+            refInfo = ImageInfo(refImage)
+
         refPixGrid = PixelGridDefn(projection=refInfo.projection,
                         geotransform=refInfo.transform,
                         nrows=refInfo.nrows, ncols=refInfo.ncols)
