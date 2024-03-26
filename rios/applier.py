@@ -33,7 +33,7 @@ from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP
 from .imagereader import DEFAULTLOGGINGSTREAM                         # noqa: F401
 from .imagereader import readBlockAllFiles, ReadWorkerMgr, specialProjFixes
 from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS    # noqa: F401
-from .imagewriter import writeBlock, closeOutfiles
+from .imagewriter import writeBlock, closeOutfiles, dfltDriverOptions
 from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F401
 from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
 from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
