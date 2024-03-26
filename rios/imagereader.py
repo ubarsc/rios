@@ -68,7 +68,18 @@ def readBlockAllFiles(infiles, workinggrid, blockDefn, allInfo, gdalObjCache,
 
 def readBlockOneFile(blockDefn, symbolicName, seqNum, filename, gdalObjCache,
         controls, tmpfileMgr, rasterizeMgr, workinggrid, allInfo):
+    """
+    Read the requested block, as per blockDefn, of the requested file,
+    as per (symbolicName, seqNum, filename). If the file has already been
+    opened, its GDAL objects will be in the gdalObjCache, otherwise
+    it will be opened and those objects placed in the cache.
+
+    Return a numpy array for the block, of shape (numBands, numRows, numCols).
+
+    """
     if (symbolicName, seqNum) not in gdalObjCache:
+        # The file has not yet been opened, so open it, and cache the
+        # GDAL Dataset & Band objects
         fileInfo = allInfo[symbolicName, seqNum]
         (ds, bandObjList) = openForWorkingGrid(filename, workinggrid,
             fileInfo, controls, tmpfileMgr, rasterizeMgr, symbolicName)
@@ -76,23 +87,86 @@ def readBlockOneFile(blockDefn, symbolicName, seqNum, filename, gdalObjCache,
 
     (ds, bandObjList) = gdalObjCache[symbolicName, seqNum]
 
-    margin = controls.overlap
     (left, top, xsize, ysize) = (blockDefn.left, blockDefn.top,
-            blockDefn.ncols + 2 * margin,
-            blockDefn.nrows + 2 * margin)
-    # If we are reading all bands, just use the Dataset, but
-    # if we are only reading selected bands, read each one and
-    # then combine into a single array stack
-    if bandObjList is None:
-        arr = ds.ReadAsArray(left, top, xsize, ysize)
-        if len(arr.shape) == 2:
-            arr = numpy.expand_dims(arr, 0)
-    else:
-        arrList = [band.ReadAsArray(left, top, xsize, ysize)
-            for band in bandObjList]
-        arr = numpy.array(arrList)
+            blockDefn.ncols, blockDefn.nrows)
 
-    return arr
+    # We construct the final output array. It begins as an array full of
+    # nulls, then we read in the array for each band. Since the block
+    # may be incomplete (i.e. off the edge of the extent), we then slot
+    # it in to the right portion of the full array.
+
+    margin = controls.overlap
+    nBands = len(bandObjList)
+    shape = (nBands, ysize + 2 * margin, xsize + 2 * margin)
+    gdalType = bandObjList[0].DataType
+    dtype = gdal_array.GDALTypeCodeToNumericTypeCode(gdalType)
+    nullval = bandObjList[0].GetNoDataValue()
+    if nullval is None:
+        # We need some fallback value if null is not supplied
+        nullval = 0
+    outArray = numpy.full(shape, nullval, dtype=dtype)
+
+    for i in range(nBands):
+        readIntoArray(outArray[i], ds, bandObjList[i], top, left,
+            xsize, ysize, workinggrid, margin)
+
+    return outArray
+
+
+def readIntoArray(outArray, ds, bandObj, top_wg, left_wg,
+            xsize, ysize, workinggrid, margin):
+    """
+    Read the requested block from the given band/dataset, and place it
+    into the given output array. If the block falls off the edge of the
+    file extent, the request is trimmed back, and the resulting smaller
+    block is placed into the correct part of the array, leaving the
+    surrounding array elements unchanged.
+
+    The request coordinates (top, left, xsize, ysize) do not include the
+    margin (i.e. overlap), so that is accounted for explicitly here.
+    If margin > 0, the array is thus larger by (2*margin) in each direction.
+
+    NOTE: While it may seem that this could be done using a VRT, our tests
+    of that approach found that it imposes a substantial overhead, and doing
+    it ourselves is much faster. 
+
+    """
+    # The row/col shift between working grid and file grid. The shift
+    # should be SUBTRACTED from working grid row/col to get file row/col
+    fileTransform = ds.GetGeoTransform()
+    file_xMin = fileTransform[0]
+    file_yMax = fileTransform[3]
+    (xRes, yRes) = (workinggrid.xRes, workinggrid.yRes)
+    colShift = int(round((file_xMin - workinggrid.xMin) / xRes))
+    rowShift = int(round((workinggrid.yMax - file_yMax) / yRes))
+
+    # The file coordinates of the outer-most pixels, including the margin
+    fileLeft = left_wg - margin - colShift
+    fileRight = left_wg + (xsize - 1) + margin - colShift
+    fileTop = top_wg - margin - rowShift
+    fileBottom = top_wg + (ysize - 1) + margin - rowShift
+
+    # The number of rows/cols outside file extent in each direction, which
+    # thus need to be trimmed off the array to actually read
+    trimLeft = max(0, -fileLeft)
+    trimRight = max(0, (fileRight + 1 - ds.RasterXSize))
+    trimTop = max(0, -fileTop)
+    trimBottom = max(0, (fileBottom + 1 - ds.RasterYSize))
+
+    # Specify what to actually read
+    left_read = fileLeft + trimLeft
+    top_read = fileTop + trimTop
+    xsize_read = fileRight + 1 - left_read - trimRight
+    ysize_read = fileBottom + 1 - top_read - trimBottom
+
+    if left_read >= 0 and top_read >= 0 and xsize_read > 0 and ysize_read > 0:
+        subArr = bandObj.ReadAsArray(left_read, top_read, xsize_read, ysize_read)
+        (subRows, subCols) = subArr.shape
+        i1 = trimTop
+        i2 = trimTop + subRows
+        j1 = trimLeft
+        j2 = trimLeft + subCols
+        outArray[i1:i2, j1:j2] = subArr
 
 
 def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
@@ -101,17 +175,17 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
     If the fileInfo for the given filename is a raster, aligned with
     the working grid, just open it. If it is a raster, but not aligned,
     do a warp VRT that makes it aligned, and open that instead.
-    If it is a vector, then first rasterize onto the working grid in a
-    temp file, and open that.
+    If it is a vector, then first rasterize into a temp file and use that.
 
-    Either way, return a GDAL Dataset object and potentially a list of
-    band objects corresponding to the selected bands. If selectedBands
-    is None, so is bandObjList, and so should use ds.ReadAsArray instead
-    of band.ReadAsArray.
+    Either way, return a GDAL Dataset object and a list of band objects
+    corresponding to the selected bands.
 
     """
     (xRes, yRes) = (workinggrid.xRes, abs(workinggrid.yRes))
 
+    # If the file is actually a vector, then first rasterize it
+    # onto the right pixel size. If it is the wrong projection, it will
+    # be reprojected in raster form later on
     if isinstance(fileInfo, VectorFileInfo):
         vectorlayer = controls.getOptionForImagename('vectorlayer',
                 symbolicName)
@@ -121,10 +195,12 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
             raise NotImplementedError("Vector layer by name")
         vecLyrInfo = fileInfo[vecNdx]
         projection = vecLyrInfo.spatialRef.ExportToWkt()
-        xMin = PixelGridDefn.snapToGrid(vecLyrInfo.xMin, xRes, xRes) - xRes
-        xMax = PixelGridDefn.snapToGrid(vecLyrInfo.xMax, xRes, xRes) + xRes
-        yMin = PixelGridDefn.snapToGrid(vecLyrInfo.yMin, yRes, yRes) - yRes
-        yMax = PixelGridDefn.snapToGrid(vecLyrInfo.yMax, yRes, yRes) + yRes
+        wgXmin = workinggrid.xMin
+        wgYmin = workinggrid.yMin
+        xMin = PixelGridDefn.snapToGrid(vecLyrInfo.xMin, wgXmin, xRes) - xRes
+        xMax = PixelGridDefn.snapToGrid(vecLyrInfo.xMax, wgXmin, xRes) + xRes
+        yMin = PixelGridDefn.snapToGrid(vecLyrInfo.yMin, wgYmin, yRes) - yRes
+        yMax = PixelGridDefn.snapToGrid(vecLyrInfo.yMax, wgYmin, yRes) + yRes
         vectorPixgrid = PixelGridDefn(projection=projection,
             xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, xRes=xRes, yRes=yRes)
         gridList = [workinggrid, vectorPixgrid]
@@ -156,27 +232,50 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         filename = tmprast
         fileInfo = ImageInfo(filename)
 
-    if isinstance(fileInfo, ImageInfo):
+    fileToOpen = filename
+
+    if reprojectionRequired(fileInfo, workinggrid):
         vrtfile = tmpfileMgr.mktempfile(prefix='rios_', suffix='.vrt')
-        margin = controls.overlap
-        # The world coordinates of the extent. Note that we make
-        # it bigger around the edges if we are working with an overlap
-        outBounds = (workinggrid.xMin - margin * xRes,
-                     workinggrid.yMin - margin * yRes,
-                     workinggrid.xMax + margin * xRes,
-                     workinggrid.yMax + margin * yRes)
-        nullval = fileInfo.nodataval
+
+        # Construct a pixgrid of the file, projected into the working grid
+        dstProj = specialProjFixes(workinggrid.projection)
+        corners = fileInfo.getCorners(outWKT=dstProj)
+        (ul_x, ul_y, ur_x, ur_y, lr_x, lr_y, ll_x, ll_y) = corners
+        (xRes, yRes) = (workinggrid.xRes, workinggrid.yRes)
+        xMin = min(ul_x, ll_x) - xRes
+        xMax = max(ur_x, lr_x) + xRes
+        yMin = min(ll_y, lr_y) - yRes
+        yMax = max(ul_y, ur_y) + yRes
+        xMin = PixelGridDefn.snapToGrid(xMin, workinggrid.xMin, xRes)
+        xMax = PixelGridDefn.snapToGrid(xMax, workinggrid.xMin, xRes)
+        yMin = PixelGridDefn.snapToGrid(yMin, workinggrid.yMin, yRes)
+        yMax = PixelGridDefn.snapToGrid(yMax, workinggrid.yMin, yRes)
+        filePixGrid = PixelGridDefn(projection=dstProj, xMin=xMin, yMin=yMin,
+            xMax=xMax, yMax=yMax, xRes=xRes, yRes=yRes)
+
+        # Make a pixgrid of the intersection between file grid and working grid
+        intersectGrid = workinggrid.intersection(filePixGrid)
+
+        # The bounds of the VRT are from the intersection
+        outBounds = (intersectGrid.xMin, intersectGrid.yMin,
+            intersectGrid.xMax, intersectGrid.yMax)
+
+        # The warp options constructor has weird expectations about the
+        # null values, so construct what it requires.
+        if None in fileInfo.nodataval:
+            nullval = None
+        else:
+            nullval = ' '.join([repr(n) for n in fileInfo.nodataval])
         overviewLevel = 'NONE'
         if controls.getOptionForImagename('allowOverviewsGdalwarp',
                 symbolicName):
             overviewLevel = 'AUTO'
-        srcSrs = specialProjFixes(fileInfo.projection)
-        dstSrs = workinggrid.projection
+        srcProj = specialProjFixes(fileInfo.projection)
         resampleMethod = controls.getOptionForImagename('resampleMethod',
             symbolicName)
         warpOptions = gdal.WarpOptions(format="VRT", outputBounds=outBounds,
-            xRes=xRes, yRes=yRes, srcNodata=nullval, srcSRS=srcSrs,
-            dstSRS=dstSrs, dstNodata=nullval, overviewLevel=overviewLevel,
+            xRes=xRes, yRes=yRes, srcNodata=nullval, srcSRS=srcProj,
+            dstSRS=dstProj, dstNodata=nullval, overviewLevel=overviewLevel,
             resampleAlg=resampleMethod)
         # Have to remove the vrtfile, because gdal.Warp won't over-write.
         os.remove(vrtfile)
@@ -187,11 +286,29 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
     layerselection = controls.getOptionForImagename('layerselection',
             symbolicName)
     if layerselection is None:
-        bandObjList = None
-    else:
-        bandObjList = [ds.GetRasterBand(i) for i in layerselection]
+        # Default to all bands
+        layerselection = [(i + 1) for i in range(ds.RasterCount)]
+
+    bandObjList = [ds.GetRasterBand(i) for i in layerselection]
 
     return (ds, bandObjList)
+
+
+def reprojectionRequired(imgInfo, workinggrid):
+    """
+    Compare the details of the given imgInfo and the workinggrid,
+    to work out if a reprojection is required. Return True if so.
+    """
+    proj = specialProjFixes(imgInfo.projection)
+    pixGrid = PixelGridDefn(projection=proj,
+        xMin=imgInfo.xMin, xMax=imgInfo.xMax, xRes=imgInfo.xRes,
+        yMin=imgInfo.yMin, yMax=imgInfo.yMax, yRes=imgInfo.yRes)
+
+    allEqual = (workinggrid.equalPixSize(pixGrid) and
+                workinggrid.equalProjection(pixGrid) and
+                workinggrid.alignedWith(pixGrid))
+    reprojReqd = not allEqual
+    return reprojReqd
 
 
 def specialProjFixes(projwkt):
