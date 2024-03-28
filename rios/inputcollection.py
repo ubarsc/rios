@@ -1,5 +1,7 @@
 
 """
+All code in this module is now deprecated (version 2.0.0)
+
 This module contains the InputCollection and InputIterator
 classes. These classes are for ImageReader to keep track
 of the inputs it has and deal with resampling.
@@ -105,6 +107,9 @@ class InputCollection(object):
         rather than stdout.
         
         """
+        msg = "The InputCollection class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
+
         self.loggingstream = loggingstream
         # initialise our lists
         self.imageList = []

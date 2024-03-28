@@ -66,6 +66,9 @@ class Vector(object):
         for the temporary rasterised file.
 
         """
+        msg = "The Vector class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
+
         # open the file and get the requested layer
         self.filename = filename
         self.layerid = inputlayer
@@ -228,6 +231,9 @@ class VectorReader(object):
         progress is an instance of a Progress class, if none 
         an instance of cuiprogress.CUIProgress is created an used
         """
+        msg = "The VectorReader class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
+
         self.vectorContainer = vectorContainer
         if progress is None:
             self.progress = cuiprogress.SilentProgress()

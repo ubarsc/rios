@@ -24,8 +24,6 @@ area. Does the same thing with straight numpy, and checks the results.
 import numpy
 
 from rios import applier
-from rios import imagereader
-from rios import vectorreader
 
 from . import riostestutils
 
@@ -44,20 +42,16 @@ def run():
     vecfile = 'square.shp'
     riostestutils.genVectorSquare(vecfile)
     
-    meanVal = calcMeanWithRios(imgfile, vecfile)
+    meanVal_numpy = calcMeanWithNumpy()
     
-    meanVal2 = calcMeanWithNumpy()
-    
-    meanVal3 = calcMeanWithRiosApplier(imgfile, vecfile)
+    meanVal_rios = calcMeanWithRiosApplier(imgfile, vecfile)
     
     ok = True
-    if meanVal == meanVal2 and meanVal == meanVal3:
+    if meanVal_numpy == meanVal_rios:
         riostestutils.report(TESTNAME, "Passed")
-    elif meanVal != meanVal3:
-        riostestutils.report(TESTNAME, "Failed. Applier and low-level disagree (%s != %s)"%(meanVal, meanVal3))
-        ok = False
     else:
-        riostestutils.report(TESTNAME, "Failed. Mean values unequal (%s != %s)"%(meanVal, meanVal2))
+        riostestutils.report(TESTNAME,
+            "Failed. Mean values unequal (%s != %s)"%(meanVal_numpy, meanVal_rios))
         ok = False
     
     # Cleanup
@@ -65,40 +59,6 @@ def run():
     riostestutils.removeVectorFile(vecfile)
     
     return ok
-
-
-def calcMeanWithRios(imgfile, vecfile):
-    """
-    Use RIOS's vector facilities to calculate the mean of the 
-    image within the vector
-    
-    Uses the low-level calls, because the applier does not yet support 
-    the vector stuff. 
-    
-    """
-    reader = imagereader.ImageReader([imgfile])
-    vec = vectorreader.Vector(vecfile, burnvalue=-1, datatype=numpy.int16)
-    vreader = vectorreader.VectorReader([vec])
-    
-    total = 0
-    count = 0
-    for (info, blocklist) in reader:
-        vecblockList = vreader.rasterize(info)
-        vecblock = vecblockList[0]
-        
-        block = blocklist[0]
-        
-        # Mask a boolean mask from the vector
-        mask = (vecblock < 0)
-        vals = block[mask]
-        count += len(vals)
-        total += vals.astype(numpy.float32).sum()
-
-    if count > 0:
-        meanVal = total / count
-    else:
-        meanVal = -1
-    return meanVal
 
 
 def calcMeanWithRiosApplier(imgfile, vecfile):

@@ -6,6 +6,7 @@ code in Python. It is built on top of [GDAL](https://www.gdal.org).
 - Handles the details of opening and closing files.
 - Checks alignment of projection and raster grid.
 - Steps through the raster in small blocks to reduce memory requirements.
+- Strong, flexible support for concurrency in reading/computation/writing
 - *and more...*
 
 This allows the programmer to concentrate on the processing involved.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 All exceptions used within rios. 
 
@@ -18,6 +17,9 @@ All exceptions used within rios.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import sys
+import warnings
 
 
 class RiosError(Exception):
@@ -132,3 +134,51 @@ class ColorTableGenerationError(RiosError):
 
 class PermissionError(RiosError):
     "Error due to permissions on temp files"
+
+
+class TimeoutError(RiosError):
+    "Something timed out"
+
+
+class UnavailableError(RiosError):
+    "A dependency is unavailable"
+
+
+deprecationAlreadyWarned = set()
+
+
+def deprecationWarning(msg, stacklevel=2):
+    """
+    Print a deprecation warning to stderr. Includes the filename
+    and line number of the call to the function which called this.
+    The stacklevel argument controls how many stack levels above this
+    gives the line number.
+
+    Implemented in mimcry of warnings.warn(), which seems very flaky.
+    Sometimes it prints, and sometimes not, unless PYTHONWARNINGS is set
+    (or -W is used). This function at least seems to work consistently.
+
+    """
+    # Get stack information, so we can report the file and line number
+    # where the deprecated function was used. I copied the bulk of this
+    # section from warnings.warn().
+    skip_file_prefixes = ()     # Not skipping anything
+    try:
+        frame = sys._getframe(1)
+        # Look for one frame less since the above line starts us off.
+        for x in range(stacklevel - 1):
+            frame = warnings._next_external_frame(frame, skip_file_prefixes)
+            if frame is None:
+                raise ValueError
+    except ValueError:
+        filename = "sys"
+        lineno = 1
+    else:
+        filename = frame.f_code.co_filename
+        lineno = frame.f_lineno
+
+    key = (filename, lineno)
+    if key not in deprecationAlreadyWarned:
+        print("{} (line {}):\n    WARNING: {}".format(filename, lineno, msg),
+            file=sys.stderr)
+        deprecationAlreadyWarned.add(key)
