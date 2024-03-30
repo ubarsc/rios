@@ -28,6 +28,7 @@ def getCmdargs():
     Get command line arguments
     """
     p = argparse.ArgumentParser()
+
     search = p.add_argument_group('Search Parameters')
     search.add_argument("-t", "--tile", default="56JPQ",
         help="Nominated tile (default=%(default)s)")
@@ -39,13 +40,18 @@ def getCmdargs():
         choices=['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08',
             'B8A', 'B09', 'B10', 'B11', 'B12'],
         help="Band ID string (default=%(default)s)")
+
     conc = p.add_argument_group("Concurrency Parameters")
     conc.add_argument("-r", "--numreadworkers", type=int, default=0,
         help="Number of read workers (default=%(default)s)")
     conc.add_argument("-c", "--numcomputeworkers", type=int, default=0,
         help="Number of compute workers (default=%(default)s)")
-    conc.add_argument("--reproj", default=False, action="store_true",
+
+    proj = p.add_argument_group("Projection Parameters")
+    proj.add_argument("--reproj", default=False, action="store_true",
         help="Reproject inputs to Aus Albers")
+    proj.add_argument("--resample", default="near",
+        help="Resample algorithm to use with --reproj (default=%(default)s)")
 
     cmdargs = p.parse_args()
 
@@ -71,7 +77,7 @@ def main():
     if cmdargs.reproj:
         pixGrid = makeRefPixgrid(fileList[0])
         controls.setReferencePixgrid(pixGrid)
-        controls.setResampleMethod('cubic')
+        controls.setResampleMethod(cmdargs.resample)
     if cmdargs.numreadworkers > 0 or cmdargs.numcomputeworkers > 0:
         cwKind = applier.CW_NONE
         if cmdargs.numcomputeworkers > 0:
