@@ -173,14 +173,25 @@ def searchStac(cmdargs):
         datetime=dateRange)
     featureCollection = results.item_collection_as_dict()
 
-    fileList = []
+    fileDict = {}
     nullPcntList = []
     for feature in featureCollection['features']:
         props = feature['properties']
         path = props['earthsearch:s3_path']
         nullPcnt = props['s2:nodata_pixel_percentage']
         nullPcntList.append(nullPcnt)
-        fileList.append(path)
+        # Work out the sequence numbers for each tile/date, so we can keep
+        # only the latest one
+        tile = props['grid:code'][5:]
+        date = props['datetime'].split('T')[0]
+        seqNum = props['s2:sequence']
+        if (tile, date) not in fileDict:
+            fileDict[(tile, date)] = (path, seqNum)
+        else:
+            if seqNum > fileDict[(tile, date)][1]:
+                fileDict[(tile, date)] = (path, seqNum)
+
+    fileList = [fileDict[k][0] for k in sorted(fileDict.keys())]
 
     print('Median null pcnt =', numpy.median(nullPcntList))
 
