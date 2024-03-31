@@ -356,16 +356,21 @@ def findCommonRegion(gridList, refGrid, combine=imageio.INTERSECTION):
     or BOUNDS_FROM_REFERENCE is performed. 
     
     """
-    newGrid = refGrid
-    if combine != imageio.BOUNDS_FROM_REFERENCE:
+    if combine == imageio.BOUNDS_FROM_REFERENCE:
+        newGrid = refGrid
+    else:
+        newGrid = None
         for grid in gridList:
-            if not newGrid.alignedWith(grid):
+            if not refGrid.alignedWith(grid):
                 grid = grid.reproject(refGrid)
 
-            if combine == imageio.INTERSECTION:
-                newGrid = newGrid.intersection(grid)
-            elif combine == imageio.UNION:
-                newGrid = newGrid.union(grid)
+            if newGrid is None:
+                newGrid = grid
+            else:
+                if combine == imageio.INTERSECTION:
+                    newGrid = newGrid.intersection(grid)
+                elif combine == imageio.UNION:
+                    newGrid = newGrid.union(grid)
         
     return newGrid
 
