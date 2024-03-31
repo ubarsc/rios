@@ -28,7 +28,7 @@ New Features
       to be recombined in whatever way makes sense.
 
 Deprecations
-  * Old parallel computation facilities are no longer supported, but will
+  * The old parallel computation facilities are no longer supported, but will
     be emulated using the new concurrency support (with a deprecation warning).
   * Many old classes for reading and writing imagery are now deprecated,
     and likely to be removed from the system in future releases. This includes
