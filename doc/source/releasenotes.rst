@@ -3,6 +3,7 @@ Release Notes
 
 Version 2.0.0 (unknown date)
 ----------------------------
+
 New Features
   * New options for concurrency, strongly supported by a new internal 
     architecture. The previous parallel processing had been tacked on to
@@ -47,6 +48,15 @@ Changed Behaviour
     (the old behaviour) or an internal symbolic name (more consistent with
     everything else). The old behaviour is still perfectly valid, and will
     be kept into the future.
+
+Bug Fixes
+  * In earlier versions, if a reference pixel grid or image were given, and
+    the footprint type was either INTERSECTION or UNION, the bounds of the
+    reference grid were erroneously included in the intersection or union
+    operation. If the reference bounds lay outisde the correct footprint
+    region, this would lead to an unexpected output extent. This was not
+    the intended behaviour, and has now been fixed. The bounds of the
+    reference are now ionly used in the BOUNDS_FROM_REFERENCE case.
 
 Version 1.4.17 (2024-03-01)
 ---------------------------
