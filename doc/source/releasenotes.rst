@@ -54,9 +54,9 @@ Bug Fixes
     the footprint type was either INTERSECTION or UNION, the bounds of the
     reference grid were erroneously included in the intersection or union
     operation. If the reference bounds lay outside the correct footprint
-    region, this would lead to an unexpected output extent. This was not
-    the intended behaviour, and has now been fixed. The bounds of the
-    reference are now ionly used in the BOUNDS_FROM_REFERENCE case.
+    region, this would lead to an unexpected working grid and output extent.
+    This was not the intended behaviour, and has now been fixed. The bounds
+    of the reference are now only used in the BOUNDS_FROM_REFERENCE case.
 
 Version 1.4.17 (2024-03-01)
 ---------------------------
