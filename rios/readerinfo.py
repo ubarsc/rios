@@ -46,7 +46,7 @@ def makeReaderInfo(workinggrid, blockDefn, controls):
     transform = workinggrid.makeGeoTransform()
     (top, left) = (blockDefn.top, blockDefn.left)
     blocktl = imageio.pix2wld(transform, left, top)
-    (bottom, right) = (left + blockDefn.ncols, top + blockDefn.nrows)
+    (right, bottom) = (left + blockDefn.ncols, top + blockDefn.nrows)
     blockbr = imageio.pix2wld(transform, right, bottom)
     info.setBlockBounds(blocktl, blockbr)
     xblock = int(round(left / controls.windowxsize))
