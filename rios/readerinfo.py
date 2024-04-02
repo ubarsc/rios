@@ -83,9 +83,9 @@ class ReaderInfo(object):
         self.xtotalblocks = int(math.ceil(float(self.xsize) / self.windowxsize))
         self.ytotalblocks = int(math.ceil(float(self.ysize) / self.windowysize))
         
-        # The feilds below apply to a particular block
+        # The fields below apply to a particular block
         # and are filled in after this object is copied 
-        # to make it specific fir each block
+        # to make it specific for each block
         self.blockwidth = None
         self.blockheight = None
         
@@ -109,8 +109,10 @@ class ReaderInfo(object):
         This routine is for internal use by RIOS. Its use in any other
         context is not sensible. 
         
+        This is no longer implemented, and raises an exception if called.
         """
-        self.blocklookup[id(block)] = (dataset, filename)
+        msg = "setBlockDataset is obsolete, and no longer implemented"
+        raise NotImplementedError(msg)
         
     def getWindowSize(self):
         """
