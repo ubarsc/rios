@@ -24,7 +24,6 @@ read and info on the current block
 import math
 
 import numpy
-from osgeo import gdal_array
 
 from . import imageio
 
@@ -315,24 +314,29 @@ class ReaderInfo(object):
     def getFilenameFor(self, block):
         """
         Get the input filename of a dataset
+
+        This is no longer implemented, and raises an exception if called.
         """
-        # can't use ds.GetDescription() as may have been resampled
-        (ds, fname) = self.blocklookup[id(block)]
-        return fname
+        msg = "getFilenameFor is obsolete, and no longer implemented"
+        raise NotImplementedError(msg)
 
     def getGDALDatasetFor(self, block):
         """
         Get the underlying GDAL handle of a dataset
+
+        This is no longer implemented, and raises an exception if called.
         """
-        (ds, fname) = self.blocklookup[id(block)]
-        return ds
+        msg = "getGDALDatasetFor is obsolete, and no longer implemented"
+        raise NotImplementedError(msg)
 
     def getGDALBandFor(self, block, band):
         """
         Get the underlying GDAL handle for a band of a dataset
+
+        This is no longer implemented, and raises an exception if called.
         """
-        ds = self.getGDALDatasetFor(block)
-        return ds.GetRasterBand(band)
+        msg = "getGDALBandFor is obsolete, and no longer implemented"
+        raise NotImplementedError(msg)
 
     def getNoDataValueFor(self, block, band=1):
         """
@@ -342,18 +346,11 @@ class ReaderInfo(object):
         when that dataset was created. 
         The value is cast to the same data type as the 
         dataset.
+
+        This is no longer implemented, and raises an exception if called.
         """
-        ds = self.getGDALDatasetFor(block)
-        band = ds.GetRasterBand(band)
-        novalue = band.GetNoDataValue()
-
-        # if there is a valid novalue, cast it to the type
-        # of the dataset. Note this creates a numpy 0-d array
-        if novalue is not None:
-            numpytype = gdal_array.GDALTypeCodeToNumericTypeCode(band.DataType)
-            novalue = numpy.cast[numpytype](novalue)
-
-        return novalue
+        msg = "getNoDataValueFor is obsolete, and no longer implemented"
+        raise NotImplementedError(msg)
         
     def getPercent(self):
         """
