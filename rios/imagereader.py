@@ -34,6 +34,7 @@ from . import imageio
 from . import inputcollection
 from . import readerinfo
 from . import rioserrors
+from . import VersionObj
 from .structures import BlockAssociations
 from .fileinfo import ImageInfo, VectorFileInfo
 from .pixelgrid import PixelGridDefn, findCommonRegion
@@ -237,28 +238,42 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
     if reprojectionRequired(fileInfo, workinggrid):
         vrtfile = tmpfileMgr.mktempfile(prefix='rios_', suffix='.vrt')
 
-        # Construct a pixgrid of the file, projected into the working grid
+        srcProj = specialProjFixes(fileInfo.projection)
         dstProj = specialProjFixes(workinggrid.projection)
-        corners = fileInfo.getCorners(outWKT=dstProj)
-        (ul_x, ul_y, ur_x, ur_y, lr_x, lr_y, ll_x, ll_y) = corners
-        (xRes, yRes) = (workinggrid.xRes, workinggrid.yRes)
-        xMin = min(ul_x, ll_x) - xRes
-        xMax = max(ur_x, lr_x) + xRes
-        yMin = min(ll_y, lr_y) - yRes
-        yMax = max(ul_y, ur_y) + yRes
-        xMin = PixelGridDefn.snapToGrid(xMin, workinggrid.xMin, xRes)
-        xMax = PixelGridDefn.snapToGrid(xMax, workinggrid.xMin, xRes)
-        yMin = PixelGridDefn.snapToGrid(yMin, workinggrid.yMin, yRes)
-        yMax = PixelGridDefn.snapToGrid(yMax, workinggrid.yMin, yRes)
-        filePixGrid = PixelGridDefn(projection=dstProj, xMin=xMin, yMin=yMin,
-            xMax=xMax, yMax=yMax, xRes=xRes, yRes=yRes)
+        if VersionObj(gdal.__version__) >= VersionObj('3.8.0'):
+            # We restrict the extent of the reprojection VRT to the reprojected
+            # extent of the underlying raster
+            corners = fileInfo.getCorners(outWKT=dstProj)
+            (ul_x, ul_y, ur_x, ur_y, lr_x, lr_y, ll_x, ll_y) = corners
+            (xRes, yRes) = (workinggrid.xRes, workinggrid.yRes)
+            xMin = min(ul_x, ll_x) - xRes
+            xMax = max(ur_x, lr_x) + xRes
+            yMin = min(ll_y, lr_y) - yRes
+            yMax = max(ul_y, ur_y) + yRes
+            xMin = PixelGridDefn.snapToGrid(xMin, workinggrid.xMin, xRes)
+            xMax = PixelGridDefn.snapToGrid(xMax, workinggrid.xMin, xRes)
+            yMin = PixelGridDefn.snapToGrid(yMin, workinggrid.yMin, yRes)
+            yMax = PixelGridDefn.snapToGrid(yMax, workinggrid.yMin, yRes)
+            filePixGrid = PixelGridDefn(projection=dstProj, xMin=xMin, yMin=yMin,
+                xMax=xMax, yMax=yMax, xRes=xRes, yRes=yRes)
 
-        # Make a pixgrid of the intersection between file grid and working grid
-        intersectGrid = workinggrid.intersection(filePixGrid)
+            # Make a pixgrid of the intersection between file grid and
+            # working grid
+            intersectGrid = workinggrid.intersection(filePixGrid)
 
-        # The bounds of the VRT are from the intersection
-        outBounds = (intersectGrid.xMin, intersectGrid.yMin,
-            intersectGrid.xMax, intersectGrid.yMax)
+            # The bounds of the VRT are from the intersection
+            outBounds = (intersectGrid.xMin, intersectGrid.yMin,
+                intersectGrid.xMax, intersectGrid.yMax)
+        else:
+            # In older versions of GDAL, there is some subtle interaction with
+            # VRT and block size and extent, which can lead to severe
+            # performance degradation when the above approach is used to limit
+            # the extent of the VRT. So, for those older GDAL versions, we use
+            # a simpler approach where the VRT extent is always identical
+            # to the working grid. This also has a small performance penalty,
+            # but much less severe, and so seems safer.
+            outBounds = (workinggrid.xMin, workinggrid.yMin,
+                workinggrid.xMax, workinggrid.yMax)
 
         # The warp options constructor has weird expectations about the
         # null values, so construct what it requires.
@@ -270,7 +285,6 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         if controls.getOptionForImagename('allowOverviewsGdalwarp',
                 symbolicName):
             overviewLevel = 'AUTO'
-        srcProj = specialProjFixes(fileInfo.projection)
         resampleMethod = controls.getOptionForImagename('resampleMethod',
             symbolicName)
         warpOptions = gdal.WarpOptions(format="VRT", outputBounds=outBounds,
