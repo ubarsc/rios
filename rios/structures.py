@@ -470,7 +470,11 @@ class BlockBuffer:
         """
         # Acquire (i.e. decrement) this semaphore, in case we are about
         # to add a whole new block
-        self.bufferCount.acquire(timeout=self.insertTimeout)
+        acquired = self.bufferCount.acquire(timeout=self.insertTimeout)
+        if not acquired:
+            msg = ("Timeout acquiring access to BlockBuffer, " +
+                "at {} seconds").format(self.insertTimeout)
+            raise rioserrors.TimeoutError(msg)
 
         with self.lock:
             if blockDefn not in self.buffer:
@@ -493,7 +497,12 @@ class BlockBuffer:
         """
         Use when inserting a complete BlockAssociations object at once
         """
-        self.bufferCount.acquire(self.insertTimeout)
+        acquired = self.bufferCount.acquire(self.insertTimeout)
+        if not acquired:
+            msg = ("Timeout acquiring access to BlockBuffer, " +
+                "at {} seconds").format(self.insertTimeout)
+            raise rioserrors.TimeoutError(msg)
+
         with self.lock:
             if blockDefn in self.buffer:
                 # We did not actually add a new entry, so increment
