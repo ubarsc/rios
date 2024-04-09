@@ -434,13 +434,14 @@ class BlockBuffer:
     make it thread-safe.
     """
     def __init__(self, filenameAssoc, numWorkers,
-            insertTimeout, popTimeout):
+            insertTimeout, popTimeout, bufferTypeName):
         self.BUFFERMAX = 2 * numWorkers
         self.lock = threading.Lock()
         self.buffer = {}
         self.completionEvents = {}
         self.insertTimeout = insertTimeout
         self.popTimeout = popTimeout
+        self.bufferTypeName = bufferTypeName
         self.nextBlockQ = queue.Queue()
         self.numBlocksPopped = 0
 
@@ -474,6 +475,9 @@ class BlockBuffer:
         if not acquired:
             msg = ("Timeout acquiring access to BlockBuffer, " +
                 "at {} seconds").format(self.insertTimeout)
+            timeoutName = self.timeoutName("Insert")
+            msg += ("\n\nIf no other errors are apparent, try " +
+                "increasing {}\n").format(timeoutName)
             raise rioserrors.TimeoutError(msg)
 
         with self.lock:
@@ -501,6 +505,9 @@ class BlockBuffer:
         if not acquired:
             msg = ("Timeout acquiring access to BlockBuffer, " +
                 "at {} seconds").format(self.insertTimeout)
+            timeoutName = self.timeoutName("Insert")
+            msg += ("\n\nIf no other errors are apparent, try " +
+                "increasing {}\n").format(timeoutName)
             raise rioserrors.TimeoutError(msg)
 
         with self.lock:
@@ -515,6 +522,14 @@ class BlockBuffer:
                 self.completionEvents[blockDefn] = threading.Event()
             self.completionEvents[blockDefn].set()
             self.nextBlockQ.put(blockDefn)
+
+    def timeoutName(self, timeoutType):
+        """
+        Deduce the name of the relevant timeout, using the
+        bufferTypeName given to the constructor, and the type of timeout
+        """
+        name = "{}Buffer{}Timeout".format(self.bufferTypeName, timeoutType)
+        return name
 
     def popCompleteBlock(self, blockDefn):
         """
@@ -557,6 +572,9 @@ class BlockBuffer:
             msg = ("BlockBuffer timeout at {} seconds. Number of blocks " +
                 "already popped: {}").format(
                 self.popTimeout, self.numBlocksPopped)
+            timeoutName = self.timeoutName("Pop")
+            msg += ("\n\nIf no other errors are apparent, try " +
+                "increasing {}\n").format(timeoutName)
             raise rioserrors.TimeoutError(msg)
 
         blockData = self.popCompleteBlock(nextBlock)
