@@ -1015,6 +1015,7 @@ class WorkerErrorRecord:
     """
     def __init__(self, workerID, exc):
         self.workerID = workerID
+        self.exc = exc
         self.formattedTraceback = traceback.format_exception(exc)
 
     def __str__(self):
