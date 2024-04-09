@@ -146,8 +146,8 @@ def openOutfile(symbolicName, filename, controls, arr, workinggrid):
         symbolicName)
     if creationoptions is None:
         creationoptions = dfltDriverOptions.get(driverName, [])
-    creationoptions = doubleCheckCreationOptions(driverName, creationoptions,
-        controls)
+    doubleCheckCreationOptions(driverName, creationoptions, controls,
+        workinggrid)
 
     numBands = arr.shape[0]
     gdalDatatype = gdal_array.NumericTypeCodeToGDALTypeCode(arr.dtype)
@@ -242,18 +242,16 @@ def deleteIfExisting(filename):
             os.remove(filename)
 
 
-def doubleCheckCreationOptions(drivername, creationoptions, controls):
+def doubleCheckCreationOptions(drivername, creationoptions, controls,
+        workinggrid):
     """
-    Try to ensure that the given creation options are not incompatible with
+    Try to ensure that the given creation options are compatible with
     RIOS operations. Does not attempt to ensure they are totally valid, as
     that is GDAL's job.
 
-    Returns a copy of creationoptions, possibly modified, or raises
-    ImageOpenError in cases where the problem is not fixable.
+    If it finds any incompatibility, an exception is raised.
 
     """
-    newCreationoptions = creationoptions
-
     if drivername == 'GTiff':
         # The GDAL GTiff driver is incapable of reclaiming space within the
         # file. This means that if a block is re-written, then the space
@@ -266,62 +264,50 @@ def doubleCheckCreationOptions(drivername, creationoptions, controls):
         # is that the $RIOS_DFLT_BLOCKXSIZE and $RIOS_DFLT_BLOCKYSIZE be
         # set to a power of 2, and everything else will follow.
 
+        # Work out what block size values the GTiff driver will use
         tiffBlockX = None
         tiffBlockY = None
-        riosBlockX = controls.windowxsize
-        riosBlockY = controls.windowysize
-
-        # First copy the existing options, but keep aside any explicitly
-        # specified block size
-        newCreationoptions = []
+        tiled = False
         for optStr in creationoptions:
-            if optStr[:11] == 'BLOCKXSIZE=':
+            optTokens = optStr.split('=')
+            if optTokens[0] == 'BLOCKXSIZE':
                 tiffBlockX = int(optStr[11:])
-            elif optStr[:11] == 'BLOCKYSIZE=':
+            elif optTokens[0] == 'BLOCKYSIZE':
                 tiffBlockY = int(optStr[11:])
-            else:
-                newCreationoptions.append(optStr)
+            elif optTokens[0] == 'TILED':
+                tiled = True
 
-        # If no tiff blocksizes were explictly requested, then set them the
-        # same as the RIOS block sizes
-        resettingTiffBlocksize = False
+        # Apply default TIFF block sizes if not explicitly requested. These are
+        # as defined by GDAL at
+        #   https://gdal.org/drivers/raster/gtiff.html#creation-options
+        # assuming I have read it correctly.
+        (nRows, nCols) = workinggrid.getDimensions()
         if tiffBlockX is None:
-            tiffBlockX = riosBlockX
-            resettingTiffBlocksize = True
+            if tiled:
+                tiffBlockX = 256
+            else:
+                # If not TILED=YES then GTiff uses blocks which are full width
+                tiffBlockX = nCols
         if tiffBlockY is None:
-            tiffBlockY = riosBlockY
-            resettingTiffBlocksize = True
+            if tiled:
+                tiffBlockY = 256
+            else:
+                # If not tiled, then default strip height is such that one
+                # strip is 8K (which I assume is a count of pixels)
+                tiffBlockY = int(8 * 1024 / tiffBlockX)
 
         # Require that tiff block sizes be a factor of the RIOS block size, so
         # that whole TIFF blocks are always written exactly once, with no
         # re-writing.
-        if (((riosBlockX % tiffBlockX) != 0) or
-                ((riosBlockY % tiffBlockY) != 0)):
-            msg = ("GTiff block sizes {} should be factors of RIOS block " +
-                "sizes {}, otherwise vast amounts of space are wasted " +
-                "rewriting blocks which are not reclaimed.").format(
-                (tiffBlockX, tiffBlockY), (riosBlockX, riosBlockY))
+        riosBlockX = controls.windowxsize
+        riosBlockY = controls.windowysize
+        if ((riosBlockX < tiffBlockX) or ((riosBlockX % tiffBlockX) != 0) or
+            (riosBlockY < tiffBlockY) or ((riosBlockY % tiffBlockY) != 0)):
+            msg = ("RIOS block dimensions {} should be multiples of GTiff " +
+                "block dimensions {}, otherwise vast amounts of space are " +
+                "wasted rewriting blocks which are not reclaimed.").format(
+                (riosBlockX, riosBlockY), (tiffBlockX, tiffBlockY))
             raise rioserrors.ImageOpenError(msg)
-
-        # The GDAL GTiff driver will complain if GTiff block sizes are not
-        # powers of 2
-        def isPowerOf2(n):
-            return (((n - 1) & n) == 0)
-        if not (isPowerOf2(tiffBlockX) and isPowerOf2(tiffBlockY)):
-            msg = "GTiff block sizes are {}. Must be powers of 2. ".format(
-                (tiffBlockX, tiffBlockY))
-            if resettingTiffBlocksize:
-                msg += ("GTiff block size(s) have been reset to match RIOS " +
-                    "block sizes, so recommend adjusting RIOS block sizes.")
-            else:
-                msg += "Recommend resetting explicit GTiff block sizes."
-            raise rioserrors.ImageOpenError(msg)
-
-        # Now append what we want the block size to be.
-        newCreationoptions.append('BLOCKXSIZE={}'.format(controls.windowxsize))
-        newCreationoptions.append('BLOCKYSIZE={}'.format(controls.windowysize))
-
-    return newCreationoptions
 
 
 def addAutoColorTable(filename, autoColorTableType):
