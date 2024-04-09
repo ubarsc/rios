@@ -302,7 +302,7 @@ def doubleCheckCreationOptions(drivername, creationoptions, controls,
         riosBlockX = controls.windowxsize
         riosBlockY = controls.windowysize
         if ((riosBlockX < tiffBlockX) or ((riosBlockX % tiffBlockX) != 0) or
-            (riosBlockY < tiffBlockY) or ((riosBlockY % tiffBlockY) != 0)):
+                (riosBlockY < tiffBlockY) or ((riosBlockY % tiffBlockY) != 0)):
             msg = ("RIOS block dimensions {} should be multiples of GTiff " +
                 "block dimensions {}, otherwise vast amounts of space are " +
                 "wasted rewriting blocks which are not reclaimed.").format(
