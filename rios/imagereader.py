@@ -26,6 +26,7 @@ import copy
 from concurrent import futures
 import queue
 import threading
+import traceback
 
 import numpy
 from osgeo import gdal, gdal_array
@@ -441,16 +442,25 @@ class ReadWorkerMgr:
             if worker.done():
                 e = worker.exception(timeout=0)
                 if e is not None:
-                    raise e
+                    self.reportExceptionTraceback(e)
+
+    @staticmethod
+    def reportExceptionTraceback(exc):
+        """
+        Report the traceback of the given exception, to stderr, without
+        actually re-raising the exception itself
+        """
+        formattedTraceback = traceback.format_exception(exc)
+        lines = ["Exception from read worker:"]
+        lines.extend([line.strip('\n') for line in formattedTraceback])
+        s = '\n'.join(lines)
+        print(s + '\n', file=sys.stderr)
 
     def shutdown(self):
         self.forceExit.set()
         futures.wait(self.workerList)
         self.threadPool.shutdown()
         self.checkWorkerErrors()
-
-    def __del__(self):
-        self.shutdown()
 
 
 # WARNING
