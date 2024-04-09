@@ -363,6 +363,7 @@ class ReadWorkerMgr:
         self.workerList = None
         self.readTaskQue = None
         self.forceExit = None
+        self.isActive = False
 
     def startReadWorkers(self, blockList, infiles, allInfo, controls,
             tmpfileMgr, rasterizeMgr, workinggrid, inBlockBuffer, timings):
@@ -398,6 +399,7 @@ class ReadWorkerMgr:
         self.workerList = workerList
         self.readTaskQue = readTaskQue
         self.forceExit = forceExit
+        self.isActive = True
 
     @staticmethod
     def readWorkerFunc(readTaskQue, blockBuffer, controls, tmpfileMgr,
@@ -436,7 +438,10 @@ class ReadWorkerMgr:
         """
         Check for Exceptions raised by the workers. If we don't check, then
         exceptions are hidden and we don't see them. If we find one,
-        then re-raise it in this thread.
+        then report it in this thread. Since this is mainly called from
+        within a finally clause elsewhere, it may be happening while we
+        are trying to handle some other exception, so it is useful not
+        to re-raise these exceptions, but just to report them to stderr.
         """
         for worker in self.workerList:
             if worker.done():
@@ -457,10 +462,20 @@ class ReadWorkerMgr:
         print(s + '\n', file=sys.stderr)
 
     def shutdown(self):
+        """
+        Shut down the read worker manager
+        """
         self.forceExit.set()
         futures.wait(self.workerList)
         self.threadPool.shutdown()
         self.checkWorkerErrors()
+        self.isActive = False
+
+    def __del__(self):
+        "Destructor"
+        if self.isActive:
+            # If we have not already done shutdown, then do it
+            self.shutdown()
 
 
 # WARNING
