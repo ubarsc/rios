@@ -440,33 +440,6 @@ class ReadWorkerMgr:
             exceptionRecord = WorkerErrorRecord(e, 'read')
             exceptionQue.put(exceptionRecord)
 
-    def checkWorkerErrors(self):
-        """
-        Check for Exceptions raised by the workers. If we don't check, then
-        exceptions are hidden and we don't see them. If we find one,
-        then report it in this thread. Since this is mainly called from
-        within a finally clause elsewhere, it may be happening while we
-        are trying to handle some other exception, so it is useful not
-        to re-raise these exceptions, but just to report them to stderr.
-        """
-        for worker in self.workerList:
-            if worker.done():
-                e = worker.exception(timeout=0)
-                if e is not None:
-                    self.reportExceptionTraceback(e)
-
-    @staticmethod
-    def reportExceptionTraceback(exc):
-        """
-        Report the traceback of the given exception, to stderr, without
-        actually re-raising the exception itself
-        """
-        formattedTraceback = traceback.format_exception(exc)
-        lines = ["Exception from read worker:"]
-        lines.extend([line.strip('\n') for line in formattedTraceback])
-        s = '\n'.join(lines)
-        print(s + '\n', file=sys.stderr)
-
     def shutdown(self):
         """
         Shut down the read worker manager
