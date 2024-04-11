@@ -815,7 +815,8 @@ class NetworkDataChannel:
 
     """
     def __init__(self, workerInitData=None, inBlockBuffer=None,
-            outBlockBuffer=None, hostname=None, portnum=None, authkey=None):
+            outBlockBuffer=None, forceExit=None,
+            hostname=None, portnum=None, authkey=None):
         class DataChannelMgr(BaseManager):
             pass
 
@@ -829,6 +830,7 @@ class NetworkDataChannel:
             self.inBlockBuffer = inBlockBuffer
             self.outBlockBuffer = outBlockBuffer
             self.outqueue = queue.Queue()
+            self.forceExit = forceExit
 
             DataChannelMgr.register("get_workerdata",
                 callable=lambda: self.workerInitData)
@@ -838,6 +840,8 @@ class NetworkDataChannel:
                 callable=lambda: self.outBlockBuffer)
             DataChannelMgr.register("get_outqueue",
                 callable=lambda: self.outqueue)
+            DataChannelMgr.register("get_forceexit",
+                callable=lambda: self.forceExit)
 
             self.mgr = DataChannelMgr(address=(self.hostname, 0),
                                      authkey=bytes(self.authkey, 'utf-8'))
@@ -852,6 +856,7 @@ class NetworkDataChannel:
             DataChannelMgr.register("get_outblockbuffer")
             DataChannelMgr.register("get_inblockbuffer")
             DataChannelMgr.register("get_outqueue")
+            DataChannelMgr.register("get_forceexit")
 
             self.mgr = DataChannelMgr(address=(hostname, portnum),
                                      authkey=authkey)
@@ -866,6 +871,7 @@ class NetworkDataChannel:
             self.inBlockBuffer = self.mgr.get_inblockbuffer()
             self.outBlockBuffer = self.mgr.get_outblockbuffer()
             self.outqueue = self.mgr.get_outqueue()
+            self.forceExit = self.mgr.get_forceexit()
         else:
             msg = ("Must supply either (filenameAssoc & numWorkers) or " +
                    "all of (hostname, portnum and authkey)")

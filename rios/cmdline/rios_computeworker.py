@@ -70,6 +70,7 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
         inBlockBuffer = dataChan.inBlockBuffer
     else:
         inBlockBuffer = None
+    forceExit = dataChan.forceExit
 
     blockListByWorker = dataChan.workerInitData.get('blockListByWorker', None)
     blockList = blockListByWorker[workerID]
@@ -77,7 +78,7 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
     try:
         rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,
             otherArgs, controls, allInfo, workinggrid, blockList,
-            outBlockBuffer, inBlockBuffer, workerID)
+            outBlockBuffer, inBlockBuffer, workerID, forceExit)
 
         # Make a pickleable version of the timings
         timings = Timers(pairs=rtn.timings.pairs, withlock=False)

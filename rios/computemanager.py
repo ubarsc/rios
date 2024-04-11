@@ -74,7 +74,7 @@ class ComputeWorkerManager(ABC):
 
     def setupNetworkCommunication(self, userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer):
+            numWorkers, inBlockBuffer, outBlockBuffer, forceExit):
         """
         Set up the standard methods of network communication between
         the workers and the main thread. This is expected to be the
@@ -108,7 +108,7 @@ class ComputeWorkerManager(ABC):
 
         # Create the network-visible data channel
         self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
-            outBlockBuffer)
+            outBlockBuffer, forceExit)
         self.outqueue = self.dataChan.outqueue
 
     def makeOutObjList(self):
@@ -245,6 +245,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         """
         Start <numWorkers> AWS Batch jobs to process blocks of data
         """
+        self.forceExit = threading.Event()
         if boto3 is None:
             raise rioserrors.UnavailableError("boto3 is unavailable")
 
@@ -257,7 +258,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer)
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit)
 
         channAddr = self.dataChan.addressStr()
 
@@ -280,13 +281,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         """
         Shut down the job pool
         """
-        # Should I wait for jobs to terminate???? They should all be finished
-        # at this point anyway, and don't understand AWS's waiter thingy.
-
-        for job in self.jobList:
-            self.batchClient.terminate_job(jobId=job['jobId'],
-                reason="Shutdown")
-
+        self.forceExit.set()
         self.makeOutObjList()
         self.reportWorkerExceptions()
 
@@ -338,13 +333,14 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         self.scriptfileList = []
         self.logfileList = []
         self.jobId = {}
+        self.forceExit = threading.Event()
         if singleBlockComputeWorkers:
             # We ignore numWorkers, and have a worker for each block
             numWorkers = len(blockList)
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer)
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit)
 
         try:
             self.addressFile = None
@@ -591,6 +587,7 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         Shutdown the compute manager. Wait on batch jobs, then
         shut down the data channel
         """
+        self.forceExit.set()
         self.waitOnJobs()
         self.dataChan.shutdown()
 
@@ -626,10 +623,11 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         self.haveSharedTemp = haveSharedTemp
         self.processes = {}
         self.results = {}
+        self.forceExit = threading.Event()
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer)
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit)
 
         try:
             self.addressFile = None
@@ -686,6 +684,7 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         Shutdown the compute manager. Wait on batch jobs, then
         shut down the data channel
         """
+        self.forceExit.set()
         self.waitOnJobs()
         if self.addressFile is not None:
             os.remove(self.addressFile)

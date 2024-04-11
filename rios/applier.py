@@ -681,7 +681,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         if (concurrency.computeWorkerKind == CW_NONE):
             rtn = apply_singleCompute(userFunction, infiles, outfiles,
                 otherArgs, controls, allInfo, workinggrid, blockList,
-                None, None, None)
+                None, None, None, None)
         else:
             rtn = apply_multipleCompute(userFunction, infiles, outfiles,
                 otherArgs, controls, allInfo, workinggrid, blockList)
@@ -692,7 +692,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
 def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         controls, allInfo, workinggrid, blockList, outBlockBuffer,
-        inBlockBuffer, workerID):
+        inBlockBuffer, workerID, forceExit):
     """
     Called internally from the apply() function. Not to be called directly.
 
@@ -733,7 +733,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         prog = ApplierProgress(controls, numBlocks)
 
     try:
-        while blockNdx < numBlocks:
+        while (blockNdx < numBlocks and
+                (forceExit is None or not forceExit.is_set())):
             if prog is not None:
                 prog.update(blockNdx)
             if inBlockBuffer is None:
