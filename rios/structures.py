@@ -805,6 +805,10 @@ class NetworkDataChannel:
     portnum and authkey attributes. The server will create its own thread
     in which to run.
 
+    The server must also be given the forceExit and exceptionQue arguments.
+    These are used to manage exceptions from the compute workers, and send
+    them back to the main thread for proper reporting.
+
     A client instance can be created using these three address attributes
     from the server as arguments to the constructor, in which case it will
     connect to the server and make available the data attributes it was
