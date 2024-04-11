@@ -215,7 +215,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
                 outqueue.put(otherArgs)
             outqueue.put(timings)
         except Exception as e:
-            workerErr = WorkerErrorRecord(workerID, e)
+            workerErr = WorkerErrorRecord(e, 'compute', workerID)
             outqueue.put(workerErr)
 
     def shutdown(self):
