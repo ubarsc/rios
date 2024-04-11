@@ -181,7 +181,7 @@ class ConcurrencyStyle:
                  readBufferInsertTimeout=10,
                  readBufferPopTimeout=10,
                  computeBufferInsertTimeout=10,
-                 computeBufferPopTimeout=10,
+                 computeBufferPopTimeout=20,
                  ):
         self.numReadWorkers = numReadWorkers
         self.numComputeWorkers = numComputeWorkers
@@ -815,7 +815,7 @@ class NetworkDataChannel:
 
     """
     def __init__(self, workerInitData=None, inBlockBuffer=None,
-            outBlockBuffer=None, forceExit=None,
+            outBlockBuffer=None, forceExit=None, exceptionQue=None,
             hostname=None, portnum=None, authkey=None):
         class DataChannelMgr(BaseManager):
             pass
@@ -831,6 +831,7 @@ class NetworkDataChannel:
             self.outBlockBuffer = outBlockBuffer
             self.outqueue = queue.Queue()
             self.forceExit = forceExit
+            self.exceptionQue = exceptionQue
 
             DataChannelMgr.register("get_workerdata",
                 callable=lambda: self.workerInitData)
@@ -842,6 +843,8 @@ class NetworkDataChannel:
                 callable=lambda: self.outqueue)
             DataChannelMgr.register("get_forceexit",
                 callable=lambda: self.forceExit)
+            DataChannelMgr.register("get_exceptionque",
+                callable=lambda: self.exceptionQue)
 
             self.mgr = DataChannelMgr(address=(self.hostname, 0),
                                      authkey=bytes(self.authkey, 'utf-8'))
@@ -857,6 +860,7 @@ class NetworkDataChannel:
             DataChannelMgr.register("get_inblockbuffer")
             DataChannelMgr.register("get_outqueue")
             DataChannelMgr.register("get_forceexit")
+            DataChannelMgr.register("get_exceptionque")
 
             self.mgr = DataChannelMgr(address=(hostname, portnum),
                                      authkey=authkey)
@@ -872,9 +876,10 @@ class NetworkDataChannel:
             self.outBlockBuffer = self.mgr.get_outblockbuffer()
             self.outqueue = self.mgr.get_outqueue()
             self.forceExit = self.mgr.get_forceexit()
+            self.exceptionQue = self.mgr.get_exceptionque()
         else:
-            msg = ("Must supply either (filenameAssoc & numWorkers) or " +
-                   "all of (hostname, portnum and authkey)")
+            msg = ("Must supply either (workerInitData, outBlockBuffer, etc.)" +
+                   " or ALL of (hostname, portnum and authkey)")
             raise ValueError(msg)
 
     def shutdown(self):
@@ -1031,5 +1036,5 @@ class WorkerErrorRecord:
             headLine += " {}".format(self.workerID)
         lines = [headLine]
         lines.extend([line.strip('\n') for line in self.formattedTraceback])
-        s = '\n'.join(lines)
+        s = '\n'.join(lines) + '\n'
         return s

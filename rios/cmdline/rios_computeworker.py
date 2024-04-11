@@ -87,7 +87,7 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
     except Exception as e:
         # Send a printable version of the exception back to main thread
         workerErr = WorkerErrorRecord(e, 'compute', workerID)
-        dataChan.outqueue.put(workerErr)
+        dataChan.exceptionQue.put(workerErr)
 
 
 if __name__ == "__main__":

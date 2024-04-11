@@ -36,7 +36,7 @@ from . import inputcollection
 from . import readerinfo
 from . import rioserrors
 from . import VersionObj
-from .structures import BlockAssociations
+from .structures import BlockAssociations, WorkerErrorRecord
 from .fileinfo import ImageInfo, VectorFileInfo
 from .pixelgrid import PixelGridDefn, findCommonRegion
 
@@ -366,7 +366,8 @@ class ReadWorkerMgr:
         self.isActive = False
 
     def startReadWorkers(self, blockList, infiles, allInfo, controls,
-            tmpfileMgr, rasterizeMgr, workinggrid, inBlockBuffer, timings):
+            tmpfileMgr, rasterizeMgr, workinggrid, inBlockBuffer, timings,
+            exceptionQue):
         """
         Start the requested number of read worker threads, within the current
         process. All threads will read single blocks from individual files
@@ -392,7 +393,7 @@ class ReadWorkerMgr:
         for i in range(numWorkers):
             worker = threadPool.submit(self.readWorkerFunc, readTaskQue,
                 inBlockBuffer, controls, tmpfileMgr, rasterizeMgr, workinggrid,
-                allInfo, timings, forceExit)
+                allInfo, timings, forceExit, exceptionQue)
             workerList.append(worker)
 
         self.threadPool = threadPool
@@ -403,7 +404,8 @@ class ReadWorkerMgr:
 
     @staticmethod
     def readWorkerFunc(readTaskQue, blockBuffer, controls, tmpfileMgr,
-            rasterizeMgr, workinggrid, allInfo, timings, forceExit):
+            rasterizeMgr, workinggrid, allInfo, timings, forceExit,
+            exceptionQue):
         """
         This function runs in each read worker thread. The readTaskQue gives
         it tasks to perform (i.e. single blocks of data to read), and it loops
@@ -416,23 +418,27 @@ class ReadWorkerMgr:
         gdalObjCache = {}
 
         try:
-            readTask = readTaskQue.get(block=False)
-        except queue.Empty:
-            readTask = None
-        while readTask is not None and not forceExit.is_set():
-            (blockDefn, symName, seqNum, filename) = readTask
-            with timings.interval('reading'):
-                arr = readBlockOneFile(blockDefn, symName, seqNum, filename,
-                    gdalObjCache, controls, tmpfileMgr, rasterizeMgr,
-                    workinggrid, allInfo)
-
-            with timings.interval('add_inbuffer'):
-                blockBuffer.addBlockData(blockDefn, symName, seqNum, arr)
-
             try:
                 readTask = readTaskQue.get(block=False)
             except queue.Empty:
                 readTask = None
+            while readTask is not None and not forceExit.is_set():
+                (blockDefn, symName, seqNum, filename) = readTask
+                with timings.interval('reading'):
+                    arr = readBlockOneFile(blockDefn, symName, seqNum,
+                        filename, gdalObjCache, controls, tmpfileMgr,
+                        rasterizeMgr, workinggrid, allInfo)
+
+                with timings.interval('add_inbuffer'):
+                    blockBuffer.addBlockData(blockDefn, symName, seqNum, arr)
+
+                try:
+                    readTask = readTaskQue.get(block=False)
+                except queue.Empty:
+                    readTask = None
+        except Exception as e:
+            exceptionRecord = WorkerErrorRecord(e, 'read')
+            exceptionQue.put(exceptionRecord)
 
     def checkWorkerErrors(self):
         """
@@ -466,9 +472,7 @@ class ReadWorkerMgr:
         Shut down the read worker manager
         """
         self.forceExit.set()
-        futures.wait(self.workerList)
         self.threadPool.shutdown()
-        self.checkWorkerErrors()
         self.isActive = False
 
     def __del__(self):

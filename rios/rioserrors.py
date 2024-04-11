@@ -144,6 +144,10 @@ class UnavailableError(RiosError):
     "A dependency is unavailable"
 
 
+class WorkerExceptionError(RiosError):
+    "A worker thread or process has raised an exception"
+
+
 deprecationAlreadyWarned = set()
 
 

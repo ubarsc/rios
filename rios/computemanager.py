@@ -61,7 +61,7 @@ class ComputeWorkerManager(ABC):
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True):
+            haveSharedTemp=True, exceptionQue=None):
         """
         Start the specified compute workers
         """
@@ -74,7 +74,8 @@ class ComputeWorkerManager(ABC):
 
     def setupNetworkCommunication(self, userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer, forceExit):
+            numWorkers, inBlockBuffer, outBlockBuffer, forceExit,
+            exceptionQue):
         """
         Set up the standard methods of network communication between
         the workers and the main thread. This is expected to be the
@@ -108,8 +109,9 @@ class ComputeWorkerManager(ABC):
 
         # Create the network-visible data channel
         self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
-            outBlockBuffer, forceExit)
+            outBlockBuffer, forceExit, exceptionQue)
         self.outqueue = self.dataChan.outqueue
+        self.exceptionQue = self.dataChan.exceptionQue
 
     def makeOutObjList(self):
         """
@@ -124,15 +126,6 @@ class ComputeWorkerManager(ABC):
                 self.outObjList.append(outObj)
             except queue.Empty:
                 done = True
-
-    def reportWorkerExceptions(self):
-        """
-        Search outObjList for worker errors, and report them to stderr
-        """
-        for obj in self.outObjList:
-            if isinstance(obj, WorkerErrorRecord):
-                print(obj, file=sys.stderr)
-                print(file=sys.stderr)
 
 
 class ThreadsComputeWorkerMgr(ComputeWorkerManager):
@@ -153,7 +146,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True):
+            haveSharedTemp=True, exceptionQue=None):
         """
         Start <numWorkers> threads to process blocks of data
         """
@@ -172,12 +165,12 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             worker = self.threadPool.submit(self.worker, userFunction, infiles,
                 outfiles, otherArgsCopy, controls, allInfo,
                 workinggrid, self.taskQ, inBlockBuffer, outBlockBuffer,
-                self.outqueue, workerID)
+                self.outqueue, workerID, exceptionQue)
             self.workerList.append(worker)
 
     def worker(self, userFunction, infiles, outfiles, otherArgs,
             controls, allInfo, workinggrid, taskQ, inBlockBuffer,
-            outBlockBuffer, outqueue, workerID):
+            outBlockBuffer, outqueue, workerID, exceptionQue):
         """
         This function is a worker for a single thread.
 
@@ -216,7 +209,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             outqueue.put(timings)
         except Exception as e:
             workerErr = WorkerErrorRecord(e, 'compute', workerID)
-            outqueue.put(workerErr)
+            exceptionQue.put(workerErr)
 
     def shutdown(self):
         """
@@ -227,7 +220,6 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         self.threadPool.shutdown()
 
         self.makeOutObjList()
-        self.reportWorkerExceptions()
 
 
 class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
@@ -241,7 +233,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True):
+            haveSharedTemp=True, exceptionQue=None):
         """
         Start <numWorkers> AWS Batch jobs to process blocks of data
         """
@@ -258,7 +250,8 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit)
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
+            exceptionQue)
 
         channAddr = self.dataChan.addressStr()
 
@@ -283,7 +276,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         """
         self.forceExit.set()
         self.makeOutObjList()
-        self.reportWorkerExceptions()
+        self.dataChan.shutdown()
 
     def getStackOutputs(self):
         """
@@ -324,7 +317,7 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True):
+            haveSharedTemp=True, exceptionQue=None):
         """
         Start <numWorkers> PBS or SLURM jobs to process blocks of data
         """
@@ -340,7 +333,8 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit)
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
+            exceptionQue)
 
         try:
             self.addressFile = None
@@ -589,11 +583,10 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         """
         self.forceExit.set()
         self.waitOnJobs()
-        self.dataChan.shutdown()
 
         self.makeOutObjList()
-        self.reportWorkerExceptions()
         self.findExtraErrors()
+        self.dataChan.shutdown()
 
 
 class SubprocComputeWorkerManager(ComputeWorkerManager):
@@ -616,7 +609,7 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
             workinggrid=None, allInfo=None, computeWorkersRead=False,
             singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True):
+            haveSharedTemp=True, exceptionQue=None):
         """
         Start the specified compute workers
         """
@@ -627,7 +620,8 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
-            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit)
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
+            exceptionQue)
 
         try:
             self.addressFile = None
@@ -674,10 +668,11 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         for (workerID, proc) in self.processes.items():
             retcode = proc.returncode
             if retcode is not None and retcode != 0:
-                print("\nError in compute worker", workerID, file=sys.stderr)
-                stderrStr = self.results[workerID]['stderrstr']
-                print(stderrStr.strip('\n'), file=sys.stderr)
-                print(file=sys.stderr)
+                stderrStr = self.results[workerID]['stderrstr'].strip()
+                if len(stderrStr) > 0:
+                    print("\nError in compute worker", workerID, file=sys.stderr)
+                    print(stderrStr, file=sys.stderr)
+                    print(file=sys.stderr)
 
     def shutdown(self):
         """
@@ -688,8 +683,7 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         self.waitOnJobs()
         if self.addressFile is not None:
             os.remove(self.addressFile)
-        self.dataChan.shutdown()
 
         self.makeOutObjList()
-        self.reportWorkerExceptions()
         self.findExtraErrors()
+        self.dataChan.shutdown()

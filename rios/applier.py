@@ -22,6 +22,7 @@ point of entry in this module.
 
 import os
 import sys
+import queue
 
 import numpy
 
@@ -40,7 +41,7 @@ from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F4
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockBuffer, Timers, TempfileManager, ApplierReturn
-from .structures import ApplierBlockDefn, RasterizationMgr
+from .structures import ApplierBlockDefn, RasterizationMgr, WorkerErrorRecord
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
 from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
@@ -710,6 +711,14 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     tmpfileMgr = TempfileManager(controls.tempdir)
     rasterizeMgr = RasterizationMgr()
     readWorkerMgr = None
+    prog = None
+    exceptionQue = None
+    numBlocks = len(blockList)
+    if outBlockBuffer is None:
+        # This must be the main thread, so do certain extra things
+        gdalOutObjCache = {}
+        prog = ApplierProgress(controls, numBlocks)
+        exceptionQue = queue.Queue()
     gdalObjCache = None
     if inBlockBuffer is None:
         if concurrency.numReadWorkers > 0:
@@ -720,23 +729,19 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
             readWorkerMgr = ReadWorkerMgr()
             readWorkerMgr.startReadWorkers(blockList, infiles, allInfo,
                 controls, tmpfileMgr, rasterizeMgr, workinggrid, inBlockBuffer,
-                timings)
+                timings, exceptionQue)
         else:
             gdalObjCache = {}
-    if outBlockBuffer is None:
-        gdalOutObjCache = {}
 
-    numBlocks = len(blockList)
     blockNdx = 0
-    prog = None
-    if outBlockBuffer is None:
-        prog = ApplierProgress(controls, numBlocks)
 
     try:
         while (blockNdx < numBlocks and
                 (forceExit is None or not forceExit.is_set())):
+
             if prog is not None:
                 prog.update(blockNdx)
+
             if inBlockBuffer is None:
                 blockDefn = blockList[blockNdx]
                 with timings.interval('reading'):
@@ -766,6 +771,13 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                     outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
             blockNdx += 1
+
+            # Check for exceptions from workers
+            if exceptionQue is not None and exceptionQue.qsize() > 0:
+                exceptionRecord = exceptionQue.get()
+                reportWorkerException(exceptionRecord)
+                msg = "The preceding exception was raised in a worker"
+                raise rioserrors.WorkerExceptionError(msg)
 
         if prog is not None:
             prog.update(blockNdx)
@@ -805,6 +817,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         concurrency.computeBufferInsertTimeout,
         concurrency.computeBufferPopTimeout, 'compute')
     gdalOutObjCache = {}
+    exceptionQue = queue.Queue()
 
     inBlockBuffer = None
     readWorkerMgr = None
@@ -816,7 +829,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         readWorkerMgr = ReadWorkerMgr()
         readWorkerMgr.startReadWorkers(blockList, infiles, allInfo,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
-            inBlockBuffer, timings)
+            inBlockBuffer, timings, exceptionQue)
 
     try:
         computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
@@ -826,7 +839,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             workinggrid=workinggrid, allInfo=allInfo,
             computeWorkersRead=concurrency.computeWorkersRead,
             singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
-            tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp)
+            tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp,
+            exceptionQue=exceptionQue)
     except Exception as e:
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
@@ -839,14 +853,25 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         while blockNdx < numBlocks:
             prog.update(blockNdx)
 
-            with timings.interval('pop_outbuffer'):
-                (blockDefn, outputs) = outBlockBuffer.popNextBlock()
+            try:
+                with timings.interval('pop_outbuffer'):
+                    (blockDefn, outputs) = outBlockBuffer.popNextBlock()
 
-            with timings.interval('writing'):
-                writeBlock(gdalOutObjCache, blockDefn, outfiles,
-                    outputs, controls, workinggrid)
+                with timings.interval('writing'):
+                    writeBlock(gdalOutObjCache, blockDefn, outfiles,
+                        outputs, controls, workinggrid)
+            except Exception as e:
+                workerErr = WorkerErrorRecord(e, 'main')
+                exceptionQue.put(workerErr)
 
             blockNdx += 1
+
+            # Check for worker exceptions
+            if exceptionQue.qsize() > 0:
+                exceptionRecord = exceptionQue.get()
+                reportWorkerException(exceptionRecord)
+                msg = "The preceding exception was raised in a worker"
+                raise rioserrors.WorkerExceptionError(msg)
 
         with timings.interval('closing'):
             closeOutfiles(gdalOutObjCache, outfiles, controls)
@@ -1005,7 +1030,7 @@ class ApplierProgress:
     def __init__(self, controls, numBlocks):
         self.progress = controls.progress
         self.numBlocks = numBlocks
-        self.lastpercent = 0
+        self.lastpercent = None
 
     def update(self, blockNdx):
         if self.progress is not None:
@@ -1013,3 +1038,10 @@ class ApplierProgress:
             if percent != self.lastpercent:
                 self.progress.setProgress(percent)
                 self.lastpercent = percent
+
+
+def reportWorkerException(exceptionRecord):
+    """
+    Report the given WorkerExceptionRecord object to stderr
+    """
+    print(exceptionRecord, file=sys.stderr)
