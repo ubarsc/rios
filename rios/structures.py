@@ -1019,13 +1019,17 @@ class WorkerErrorRecord:
     """
     Hold a record of an exception raised in a remote worker.
     """
-    def __init__(self, workerID, exc):
-        self.workerID = workerID
+    def __init__(self, exc, workerType, workerID=None):
         self.exc = exc
+        self.workerType = workerType
+        self.workerID = workerID
         self.formattedTraceback = traceback.format_exception(exc)
 
     def __str__(self):
-        lines = ["Error in compute worker {}".format(self.workerID)]
+        headLine = "Error in {} worker".format(self.workerType)
+        if self.workerID is not None:
+            headLine += " {}".format(self.workerID)
+        lines = [headLine]
         lines.extend([line.strip('\n') for line in self.formattedTraceback])
         s = '\n'.join(lines)
         return s
