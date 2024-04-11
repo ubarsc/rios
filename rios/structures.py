@@ -475,7 +475,7 @@ class BlockBuffer:
         if not acquired:
             msg = "Timeout acquiring access to BlockBuffer."
             timeoutName = self.timeoutName("Insert")
-            msg += ("\nTry increasing {} (current value = {})\n").format(
+            msg += ("\n    Try increasing {} (current value = {})\n").format(
                 timeoutName, self.insertTimeout)
             raise rioserrors.TimeoutError(msg)
 
@@ -504,7 +504,7 @@ class BlockBuffer:
         if not acquired:
             msg = "Timeout acquiring access to BlockBuffer."
             timeoutName = self.timeoutName("Insert")
-            msg += ("\nTry increasing {} (current value = {})\n").format(
+            msg += ("\n    Try increasing {} (current value = {})\n").format(
                 timeoutName, self.insertTimeout)
             raise rioserrors.TimeoutError(msg)
 
@@ -570,7 +570,7 @@ class BlockBuffer:
             msg = ("BlockBuffer timeout. Number of blocks " +
                 "already popped: {}").format(self.numBlocksPopped)
             timeoutName = self.timeoutName("Pop")
-            msg += ("\nTry increasing {} (current value = {})\n").format(
+            msg += ("\n    Try increasing {} (current value = {})\n").format(
                 timeoutName, self.popTimeout)
             raise rioserrors.TimeoutError(msg)
 
