@@ -728,10 +728,14 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
 
     numBlocks = len(blockList)
     blockNdx = 0
-    prog = ApplierProgress(controls, numBlocks)
+    prog = None
+    if outBlockBuffer is None:
+        prog = ApplierProgress(controls, numBlocks)
+
     try:
         while blockNdx < numBlocks:
-            prog.update(blockNdx)
+            if prog is not None:
+                prog.update(blockNdx)
             if inBlockBuffer is None:
                 blockDefn = blockList[blockNdx]
                 with timings.interval('reading'):
@@ -761,8 +765,9 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                     outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
             blockNdx += 1
-        prog.update(blockNdx)
 
+        if prog is not None:
+            prog.update(blockNdx)
         if outBlockBuffer is None:
             with timings.interval('closing'):
                 closeOutfiles(gdalOutObjCache, outfiles, controls)
