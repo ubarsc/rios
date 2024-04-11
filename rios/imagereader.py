@@ -26,7 +26,6 @@ import copy
 from concurrent import futures
 import queue
 import threading
-import traceback
 
 import numpy
 from osgeo import gdal, gdal_array
