@@ -473,11 +473,10 @@ class BlockBuffer:
         # to add a whole new block
         acquired = self.bufferCount.acquire(timeout=self.insertTimeout)
         if not acquired:
-            msg = ("Timeout acquiring access to BlockBuffer, " +
-                "at {} seconds").format(self.insertTimeout)
+            msg = "Timeout acquiring access to BlockBuffer."
             timeoutName = self.timeoutName("Insert")
-            msg += ("\n\nIf no other errors are apparent, try " +
-                "increasing {}\n").format(timeoutName)
+            msg += ("\nTry increasing {} (current value = {})\n").format(
+                timeoutName, self.insertTimeout)
             raise rioserrors.TimeoutError(msg)
 
         with self.lock:
@@ -503,11 +502,10 @@ class BlockBuffer:
         """
         acquired = self.bufferCount.acquire(self.insertTimeout)
         if not acquired:
-            msg = ("Timeout acquiring access to BlockBuffer, " +
-                "at {} seconds").format(self.insertTimeout)
+            msg = "Timeout acquiring access to BlockBuffer."
             timeoutName = self.timeoutName("Insert")
-            msg += ("\n\nIf no other errors are apparent, try " +
-                "increasing {}\n").format(timeoutName)
+            msg += ("\nTry increasing {} (current value = {})\n").format(
+                timeoutName, self.insertTimeout)
             raise rioserrors.TimeoutError(msg)
 
         with self.lock:
@@ -569,12 +567,11 @@ class BlockBuffer:
             timedout = True
 
         if timedout:
-            msg = ("BlockBuffer timeout at {} seconds. Number of blocks " +
-                "already popped: {}").format(
-                self.popTimeout, self.numBlocksPopped)
+            msg = ("BlockBuffer timeout. Number of blocks " +
+                "already popped: {}").format(self.numBlocksPopped)
             timeoutName = self.timeoutName("Pop")
-            msg += ("\n\nIf no other errors are apparent, try " +
-                "increasing {}\n").format(timeoutName)
+            msg += ("\nTry increasing {} (current value = {})\n").format(
+                timeoutName, self.popTimeout)
             raise rioserrors.TimeoutError(msg)
 
         blockData = self.popCompleteBlock(nextBlock)
