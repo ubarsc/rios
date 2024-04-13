@@ -137,7 +137,6 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
     def __init__(self):
         self.threadPool = None
         self.workerList = None
-        self.taskQ = queue.Queue()
         self.outqueue = queue.Queue()
         self.forceExit = threading.Event()
 
@@ -150,26 +149,23 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         """
         Start <numWorkers> threads to process blocks of data
         """
-        # Put all blockDefn objects into a queue. The compute workers will
-        # get() their next job from this. The actual data will come from the
-        # inBlockBuffer, where the read workers have placed it, but the taskQ
-        # tells them which block to look for in inBlockBuffer.
-        for blockDefn in blockList:
-            self.taskQ.put(blockDefn)
+        # Divide the block list into a sublist for each worker
+        allSublists = [blockList[i::numWorkers] for i in range(numWorkers)]
 
         self.threadPool = futures.ThreadPoolExecutor(max_workers=numWorkers)
         self.workerList = []
         for workerID in range(numWorkers):
             # otherArgs are not thread-safe, so each worker gets its own copy
             otherArgsCopy = copy.deepcopy(otherArgs)
+            subBlocklist = allSublists[workerID]
             worker = self.threadPool.submit(self.worker, userFunction, infiles,
                 outfiles, otherArgsCopy, controls, allInfo,
-                workinggrid, self.taskQ, inBlockBuffer, outBlockBuffer,
+                workinggrid, subBlocklist, inBlockBuffer, outBlockBuffer,
                 self.outqueue, workerID, exceptionQue)
             self.workerList.append(worker)
 
     def worker(self, userFunction, infiles, outfiles, otherArgs,
-            controls, allInfo, workinggrid, taskQ, inBlockBuffer,
+            controls, allInfo, workinggrid, blockList, inBlockBuffer,
             outBlockBuffer, outqueue, workerID, exceptionQue):
         """
         This function is a worker for a single thread.
@@ -178,16 +174,15 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         the worker exits
 
         """
+        numBlocks = len(blockList)
+
         try:
             timings = Timers()
-            try:
-                blockDefn = taskQ.get(block=False)
-            except queue.Empty:
-                blockDefn = None
-            while blockDefn is not None and not self.forceExit.is_set():
-                readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
+            blockNdx = 0
+            while blockNdx < numBlocks and not self.forceExit.is_set():
                 with timings.interval('pop_inbuffer'):
                     (blockDefn, inputs) = inBlockBuffer.popNextBlock()
+                readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
                 outputs = BlockAssociations()
                 userArgs = (readerInfo, inputs, outputs)
                 if otherArgs is not None:
@@ -199,10 +194,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
                 with timings.interval('add_outbuffer'):
                     outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
-                try:
-                    blockDefn = taskQ.get(block=False)
-                except queue.Empty:
-                    blockDefn = None
+                blockNdx += 1
 
             if otherArgs is not None:
                 outqueue.put(otherArgs)
