@@ -83,7 +83,8 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
         # Make a pickleable version of the timings
         timings = Timers(pairs=rtn.timings.pairs, withlock=False)
         dataChan.outqueue.put(timings)
-        dataChan.outqueue.put(otherArgs)
+        if otherArgs is not None:
+            dataChan.outqueue.put(otherArgs)
     except Exception as e:
         # Send a printable version of the exception back to main thread
         workerErr = WorkerErrorRecord(e, 'compute', workerID)
