@@ -168,10 +168,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             controls, allInfo, workinggrid, blockList, inBlockBuffer,
             outBlockBuffer, outqueue, workerID, exceptionQue):
         """
-        This function is a worker for a single thread.
-
-        It reads from the taskQ for tasks to do. When the queue is empty,
-        the worker exits
+        This function is a worker for a single thread, with no reading
+        or writing going on. All I/O is via the inBuffer and outBuffer.
 
         """
         numBlocks = len(blockList)
