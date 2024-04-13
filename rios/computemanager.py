@@ -169,7 +169,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             outBlockBuffer, outqueue, workerID, exceptionQue):
         """
         This function is a worker for a single thread, with no reading
-        or writing going on. All I/O is via the inBuffer and outBuffer.
+        or writing going on. All I/O is via the inBlockBuffer and
+        outBlockBuffer objects.
 
         """
         numBlocks = len(blockList)
