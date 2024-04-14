@@ -5,6 +5,9 @@ class that perform on-the-fly rasterization of
 vectors into raster blocks to fit in with
 ImageReader and ImageWriter classes.
 
+As of version 2.0.0, everything in this module is deprecated. Vector reading
+is now handled much more neatly within the imagereader module.
+
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
