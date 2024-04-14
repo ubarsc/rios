@@ -1,0 +1,141 @@
+# This file is part of RIOS - Raster I/O Simplification
+# Copyright (C) 2012  Sam Gillingham, Neil Flood
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+"""
+Test the ReaderInfo object for correctness
+"""
+from __future__ import division
+
+import math
+
+from rios import applier
+
+from . import riostestutils
+
+TESTNAME = "TESTREADERINFO"
+
+
+def run():
+    """
+    Run the test
+    """
+    allOK = True
+    
+    riostestutils.reportStart(TESTNAME)
+
+    filename = "rowcolimg.img"
+    (nrows, ncols) = (1000, 900)
+    (xRes, yRes) = (20, 20)
+    (xLeft, yTop) = (30000, 50000)
+    riostestutils.genRowColImage(filename, nrows, ncols, xRes, yRes,
+        xLeft, yTop)
+
+    infiles = applier.FilenameAssociations()
+    outfiles = applier.FilenameAssociations()
+    otherargs = applier.OtherInputs()
+    controls = applier.ApplierControls()
+    blocksize = 256
+    controls.setWindowSize(blocksize, blocksize)
+    infiles.rc = filename
+
+    otherargs.nrows = nrows
+    otherargs.ncols = ncols
+    otherargs.xtotalblocks = int(math.ceil(ncols / blocksize))
+    otherargs.ytotalblocks = int(math.ceil(nrows / blocksize))
+    otherargs.blocksize = blocksize
+    otherargs.xRes = xRes
+    otherargs.yRes = yRes
+    otherargs.xLeft = xLeft
+    otherargs.yTop = yTop
+    otherargs.errors = []
+
+    applier.apply(checkReaderInfo, infiles, outfiles, otherargs,
+        controls=controls)
+
+    allOK = (len(otherargs.errors) == 0)
+    for msg in otherargs.errors:
+        riostestutils.report(TESTNAME, msg)
+    
+    # Clean up
+    riostestutils.removeRasterFile(filename)
+    
+    if allOK:
+        riostestutils.report(TESTNAME, "Passed")
+
+    return allOK
+
+
+def checkReaderInfo(info, inputs, outputs, otherargs):
+    """
+    For each block, check that the info object corresponds to the
+    row/col taken from the input file
+    """
+    (row, col) = tuple(inputs.rc)
+
+    if info.xsize != otherargs.ncols:
+        msg = "Grid X size mis-match: {} != {}".format(
+            info.xsize, otherargs.ncols)
+        otherargs.errors.append(msg)
+    if info.ysize != otherargs.nrows:
+        msg = "Grid Y size mis-match: {} != {}".format(
+            info.ysize, otherargs.nrows)
+        otherargs.errors.append(msg)
+    if info.xtotalblocks != otherargs.xtotalblocks:
+        msg = "xtotalblocks: {} != {}".format(info.xtotalblocks,
+            otherargs.xtotalblocks)
+        otherargs.errors.append(msg)
+
+    (nrows, ncols) = row.shape
+    if info.blockwidth != ncols:
+        msg = "info.blockwidth mis-match: {} != {}".format(info.blockwidth,
+            ncols)
+        otherargs.errors.append(msg)
+    if info.blockheight != nrows:
+        msg = "info.blockheight mis-match: {} != {}".format(info.blockheight,
+            nrows)
+        otherargs.errors.append(msg)
+
+    # The block number, in X and Y directions
+    xblock = int(math.ceil(col[0, 0] / otherargs.blocksize))
+    yblock = int(math.ceil(row[0, 0] / otherargs.blocksize))
+    if info.xblock != xblock:
+        msg = "xblock mis-match: {} != {}".format(info.xblock, xblock)
+        otherargs.errors.append(msg)
+    if info.yblock != yblock:
+        msg = "yblock mis-match: {} != {}".format(info.yblock, yblock)
+        otherargs.errors.append(msg)
+
+    # Simple coordinate test.
+    # Note that there is a separate test for getBlockCoordArrays()
+    tlx = otherargs.xLeft + col[0, 0] * otherargs.xRes
+    tly = otherargs.yTop - row[0, 0] * otherargs.yRes
+    if info.blocktl.x != tlx:
+        msg = "tlx mis-match: {} != {}".format(info.blocktl.x, tlx)
+        otherargs.errors.append(msg)
+    if info.blocktl.y != tly:
+        msg = "tly mis-match: {} != {}".format(info.blocktl.y, tly)
+        otherargs.errors.append(msg)
+
+    # The info.blockbr point is the coordinates of the bottom-right corner
+    # of the bottom-right pixel
+    brx = otherargs.xLeft + (col[-1, -1] + 1) * otherargs.xRes
+    bry = otherargs.yTop - (row[-1, -1] + 1) * otherargs.yRes
+    if info.blockbr.x != brx:
+        msg = "brx mis-match: {} != {}".format(info.blockbr.x, brx)
+        otherargs.errors.append(msg)
+    if info.blockbr.y != bry:
+        msg = "bry mis-match: {} != {}".format(info.blockbr.y, bry)
+        otherargs.errors.append(msg)
