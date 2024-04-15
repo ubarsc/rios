@@ -15,7 +15,7 @@ from numba import jit
 
 from rios import applier, pixelgrid, fileinfo
 from rios import RIOS_VERSION, VersionObj
-from rios.applier import CW_NONE, CW_THREADS, CW_AWSBATCH
+from rios.applier import CW_NONE, CW_THREADS, CW_AWSBATCH       # noqa: F401
 
 
 ogr.UseExceptions()
