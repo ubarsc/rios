@@ -15,13 +15,13 @@ Parameters:
     Default: rios
   AZ1:
     Type: String
-    Default: ap-southeast-2a
+    Default: us-west-2a
   AZ2:
     Type: String
-    Default: ap-southeast-2b
+    Default: us-west-2b
   AZ3:
     Type: String
-    Default: ap-southeast-2c
+    Default: us-west-2c
   VCPUS:
     Type: Number
     Default: 1
@@ -31,7 +31,7 @@ Parameters:
   MaxJobs:
     Type: Number
     Default: 32
-    
+  
 Resources:
   # Create our own vpc for resources so we are separate
   # from whatever else the running account has.
@@ -78,7 +78,19 @@ Resources:
       GroupName: !Join ['', [!Ref ServiceName, "Security Group"]]
       GroupDescription: "Security Group for RIOS VPC"
       VpcId: !Ref BatchVPC
-       
+
+  BatchIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    DependsOn: BatchSecurityGroup
+    Properties:
+      GroupId:
+        Ref: BatchSecurityGroup
+      IpProtocol: tcp
+      FromPort: 30000
+      ToPort: 50000
+      SourceSecurityGroupId:
+        Ref: BatchSecurityGroup
+
   # Jobs must have internet connectivity otherwise they won't run...
   # They need to talk to ECS/S3/CloudWatch. This could possibly be
   # accomplished with VPC Endpoints instead...
@@ -170,65 +182,6 @@ Resources:
             ]
           }
        
-  # An input queue for passing information from the main RIOS
-  # script to the Batch workers 
-  BatchInQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Join ['', [!Ref ServiceName, InQueue]]
-
-  # an output queue for passing information from the batch 
-  # workers back to the main RIOS script.
-  BatchOutQueue:
-    Type: AWS::SQS::Queue
-    Properties:
-      QueueName: !Join ['', [!Ref ServiceName, OutQueue]]
-      
-  # A bucket for holding the pickled information for each tile
-  # that is refered to in the SQS messages.
-  BatchBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Join ['', [!Ref ServiceName, bucket, !Ref AWS::AccountId, !Ref AWS::Region]]
-      
-  # Ensure the workers have enough access to the S3 bucket
-  AccessS3ManagedPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Policy for allowing jobs to access S3 Bucket
-      Path: /
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Action: 's3:*Object'
-          Resource:
-            - !Join ['/', [!GetAtt BatchBucket.Arn, '*']]
-        - Effect: Allow
-          Action: 
-            # we use GetBucketLocation to determin which region we are in
-            - 's3:GetBucketLocation'
-          Resource:
-            - !GetAtt BatchBucket.Arn
-           
-  # Ensure workers can access the queues 
-  AccessQueuesManagedPolicy:
-    Type: AWS::IAM::ManagedPolicy
-    Properties:
-      Description: Policy for allowing jobs to our SQS Queues
-      Path: /
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Action: 
-            - 'sqs:SendMessage'
-            - 'sqs:ReceiveMessage'
-            - 'sqs:DeleteMessage'
-          Resource:
-            - !GetAtt BatchInQueue.Arn
-            - !GetAtt BatchOutQueue.Arn
-            
   # Allow jobs to submit other jobs. Handy in case the user
   # runs their own 'main' script in the queue and wants to 
   # fire off sub jobs
@@ -284,11 +237,7 @@ Resources:
       - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
       - arn:aws:iam::aws:policy/CloudWatchFullAccess
       - arn:aws:iam::aws:policy/AWSCloudFormationReadOnlyAccess
-      # giving s3 readonly everywhere along with more specific policy (AccessS3ManagedPolicy)
-      # that allows writing to our bucket. Doing this in case auxillary data required elsewhere
-      - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
-      - !Ref AccessS3ManagedPolicy
-      - !Ref AccessQueuesManagedPolicy
+      - arn:aws:iam::aws:policy/AmazonS3FullAccess
       - !Ref SubmitJobsManagedPolicy
   # The worker job. Set the S3 bucket and SQS queues info in the 
   # enironment.
@@ -301,13 +250,7 @@ Resources:
         Image: !Join ['', [!GetAtt BatchRepository.RepositoryUri, ":latest"]]
         Vcpus: !Ref VCPUS
         Memory: !Ref MaxMemory
-        Environment:
-          - Name: "RIOSBucket"
-            Value: !Ref BatchBucket
-          - Name: "RIOSInQueue"
-            Value: !Ref BatchInQueue
-          - Name: "RIOSOutQueue"
-            Value: !Ref BatchOutQueue
+
   # job definition for the 'main' script
   BatchProcessingJobDefinitionMain:
     Type: AWS::Batch::JobDefinition
@@ -318,6 +261,13 @@ Resources:
         Image: !Join ['', [!GetAtt BatchRepositoryMain.RepositoryUri, ":latest"]]
         Vcpus: !Ref VCPUS
         Memory: !Ref MaxMemory
+        Environment:
+          - Name: "RIOS_AWSBATCH_STACK"
+            Value: !Ref "AWS::StackName"
+          - Name: "RIOS_AWSBATCH_REGION"
+            Value: !Ref "AWS::Region"
+
+
   # Our queue
   BatchProcessingJobQueue:
     Type: AWS::Batch::JobQueue
@@ -338,7 +288,7 @@ Resources:
         MinvCpus: 0
         MaxvCpus: !Ref MaxJobs
         InstanceTypes:
-        - optimal
+        - m7g  # TODO:
         Subnets:
         - !Ref BatchSubnet1
         - !Ref BatchSubnet2
@@ -378,14 +328,5 @@ Outputs:
     Value: !GetAtt BatchRepository.RepositoryUri
   BatchECRMain:
     Value: !GetAtt BatchRepositoryMain.RepositoryUri
-  BatchInQueue:
-    Value:
-      Ref: BatchInQueue
-  BatchOutQueue:
-    Value:
-      Ref: BatchOutQueue
-  BatchBucket:
-    Value:
-      Ref: BatchBucket
   BatchMaxJobs:
     Value: !Ref MaxJobs

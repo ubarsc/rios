@@ -1,6 +1,6 @@
 
 # Based off Ubuntu
-FROM ubuntu:22.04
+FROM public.ecr.aws/ubuntu/ubuntu:22.04
 
 # These need to be passed in as --build-args
 ARG EXTRA_PACKAGES
@@ -29,7 +29,7 @@ RUN cd /tmp && tar xf rios-$RIOS_VER.tar.gz \
     && cd .. && rm -rf rios-$RIOS_VER rios-$RIOS_VER.tar.gz
 
 # Set our subproc script for AWS Batch as the entrypoint.
-ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/rios_subproc_awsbatch.py"]
+ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/rios_computeworker"]
 
 # any pip packages?
 RUN if [ -n "$PIP_PACKAGES" ] ; then pip install $PIP_PACKAGES; fi
