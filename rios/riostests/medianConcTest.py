@@ -15,6 +15,7 @@ from numba import jit
 
 from rios import applier, pixelgrid, fileinfo
 from rios import RIOS_VERSION, VersionObj
+from rios.applier import CW_NONE, CW_THREADS, CW_AWSBATCH
 
 
 ogr.UseExceptions()
@@ -46,6 +47,9 @@ def getCmdargs():
         help="Number of read workers (default=%(default)s)")
     conc.add_argument("-c", "--numcomputeworkers", type=int, default=0,
         help="Number of compute workers (default=%(default)s)")
+    conc.add_argument("-k", "--kind", default="none",
+        choices=['none', 'threads', 'awsbatch'],
+        help="Kind of compute worker (default=%(default)s)")
 
     proj = p.add_argument_group("Projection Parameters")
     proj.add_argument("--reproj", default=False, action="store_true",
@@ -79,9 +83,10 @@ def main():
         controls.setReferencePixgrid(pixGrid)
         controls.setResampleMethod(cmdargs.resample)
     if cmdargs.numreadworkers > 0 or cmdargs.numcomputeworkers > 0:
-        cwKind = applier.CW_NONE
+        cwKind = CW_NONE
         if cmdargs.numcomputeworkers > 0:
-            cwKind = applier.CW_THREADS
+            cwKind = eval("CW_{}".format(cmdargs.kind.upper()))
+        print('cwKind', cwKind)
         conc = applier.ConcurrencyStyle(
             numReadWorkers=cmdargs.numreadworkers,
             numComputeWorkers=cmdargs.numcomputeworkers,
