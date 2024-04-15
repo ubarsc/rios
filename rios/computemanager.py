@@ -253,7 +253,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
 
         self.jobList = []
         for workerID in range(numWorkers):
-            workerCmdArgs = ['-i', str(workerID), '--channaddrr', channAddr]
+            workerCmdArgs = ['-i', str(workerID), '--channaddr', channAddr]
             containerOverrides = {"command": workerCmdArgs}
             jobRtn = self.batchClient.submit_job(
                 jobName='RIOS_{}'.format(workerID),
