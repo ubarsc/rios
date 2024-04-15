@@ -71,9 +71,16 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
     else:
         inBlockBuffer = None
     forceExit = dataChan.forceExit
+    workerBarrier = dataChan.workerBarrier
 
     blockListByWorker = dataChan.workerInitData.get('blockListByWorker', None)
     blockList = blockListByWorker[workerID]
+
+    if not controls.concurrency.singleBlockComputeWorkers:
+        # Wait at the barrier, so nothing proceeds until all workers have had
+        # a chance to start
+        computeBarrierTimeout = controls.concurrency.computeBarrierTimeout
+        workerBarrier.wait(timeout=computeBarrierTimeout)
 
     try:
         rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,

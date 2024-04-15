@@ -75,7 +75,7 @@ class ComputeWorkerManager(ABC):
     def setupNetworkCommunication(self, userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer, forceExit,
-            exceptionQue):
+            exceptionQue, workerBarrier):
         """
         Set up the standard methods of network communication between
         the workers and the main thread. This is expected to be the
@@ -109,7 +109,7 @@ class ComputeWorkerManager(ABC):
 
         # Create the network-visible data channel
         self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
-            outBlockBuffer, forceExit, exceptionQue)
+            outBlockBuffer, forceExit, exceptionQue, workerBarrier)
         self.outqueue = self.dataChan.outqueue
         self.exceptionQue = self.dataChan.exceptionQue
 
@@ -229,6 +229,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         Start <numWorkers> AWS Batch jobs to process blocks of data
         """
         self.forceExit = threading.Event()
+        self.workerBarrier = threading.Barrier(numWorkers + 1)
         if boto3 is None:
             raise rioserrors.UnavailableError("boto3 is unavailable")
 
@@ -242,14 +243,12 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
-            exceptionQue)
+            exceptionQue, self.workerBarrier)
 
         channAddr = self.dataChan.addressStr()
 
         jobQueue = self.stackOutputs['BatchProcessingJobQueueName']
         jobDefinition = self.stackOutputs['BatchProcessingJobDefinitionName']
-#        workerCmdTemplate = "rios_computeworker -i {} --channaddr {}"
-#            workerCmd = workerCmdTemplate.format(workerID, channAddr)
 
         self.jobList = []
         for workerID in range(numWorkers):
@@ -262,11 +261,17 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
                 containerOverrides=containerOverrides)
             self.jobList.append(jobRtn)
 
+        if not singleBlockComputeWorkers:
+            # Do not proceed until all workers have started
+            computeBarrierTimeout = controls.concurrency.computeBarrierTimeout
+            self.workerBarrier.wait(timeout=computeBarrierTimeout)
+
     def shutdown(self):
         """
         Shut down the job pool
         """
         self.forceExit.set()
+        self.workerBarrier.abort()
         self.makeOutObjList()
         self.dataChan.shutdown()
 
@@ -319,6 +324,7 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         self.logfileList = []
         self.jobId = {}
         self.forceExit = threading.Event()
+        self.workerBarrier = threading.Barrier(numWorkers + 1)
         if singleBlockComputeWorkers:
             # We ignore numWorkers, and have a worker for each block
             numWorkers = len(blockList)
@@ -326,7 +332,7 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
-            exceptionQue)
+            exceptionQue, self.workerBarrier)
 
         try:
             self.addressFile = None
@@ -341,6 +347,11 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         except Exception as e:
             self.dataChan.shutdown()
             raise e
+
+        if not singleBlockComputeWorkers:
+            # Do not proceed until all workers have started
+            computeBarrierTimeout = controls.concurrency.computeBarrierTimeout
+            self.workerBarrier.wait(timeout=computeBarrierTimeout)
 
     def checkBatchSystemAvailable(self):
         """
@@ -609,11 +620,12 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         self.processes = {}
         self.results = {}
         self.forceExit = threading.Event()
+        self.workerBarrier = threading.Barrier(numWorkers + 1)
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
-            exceptionQue)
+            exceptionQue, self.workerBarrier)
 
         try:
             self.addressFile = None
@@ -628,6 +640,11 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         except Exception as e:
             self.dataChan.shutdown()
             raise e
+
+        if not singleBlockComputeWorkers:
+            # Do not proceed until all workers have started
+            computeBarrierTimeout = controls.concurrency.computeBarrierTimeout
+            self.workerBarrier.wait(timeout=computeBarrierTimeout)
 
     def worker(self, workerID):
         """
@@ -672,6 +689,7 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
         shut down the data channel
         """
         self.forceExit.set()
+        self.workerBarrier.abort()
         self.waitOnJobs()
         if self.addressFile is not None:
             os.remove(self.addressFile)

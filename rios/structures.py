@@ -172,6 +172,13 @@ class ConcurrencyStyle:
             Time to wait to pop a block out of the compute buffer, to
             write it to the outfiles
 
+    computeBarrierTimeout: int
+        This applies only to the batch-oriented compute worker types, and
+        only when singleBlockComputeWorkers is False. For any other styles
+        it is ignored. Processing is blocked until all batch compute workers
+        have had a chance to start, after which everything proceeds. The
+        wait at this barrier will timeout after this many seconds.
+
     """
     def __init__(self, numReadWorkers=0, numComputeWorkers=0,
                  computeWorkerKind=CW_NONE,
@@ -182,6 +189,7 @@ class ConcurrencyStyle:
                  readBufferPopTimeout=10,
                  computeBufferInsertTimeout=10,
                  computeBufferPopTimeout=20,
+                 computeBarrierTimeout=600
                  ):
         self.numReadWorkers = numReadWorkers
         self.numComputeWorkers = numComputeWorkers
@@ -193,6 +201,7 @@ class ConcurrencyStyle:
         self.readBufferPopTimeout = readBufferPopTimeout
         self.computeBufferInsertTimeout = computeBufferInsertTimeout
         self.computeBufferPopTimeout = computeBufferPopTimeout
+        self.computeBarrierTimeout = computeBarrierTimeout
 
         # Perform checks for any invalid combinations of parameters
 
@@ -219,6 +228,11 @@ class ConcurrencyStyle:
             msg = ("Multiple non-reading compute workers with " +
                    "no read workers is not a sensible choice. Best "
                    "to make numReadWorkers at least 1")
+            raise ValueError(msg)
+
+        if (computeWorkerKind == CW_AWSBATCH) and singleBlockComputeWorkers:
+            msg = ("AWS Batch compute workers are not suitable for use " +
+                   "with singleBlockComputeWorkers=True")
             raise ValueError(msg)
 
         from multiprocessing import cpu_count
@@ -817,7 +831,7 @@ class NetworkDataChannel:
     """
     def __init__(self, workerInitData=None, inBlockBuffer=None,
             outBlockBuffer=None, forceExit=None, exceptionQue=None,
-            hostname=None, portnum=None, authkey=None):
+            workerBarrier=None, hostname=None, portnum=None, authkey=None):
         class DataChannelMgr(BaseManager):
             pass
 
@@ -833,6 +847,7 @@ class NetworkDataChannel:
             self.outqueue = queue.Queue()
             self.forceExit = forceExit
             self.exceptionQue = exceptionQue
+            self.workerBarrier = workerBarrier
 
             DataChannelMgr.register("get_workerdata",
                 callable=lambda: self.workerInitData)
@@ -846,6 +861,8 @@ class NetworkDataChannel:
                 callable=lambda: self.forceExit)
             DataChannelMgr.register("get_exceptionque",
                 callable=lambda: self.exceptionQue)
+            DataChannelMgr.register("get_workerbarrier",
+                callable=lambda: self.workerBarrier)
 
             self.mgr = DataChannelMgr(address=(self.hostname, 0),
                                      authkey=bytes(self.authkey, 'utf-8'))
@@ -862,6 +879,7 @@ class NetworkDataChannel:
             DataChannelMgr.register("get_outqueue")
             DataChannelMgr.register("get_forceexit")
             DataChannelMgr.register("get_exceptionque")
+            DataChannelMgr.register("get_workerbarrier")
 
             self.mgr = DataChannelMgr(address=(hostname, portnum),
                                      authkey=authkey)
@@ -878,6 +896,7 @@ class NetworkDataChannel:
             self.outqueue = self.mgr.get_outqueue()
             self.forceExit = self.mgr.get_forceexit()
             self.exceptionQue = self.mgr.get_exceptionque()
+            self.workerBarrier = self.mgr.get_workerbarrier()
         else:
             msg = ("Must supply either (workerInitData, outBlockBuffer, etc.)" +
                    " or ALL of (hostname, portnum and authkey)")
@@ -903,6 +922,7 @@ class NetworkDataChannel:
         """
         if hasattr(self, 'server'):
             self.server.stop_event.set()
+            self.workerBarrier.abort()
             futures.wait([self.serverThread])
             self.threadPool.shutdown()
 
