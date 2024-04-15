@@ -248,11 +248,11 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
 
         jobQueue = self.stackOutputs['BatchProcessingJobQueueName']
         jobDefinition = self.stackOutputs['BatchProcessingJobDefinitionName']
-        workerCmdTemplate = "rios_computeworker -i {} --channaddr {}"
+#        workerCmdTemplate = "rios_computeworker -i {} --channaddr {}"
+#            workerCmd = workerCmdTemplate.format(workerID, channAddr)
 
         self.jobList = []
         for workerID in range(numWorkers):
-            workerCmd = workerCmdTemplate.format(workerID, channAddr)
             workerCmdArgs = ['-i', str(workerID), '--channaddrr', channAddr]
             containerOverrides = {"command": workerCmdArgs}
             jobRtn = self.batchClient.submit_job(
