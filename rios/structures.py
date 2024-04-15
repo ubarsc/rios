@@ -791,7 +791,7 @@ class NetworkDataChannel:
     A network-visible channel to serve out all the required information to
     a group of RIOS compute workers.
 
-    Has four major attributes.
+    The channel has several major attributes.
 
         workerInitData
             a dictionary of objects which are used to initialize each
@@ -808,22 +808,27 @@ class NetworkDataChannel:
             coming from each compute worker, such as modified otherArgs
             objects. Anything in this queue will be collected up by the
             main thread after all compute workers have completed.
+        forceExit
+            An Event object. If set, this signals that workers should exit
+            as soon as possible
+        exceptionQue
+            A Queue. Any exceptions raised in the worker are caught and put
+            into this queue, to be dealt with in the main thread.
+        workerBarrier
+            A Barrier object. For the relevant compute worker kinds, all
+            workers will wait at this barrier, as will the main thread,
+            so that no processing starts until all compute workers are
+            ready to work.
 
-    If the constructor is given the workerInitData, inBlockBuffer and
-    outBlockBuffer arguments, then this is the server of these objects,
-    and they are served to the network on a selected port number. The
-    address of this server is available on the instance as hostname,
-    portnum and authkey attributes. The server will create its own thread
-    in which to run.
+    If the constructor is given these major objects as arguments, then this
+    is the server of these objects, and they are served to the network on
+    a selected port number. The address of this server is available on the
+    instance as hostname, portnum and authkey attributes. The server will
+    create its own thread in which to run.
 
-    The server must also be given the forceExit and exceptionQue arguments.
-    These are used to manage exceptions from the compute workers, and send
-    them back to the main thread for proper reporting.
-
-    A client instance can be created using these three address attributes
-    from the server as arguments to the constructor, in which case it will
-    connect to the server and make available the data attributes it was
-    given.
+    A client instance can be created by giving the constructor the hostname,
+    port number and authkey (obtained from the server object). This will then
+    connect to the server, and make available the data attributes as given.
 
     The server must be shut down correctly, and so the shutdown() method
     should always be called explicitly.
