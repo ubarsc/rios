@@ -86,7 +86,6 @@ def main():
         cwKind = CW_NONE
         if cmdargs.numcomputeworkers > 0:
             cwKind = eval("CW_{}".format(cmdargs.kind.upper()))
-        print('cwKind', cwKind)
         conc = applier.ConcurrencyStyle(
             numReadWorkers=cmdargs.numreadworkers,
             numComputeWorkers=cmdargs.numcomputeworkers,
