@@ -1,9 +1,11 @@
 ---
 # Create all the infrastructure for AWS Batch with RIOS
-# This includes a temporary S3 for storing the pickled data files,
-# an ECR for saving the docker image that is used for processing,
-# SQS Queues for communicating between main script and workers.
-# Use the script createbatch.py for creation and modification.
+# This includes its own VPC, subnets and security group.
+# These subnets are spread accross the first 3 availibility zones
+# For the Region.
+# Also created is an ECR for saving the docker image that is used for processing,
+#
+# Use the script createbatch.py for stack creation and modification.
 # deletebatch.py for deletion.
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'RIOS with AWS Batch using CloudFormation'
@@ -13,15 +15,6 @@ Parameters:
   ServiceName:
     Type: String
     Default: rios
-  AZ1:
-    Type: String
-    Default: us-west-2a
-  AZ2:
-    Type: String
-    Default: us-west-2b
-  AZ3:
-    Type: String
-    Default: us-west-2c
   VCPUS:
     Type: Number
     Default: 1
@@ -50,19 +43,23 @@ Resources:
     Properties:
       VpcId:
         Ref: BatchVPC
+      # yes we do need public ips or NAT
+      # See https://repost.aws/knowledge-center/batch-job-stuck-runnable-status
       MapPublicIpOnLaunch: true
       CidrBlock: 10.0.0.0/24
-      AvailabilityZone: !Ref AZ1
+      AvailabilityZone: !Select 
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
   BatchSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId:
         Ref: BatchVPC
-      # yes we do need public ips or NAT
-      # See https://repost.aws/knowledge-center/batch-job-stuck-runnable-status
       MapPublicIpOnLaunch: true
       CidrBlock: 10.0.1.0/24
-      AvailabilityZone: !Ref AZ2
+      AvailabilityZone: !Select 
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
   BatchSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
@@ -70,32 +67,32 @@ Resources:
         Ref: BatchVPC
       MapPublicIpOnLaunch: true
       CidrBlock: 10.0.2.0/24
-      AvailabilityZone: !Ref AZ3
+      AvailabilityZone: !Select 
+        - 2
+        - Fn::GetAZs: !Ref 'AWS::Region'
   # A security group for everything to run as
   BatchSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupName: !Join ['', [!Ref ServiceName, "Security Group"]]
+      GroupName: !Sub '${ServiceName} Security Group'
       GroupDescription: "Security Group for RIOS VPC"
       VpcId: !Ref BatchVPC
 
+  # Allow traffic between the nodes running the jobs
   BatchIngress:
     Type: AWS::EC2::SecurityGroupIngress
     DependsOn: BatchSecurityGroup
     Properties:
-      GroupId:
-        Ref: BatchSecurityGroup
+      GroupId: !Ref BatchSecurityGroup
       IpProtocol: tcp
       FromPort: 30000
       ToPort: 50000
-      SourceSecurityGroupId:
-        Ref: BatchSecurityGroup
+      SourceSecurityGroupId: !Ref BatchSecurityGroup
 
   # Jobs must have internet connectivity otherwise they won't run...
-  # They need to talk to ECS/S3/CloudWatch. This could possibly be
-  # accomplished with VPC Endpoints instead...
-  # Leaving this using an internet gateway so functions can access
-  # any other resources that are on the internet.
+  # They need to talk to ECS/CloudWatch. 
+  # Create an endpoint for S3 so traffic doesn't need to go through 
+  # the internet gateway (and cost)
   RouteTable:
     Type: "AWS::EC2::RouteTable"
     Properties:
@@ -113,6 +110,28 @@ Resources:
       DestinationCidrBlock: "0.0.0.0/0"
       GatewayId: !Ref InternetGateway
       RouteTableId: !Ref RouteTable
+
+  # Allow S3 traffic to go through an internet gateway
+  S3GatewayEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcEndpointType: 'Gateway'
+      VpcId: !Ref BatchVPC
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Action: 
+               - 's3:*Object'
+               - 's3:ListBucket'
+            Resource: 
+               - 'arn:aws:s3:::*/*'
+               - 'arn:aws:s3:::*'
+      RouteTableIds:
+        - !Ref RouteTable
+
   # Associate the route table with each subnet
   Subnet1RouteTableAssociation:
     Type: "AWS::EC2::SubnetRouteTableAssociation"
@@ -136,7 +155,7 @@ Resources:
   BatchRepository:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Join ['', [!Ref ServiceName, "ecr"]]
+      RepositoryName: !Sub '${ServiceName}ecr'
       LifecyclePolicy:
         LifecyclePolicyText: |
           {
@@ -161,7 +180,7 @@ Resources:
   BatchRepositoryMain:
     Type: AWS::ECR::Repository
     Properties:
-      RepositoryName: !Join ['', [!Ref ServiceName, "ecrmain"]]
+      RepositoryName: !Sub '${ServiceName}ecrmain'
       LifecyclePolicy:
         LifecyclePolicyText: |
           {
@@ -245,7 +264,7 @@ Resources:
     Type: AWS::Batch::JobDefinition
     Properties:
       Type: container
-      JobDefinitionName: !Join ['', [!Ref ServiceName, "JobDefinition"]]
+      JobDefinitionName: !Sub '${ServiceName}JobDefinition'
       ContainerProperties:
         Image: !Join ['', [!GetAtt BatchRepository.RepositoryUri, ":latest"]]
         Vcpus: !Ref VCPUS
@@ -256,7 +275,7 @@ Resources:
     Type: AWS::Batch::JobDefinition
     Properties:
       Type: container
-      JobDefinitionName: !Join ['', [!Ref ServiceName, "JobDefinitionMain"]]
+      JobDefinitionName: !Sub '${ServiceName}JobDefinitionMain'
       ContainerProperties:
         Image: !Join ['', [!GetAtt BatchRepositoryMain.RepositoryUri, ":latest"]]
         Vcpus: !Ref VCPUS
@@ -272,7 +291,7 @@ Resources:
   BatchProcessingJobQueue:
     Type: AWS::Batch::JobQueue
     Properties:
-      JobQueueName: !Join ['', [!Ref ServiceName, "JobQueue"]]
+      JobQueueName: !Sub '${ServiceName}JobQueue'
       Priority: 1
       ComputeEnvironmentOrder:
       - Order: 1
@@ -313,7 +332,7 @@ Outputs:
     Value:
       Ref: BatchProcessingJobQueue
   BatchProcessingJobQueueName:
-    Value: !Join ['', [!Ref ServiceName, "JobQueue"]]
+    Value: !Sub '${ServiceName}JobQueue'
   BatchProcessingJobDefinitionArn:
     Value:
       Ref: BatchProcessingJobDefinition
@@ -321,9 +340,9 @@ Outputs:
     Value:
       Ref: BatchProcessingJobDefinitionMain
   BatchProcessingJobDefinitionName:
-    Value: !Join ['', [!Ref ServiceName, "JobDefinition"]]
+    Value: !Sub '${ServiceName}JobDefinition'
   BatchProcessingJobDefinitionMainName:
-    Value: !Join ['', [!Ref ServiceName, "JobDefinitionMain"]]
+    Value: !Sub '${ServiceName}JobDefinitionMain'
   BatchECR:
     Value: !GetAtt BatchRepository.RepositoryUri
   BatchECRMain:
