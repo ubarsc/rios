@@ -18,7 +18,13 @@ Files
    using the `EXTRA_PACKAGES` and `PIP_PACKAGES` environment variables.
 1. `createbatch.py`. Used to create the AWS assets using the CloudFormation script `batch.yaml`.
    There is a `--modify` option to update the existing stack. See the output of `createbatch.py -h`
-   for more information.
+   for more information. The `RIOS_AWSBATCH_REGION` environment variable must be set
+   to the current AWS Region first.
+   Note also the `--instancetype` parameter. Specify `optimal` for x86 or one of the 
+   Gravitron types (eg `m7g`) for Gravitron. This must match the architecture of the Docker
+   containers you are creating. By the default this is the architecture of the machine you
+   are building, but can be altered by using the `docker buildx` command to perform cross
+   compilation. See the Docker documentation for more information.
 1. `deletebatch.py`. Deletes the AWS Stack. Ensure you have removed all images from the ECR
    repositories first.
 

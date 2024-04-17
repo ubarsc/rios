@@ -24,6 +24,9 @@ Parameters:
   MaxJobs:
     Type: Number
     Default: 32
+  InstanceType:
+    Type: String
+    Default: optimal  # for x86. Use m7g etc for Gravitron
   
 Resources:
   # Create our own vpc for resources so we are separate
@@ -307,7 +310,7 @@ Resources:
         MinvCpus: 0
         MaxvCpus: !Ref MaxJobs
         InstanceTypes:
-        - m7g  # TODO:
+        - !Ref InstanceType
         Subnets:
         - !Ref BatchSubnet1
         - !Ref BatchSubnet2
