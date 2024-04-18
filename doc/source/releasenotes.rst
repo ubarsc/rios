@@ -57,6 +57,13 @@ Bug Fixes
     region, this would lead to an unexpected working grid and output extent.
     This was not the intended behaviour, and has now been fixed. The bounds
     of the reference are now only used in the BOUNDS_FROM_REFERENCE case.
+  * In earlier versions, a check was applied to ensure that the selected RIOS
+    blocksize did not conflict with the blocksize of output files (for GTiff
+    format only). The purpose was to avoid creating output GTiff files with lots
+    of unreclaimed re-written blocks. However, this check then over-reached,
+    and tried to fix the GTiff blocksize if they were incompatible. This was
+    not well implemented, and the check now just raises an exception if an
+    incompatibility is found.
 
 Version 1.4.17 (2024-03-01)
 ---------------------------
