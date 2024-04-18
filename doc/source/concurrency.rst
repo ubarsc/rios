@@ -152,7 +152,9 @@ as a possible alternative.
 
 **CW_AWSBATCH**
 
-Yet to do. 
+Each compute worker runs as a separate AWS Batch job. Specific AWS infrastructure
+needs to be available. See <awsbatch> for more information. Note that no
+data is processed until all the AWS Batch sub jobs are running.
 
 **CW_PBS**
 

@@ -1,3 +1,4 @@
+===================================
 Parallel Processing using AWS Batch
 ===================================
 
@@ -40,7 +41,8 @@ that starts with `FROM rios`. This will mean that your Docker image will already
 any optional packages you need. Then install any other packages your main script needs (but the workers
 do not) with the Docker `RUN` command. Lastly copy your script in (plus any other data you need) using the
 Docker `COPY` command and set your script as the default to run with the `ENTRYPOINT` command. This an example
-`Dockerfile.main` may look like this:
+`Dockerfile.main` may look like this ::
+
         FROM rios
         RUN pip install pystac-client
         RUN mkdir /usr/local/data
@@ -50,7 +52,8 @@ Docker `COPY` command and set your script as the default to run with the `ENTRYP
         ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/myscript.py"]
 
 Once successfully build you will need to push this Docker image to the `riosecrmain` repository
-already created my Cloudformation (above). An example shell script is below:
+already created my Cloudformation (above). An example shell script is below ::
+
         docker build -f Dockerfile.main -t riosmain .
         ECR_URL=${AWS_Account}.dkr.ecr.${AWS_Region}.amazonaws.com
         aws ecr get-login-password --region ${AWS_Region} | docker login --username AWS --password-stdin ${ECR_URL}
@@ -63,6 +66,3 @@ to the CloudFormation, the `jobQueue` will be `riosJobQueue` and the `jobDefinit
 
 This main script should then spawn other AWS Batch jobs that will stay running until the processing is
 finished.
-
-
-
