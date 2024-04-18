@@ -877,6 +877,8 @@ def getAvailableJobManagerTypes():
     Return a list of currently known job manager types
     
     """
+    rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
     subClasses = JobManager.__subclasses__()
     typeList = [c.jobMgrType for c in subClasses]
     return typeList
@@ -889,6 +891,8 @@ def getJobMgrObject(controls):
     If none is required, or none is available, then return None
     
     """
+    rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
     jobmgr = None
     if controls.numThreads > 1:
         if controls.jobManagerType is None:
