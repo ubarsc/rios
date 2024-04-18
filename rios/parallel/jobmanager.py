@@ -1,4 +1,6 @@
 """
+This file is entirely deprecated, as of version 2.0.0.
+
 Base class and sub-classes for managing parallel processing in RIOS. 
 
 It should be emphasised at the start that it is only worth using
@@ -181,6 +183,7 @@ class JobManager(object):
         """
         numSubJobs is the number of sub-jobs
         """
+        rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
         self.numSubJobs = numSubJobs
         self.tempdir = '.'
     
@@ -859,6 +862,8 @@ def getJobManagerClassByType(jobMgrType):
     given jobMgrType string. 
         
     """
+    rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
     jobMgr = None
     subClasses = JobManager.__subclasses__()
     for c in subClasses:
