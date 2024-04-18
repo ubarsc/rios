@@ -10,14 +10,14 @@ associated with these examples before you use them.
 Files
 -----
 
-1. `batch.yaml`. CloudFormation script used by `createbatch.py` to create and 
+#. `batch.yaml`. CloudFormation script used by `createbatch.py` to create and 
    modify the AWS assets needed. See the contents of this file for more information
-1. `Dockerfile`. An example Docker file for creating the 'worker' jobs. Built using Makefile.
-1. `Makefile`. Used to build the Dockerfile and push it to ECR. The CloudFormation 
+#. `Dockerfile`. An example Docker file for creating the 'worker' jobs. Built using Makefile.
+#. `Makefile`. Used to build the Dockerfile and push it to ECR. The CloudFormation 
    needs to run first. The `RIOS_AWSBATCH_REGION` environment variable must be set
    to the current AWS Region first. Install optional packages that your function may need
    using the `EXTRA_PACKAGES` and `PIP_PACKAGES` environment variables.
-1. `createbatch.py`. Used to create the AWS assets using the CloudFormation script `batch.yaml`.
+#. `createbatch.py`. Used to create the AWS assets using the CloudFormation script `batch.yaml`.
    There is a `--modify` option to update the existing stack. See the output of `createbatch.py -h`
    for more information. The `RIOS_AWSBATCH_REGION` environment variable must be set
    to the current AWS Region first.
@@ -26,7 +26,7 @@ Files
    containers you are creating. By the default this is the architecture of the machine you
    are building, but can be altered by using the `docker buildx` command to perform cross
    compilation. See the Docker documentation for more information.
-1. `deletebatch.py`. Deletes the AWS Stack. Ensure you have removed all images from the ECR
+#. `deletebatch.py`. Deletes the AWS Stack. Ensure you have removed all images from the ECR
    repositories first.
 
 Main Script
