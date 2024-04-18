@@ -156,13 +156,19 @@ Each compute worker runs as a separate AWS Batch job. Specific AWS infrastructur
 needs to be available. See :doc:`awsbatch` for more information. Note that no
 data is processed until all the AWS Batch sub jobs are running.
 
+Communication between the batch jobs and the main thread is handled via a
+network socket, which is managed by an extra thread running in the main process.
+That last point means that the main script may run one more thread than you
+expect. This network socket will use a port number in the range 30000-50000,
+so the batch nodes should be configured to allow this.
+
 **CW_PBS**
 
 Each compute worker runs as a separate job on a PBS batch queue. This is one
 way to make effective use of a large cluster which is only accessible through
-a PBS queue, but it does have its limitations. Another effective way is to
-run jobs with use CW_THREADS, and set the numComputeWorkers to be less than
-the number of CPUs on a single node of the cluster.
+a PBS queue, but it does have its limitations and complexities. If this
+approach turns out to be too onerous for the PBS system available, the user
+is advised to consider just running jobs which use CW_THREADS instead.
 
 Using CW_PBS does assume that the batch cluster has relatively high
 availability. If the main script starts running, but the worker jobs are too
@@ -180,22 +186,56 @@ worker do its own reading, so one would usually run with
 computeWorkersRead=True. However, in some situations, the batch nodes may be 
 unable to read the input data directly (e.g. they may be on a private network 
 with no direct access to the wider internet), in which case one would set 
-computeWorkersRead=False. 
+computeWorkersRead=False.
+
+Setting singleBlockComputeWorkers=True will generate a separate compute worker,
+and thus a separate PBS job, for each block of processing (thus it ignores
+numComputeWorkers, which is taken to be equal to the number of blocks to
+process). This would be
+a good option in a PBS cluster which prioritizes short jobs over long ones, as
+the PBS scheduler would find it easy to allocate each of the individual jobs,
+and so throughput would be quite high. However, it does imply a reasonable 
+level of availability on the queue. The main originating thread will be waiting
+for some output to come from the individual jobs, and if they get stuck
+behind other jobs for too long, the main job will timeout.
 
 Communication between the jobs and the main thread is handled via a network
 socket, which is managed by an extra thread running in the main process. 
 That last point means that the main script may run one more thread than you
-expect.
+expect. By default, the network address of this socket is given to the compute
+worker jobs via a small file in a shared temporary directory. If no
+shared temporary directory is available to the batch nodes, then
+set sharedTempDir=False, and it will be passed on the command line for each
+job. However, this is notionally less secure, since the command line is,
+in principle, publicly visible, so this is not recommended.
 
-... something about PBS environment variables. Also about shared temp directory.
-Also about singleBlockComputeWorkers, as a way to make very effective use of
-a large cluster with high availability, but caution w.r.t. walltime limits
-on the main script.
+The PBS jobs will honour two environment variables, which can be used to modify
+their behaviour. These are
+
+.. list-table::
+   :widths: 20, 60
+   :header-rows: 1
+
+   * - Environment Variable
+     - Description
+   * - RIOS_PBSJOBMGR_QSUBOPTIONS
+     - A single string of space-separated options to the qsub command. This
+       will be embedded in the top of each job shell script with the ``#PBS``
+       prefix.
+   * - RIOS_PBSJOBMGR_INITCMDS
+     - Any initial commands which should be executed at the start of the
+       job shell script. The value is a single string which is inserted
+       into the script.
 
 **CW_SLURM**
 
 This behaves exactly like the CW_PBS compute workers, but using the SLURM
 batch queue system instead. See the PBS description.
+
+It also honours two environment variables, very similarly to CW_PBS. Their
+names are ``RIOS_SLURMJOBMGR_SBATCHOPTIONS`` and ``RIOS_SLURMJOBMGR_INITCMDS``.
+See the corresponding PBS environment variables (above) for the corresponding
+descriptions.
 
 **CW_SUBPROC**
 
