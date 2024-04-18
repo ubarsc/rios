@@ -675,6 +675,8 @@ class MpiJobManager(JobManager):
     dest = 0
 
     def __init__(self, numSubJobs):
+        rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
         from mpi4py import MPI
 
         # find the path to rios_subproc_mpi.py
@@ -792,6 +794,8 @@ class MultiJobManager(JobManager):
     pool = None
 
     def __init__(self, numSubJobs):
+        rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
         from multiprocessing import Pool
 
         # base class does one job in current process so we don't
