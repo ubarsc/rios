@@ -172,8 +172,8 @@ def deprecationWarning(msg, stacklevel=2):
     # Some time between Python 3.10 and Python 2.12, they changed the
     # signature of their warnings._next_external_frame function. So, we
     # need to work out which one we have.
-    nextFrameSig = inspect.signature(warnings._next_external_frame)
-    nextFrame2args = (len(nextFrameSig.parameters) == 2)
+    nextFrameArgs = inspect.getfullargspec(warnings._next_external_frame)
+    nextFrame2args = (len(nextFrameArgs.args) == 2)
 
     try:
         frame = sys._getframe(1)
