@@ -89,13 +89,13 @@ def createBatch(stackname, region, ecrName, vCPUs, maxMem, maxJobs,
         addParam(params, 'ECR_Name', ecrName)
         
     if vCPUs is not None:
-        addParam(params, 'VCPUS', vCPUs)
+        addParam(params, 'VCPUS', str(vCPUs))
         
     if maxMem is not None:
-        addParam(params, 'MaxMemory', maxMem)
+        addParam(params, 'MaxMemory', str(maxMem))
         
     if maxJobs is not None:
-        addParam(params, 'MaxJobs', maxJobs)
+        addParam(params, 'MaxJobs', str(maxJobs))
 
     if instanceType is not None:
         addParam(params, 'InstanceType', instanceType)

@@ -7,6 +7,8 @@ This directory contains an example of using RIOS with AWS Batch.
 Please ensure you understand the concepts used and the changes (and costs!)
 associated with these examples before you use them.
 
+The helper scripts below assume RIOS is installed on the machine you are using them on.
+
 Files
 -----
 
