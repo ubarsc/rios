@@ -32,6 +32,9 @@ def run():
     Run the test
     """
     riostestutils.reportStart(TESTNAME)
+    if structures.cloudpickle is None:
+        riostestutils.report(TESTNAME, "Skipped, as cloudpickle unavailable")
+        return True
     
     ramp1 = 'ramp1.img'
     riostestutils.genRampImageFile(ramp1)
