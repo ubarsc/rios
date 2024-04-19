@@ -351,7 +351,11 @@ class ReaderInfo(object):
 
         This is no longer implemented, and raises an exception if called.
         """
-        msg = "getNoDataValueFor is obsolete, and no longer implemented"
+        msg = ("getNoDataValueFor is obsolete, and no longer implemented. " +
+            "The recommended approach is to find the required null " +
+            "values using rios.fileinfo.ImageInfo().nodataval, and pass " +
+            "those in to the user function as attributes on the otherArgs " +
+            "object")
         raise NotImplementedError(msg)
         
     def getPercent(self):
