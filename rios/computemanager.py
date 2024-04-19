@@ -108,8 +108,16 @@ class ComputeWorkerManager(ABC):
             blockListByWorker[workerID] = allSublists[workerID]
 
         # Create the network-visible data channel
-        self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
-            outBlockBuffer, forceExit, exceptionQue, workerBarrier)
+        try:
+            self.dataChan = NetworkDataChannel(workerInitData, inBlockBuffer,
+                outBlockBuffer, forceExit, exceptionQue, workerBarrier)
+        except rioserrors.UnavailableError as e:
+            if str(e) == "Failed to import cloudpickle":
+                msg = ("This computeWorkerKind requires the cloudpickle " +
+                       "package, which appears to be unavailable")
+                raise rioserrors.UnavailableError(msg) from None
+            else:
+                raise
         self.outqueue = self.dataChan.outqueue
         self.exceptionQue = self.dataChan.exceptionQue
 

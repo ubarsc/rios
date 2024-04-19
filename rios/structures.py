@@ -17,7 +17,10 @@ import traceback
 
 import numpy
 from osgeo import gdal
-import cloudpickle
+try:
+    import cloudpickle
+except ImportError:
+    cloudpickle = None
 
 from . import rioserrors
 
@@ -839,6 +842,9 @@ class NetworkDataChannel:
             workerBarrier=None, hostname=None, portnum=None, authkey=None):
         class DataChannelMgr(BaseManager):
             pass
+        if cloudpickle is None:
+            msg = "Failed to import cloudpickle"
+            raise rioserrors.UnavailableError(msg)
 
         if None not in (workerInitData, outBlockBuffer):
             self.hostname = socket.gethostname()
