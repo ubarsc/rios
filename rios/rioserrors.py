@@ -20,6 +20,7 @@ All exceptions used within rios.
 
 import sys
 import warnings
+import inspect
 
 
 class RiosError(Exception):
@@ -167,11 +168,21 @@ def deprecationWarning(msg, stacklevel=2):
     # where the deprecated function was used. I copied the bulk of this
     # section from warnings.warn().
     skip_file_prefixes = ()     # Not skipping anything
+
+    # Some time between Python 3.10 and Python 2.12, they changed the
+    # signature of their warnings._next_external_frame function. So, we
+    # need to work out which one we have.
+    nextFrameSig = inspect.signature(warnings._next_external_frame)
+    nextFrame2args = (len(nextFrameSig.parameters) == 2)
+
     try:
         frame = sys._getframe(1)
         # Look for one frame less since the above line starts us off.
         for x in range(stacklevel - 1):
-            frame = warnings._next_external_frame(frame, skip_file_prefixes)
+            if nextFrame2args:
+                frame = warnings._next_external_frame(frame, skip_file_prefixes)
+            else:
+                frame = warnings._next_external_frame(frame)
             if frame is None:
                 raise ValueError
     except ValueError:
