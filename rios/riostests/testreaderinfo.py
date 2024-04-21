@@ -21,7 +21,7 @@ from __future__ import division
 
 import math
 
-from rios import applier, structures
+from rios import applier
 
 from . import riostestutils
 
@@ -96,7 +96,7 @@ def run():
 
     # We want this to work across threads and processes
     conc = applier.ConcurrencyStyle(numReadWorkers=2, numComputeWorkers=2,
-        computeWorkerKind=structures.CW_SUBPROC)
+        computeWorkerKind=applier.CW_SUBPROC)
     controls.setConcurrencyStyle(conc)
 
     rtn = applier.apply(checkLookupFunctions, infiles, outfiles, otherargs,
