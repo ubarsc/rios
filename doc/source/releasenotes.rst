@@ -27,9 +27,18 @@ New Features
       objects which were given to individual compute workers, allowing them
       to be recombined in whatever way makes sense.
 
+Disabled Features
+  * The getGDALDatasetFor & getGDALBandFor methods of the ReaderInfo object
+    (i.e. the first argument of the user function), gave access to the
+    underlying GDAL Dataset and Band objects for each input file. However,
+    these do not translate well to a multi-threaded context, since GDAL objects
+    are not thread-safe. For this reason, these two methods are now disabled
+    completely.
+
 Deprecations
   * The old parallel computation facilities are no longer supported, but will
     be emulated using the new concurrency support (with a deprecation warning).
+    Users should move to using the new style.
   * Many old classes for reading and writing imagery are now deprecated,
     and likely to be removed from the system in future releases. This includes
     ImageReader, ImageWriter, InputCollections, and a number of other components.
@@ -37,7 +46,7 @@ Deprecations
     hardly used internally anyway, and is now not used at all.
 
 Changed Behaviour
-  * All existing RIOS scripts should work as before. Deprecation warnings may
+  * Most existing RIOS scripts should work as before. Deprecation warnings may
     be printed to stderr for certain situations.
   * Vector inputs are still handled as before, but if there is a reprojection
     involved, it now happens after rasterization instead of before. This means
@@ -57,13 +66,13 @@ Bug Fixes
     region, this would lead to an unexpected working grid and output extent.
     This was not the intended behaviour, and has now been fixed. The bounds
     of the reference are now only used in the BOUNDS_FROM_REFERENCE case.
-  * Since version 1.4.1, a check was applied to ensure that the selected RIOS
-    blocksize did not conflict with the blocksize of output files (for GTiff
-    format only). The purpose was to avoid creating output GTiff files with lots
-    of unreclaimed re-written blocks. However, this check then over-reached,
-    and tried to fix the GTiff blocksize if they were incompatible. This was
-    not well implemented, and the check now just raises an exception if an
-    incompatibility is found.
+  * Since version 1.4.1, a check was applied for GTiff format output files to
+    ensure that the selected RIOS blocksize did not conflict with the blocksize
+    of output files. The purpose was to avoid creating output GTiff files with
+    lots of unreclaimed re-written blocks. However, this check then
+    over-reached, and tried to fix the GTiff blocksize if they were
+    incompatible. This was not well implemented, and the check now just
+    raises an exception if an incompatibility is found.
 
 Version 1.4.17 (2024-03-01)
 ---------------------------
