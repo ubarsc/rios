@@ -43,6 +43,7 @@ from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # 
 from .structures import BlockBuffer, Timers, TempfileManager, ApplierReturn
 from .structures import ApplierBlockDefn, RasterizationMgr, WorkerErrorRecord
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
+from .structures import CW_SUBPROC                                    # noqa: F401
 from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
 from .pixelgrid import PixelGridDefn, findCommonRegion
