@@ -21,7 +21,7 @@ from __future__ import division
 
 import math
 
-from rios import applier
+from rios import applier, structures
 
 from . import riostestutils
 
@@ -73,6 +73,7 @@ def run():
     infiles = applier.FilenameAssociations()
     outfiles = applier.FilenameAssociations()
     otherargs = applier.OtherInputs()
+    controls = applier.ApplierControls()
 
     infiles.img1 = "ramp1.img"
     infiles.img2 = ["ramp2.img", "ramp3.img"]
@@ -93,9 +94,18 @@ def run():
         nullval = otherargs.nulls[key]
         riostestutils.genRampImageFile(fn, nullVal=nullval)
 
-    applier.apply(checkLookupFunctions, infiles, outfiles, otherargs)
-    ok = (len(otherargs.errors) == 0)
-    for msg in otherargs.errors:
+    # We want this to work across threads and processes
+    conc = applier.ConcurrencyStyle(numReadWorkers=2, numComputeWorkers=2,
+        computeWorkerKind=structures.CW_SUBPROC)
+
+    rtn = applier.apply(checkLookupFunctions, infiles, outfiles, otherargs,
+        controls=controls)
+    errorList = []
+    for oa in rtn.otherArgsList:
+        errorList.extend(oa.errors)
+
+    ok = (len(errorList) == 0)
+    for msg in errorList:
         riostestutils.report(TESTNAME, msg)
     allOK = (ok and allOK)
     
