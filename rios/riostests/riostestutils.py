@@ -83,7 +83,8 @@ def genRampArray(nRows=DEFAULT_ROWS, nCols=DEFAULT_COLS):
     return ramp
 
 
-def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT, yTop=DEFAULT_YTOP):
+def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT,
+        yTop=DEFAULT_YTOP, nullVal=None):
     """
     Generate a test image of a simple 2-d linear ramp. 
     """
@@ -95,6 +96,8 @@ def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT, yTop=DEFAULT_
     
     band = ds.GetRasterBand(1)
     band.WriteArray(ramp)
+    if nullVal is not None:
+        band.SetNoDataValue(nullVal)
     del ds
 
 

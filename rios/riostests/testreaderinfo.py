@@ -68,9 +68,40 @@ def run():
     allOK = (len(otherargs.errors) == 0)
     for msg in otherargs.errors:
         riostestutils.report(TESTNAME, msg)
+
+    # Check the info.getNoDataValueFor & getFilenameFor functions
+    infiles = applier.FilenameAssociations()
+    outfiles = applier.FilenameAssociations()
+    otherargs = applier.OtherInputs()
+
+    infiles.img1 = "ramp1.img"
+    infiles.img2 = ["ramp2.img", "ramp3.img"]
+    otherargs.nulls = {
+        ('img1', None): 253,
+        ('img2', 0): 254,
+        ('img2', 1): 255
+    }
+    otherargs.filenames = {
+        ('img1', None): infiles.img1,
+        ('img2', 0): infiles.img2[0],
+        ('img2', 1): infiles.img2[1]
+    }
+    otherargs.errors = []
+
+    for key in otherargs.filenames:
+        fn = otherargs.filenames[key]
+        nullval = otherargs.nulls[key]
+        riostestutils.genRampImageFile(fn, nullVal=nullval)
+
+    applier.apply(checkLookupFunctions, infiles, outfiles, otherargs)
+    ok = (len(otherargs.errors) == 0)
+    for msg in otherargs.errors:
+        riostestutils.report(TESTNAME, msg)
+    allOK = (ok and allOK)
     
     # Clean up
-    riostestutils.removeRasterFile(filename)
+    for fn in [filename, infiles.img1] + infiles.img2:
+        riostestutils.removeRasterFile(filename)
     
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
@@ -139,3 +170,27 @@ def checkReaderInfo(info, inputs, outputs, otherargs):
     if info.blockbr.y != bry:
         msg = "bry mis-match: {} != {}".format(info.blockbr.y, bry)
         otherargs.errors.append(msg)
+
+
+def checkLookupFunctions(info, inputs, outputs, otherargs):
+    """
+    Check the array-based lookup functions of the info object
+    """
+    for key in otherargs.filenames:
+        (symbName, seqNum) = key
+        if seqNum is None:
+            arr = getattr(inputs, symbName)
+        else:
+            arr = getattr(inputs, symbName)[seqNum]
+
+        filename = info.getFilenameFor(arr)
+        if otherargs.filenames[key] != filename:
+            msg = "Filename mis-match: '{}' != '{}'".format(
+                otherargs.filenames[key], filename)
+            otherargs.errors.append(msg)
+
+        nullval = info.getNoDataValueFor(arr)
+        if otherargs.nulls[key] != nullval:
+            msg = "Null value mis-match: {} != {}".format(
+                otherargs.nulls[key], nullval)
+            otherargs.errors.append(msg)
