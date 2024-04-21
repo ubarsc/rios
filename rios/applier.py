@@ -752,7 +752,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                 with timings.interval('pop_inbuffer'):
                     (blockDefn, inputs) = inBlockBuffer.popNextBlock()
 
-            readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
+            readerInfo = makeReaderInfo(workinggrid, blockDefn, controls,
+                infiles, inputs, allInfo)
 
             outputs = BlockAssociations()
             userArgs = (readerInfo, inputs, outputs)

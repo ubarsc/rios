@@ -189,7 +189,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             while blockNdx < numBlocks and not self.forceExit.is_set():
                 with timings.interval('pop_inbuffer'):
                     (blockDefn, inputs) = inBlockBuffer.popNextBlock()
-                readerInfo = makeReaderInfo(workinggrid, blockDefn, controls)
+                readerInfo = makeReaderInfo(workinggrid, blockDefn, controls,
+                    infiles, inputs, allInfo)
                 outputs = BlockAssociations()
                 userArgs = (readerInfo, inputs, outputs)
                 if otherArgs is not None:

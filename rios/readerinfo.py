@@ -25,10 +25,10 @@ import math
 
 import numpy
 
-from . import imageio
+from . import imageio, fileinfo
 
 
-def makeReaderInfo(workinggrid, blockDefn, controls):
+def makeReaderInfo(workinggrid, blockDefn, controls, infiles, inputs, allInfo):
     """
     Construct a ReaderInfo object for the current block.
 
@@ -51,6 +51,29 @@ def makeReaderInfo(workinggrid, blockDefn, controls):
     xblock = int(round(left / controls.windowxsize))
     yblock = int(round(top / controls.windowysize))
     info.setBlockCount(xblock, yblock)
+
+    # Make the lookups keyed by array id() value, to service getNoDataValueFor
+    # and getFilenameFor
+    info.filenameLookup = {}
+    info.nullvalLookup = {}
+    for (symbolicName, seqNum, filename) in infiles:
+        key = (symbolicName, seqNum)
+        arr = inputs[key]
+        arrID = id(arr)
+        info.filenameLookup[arrID] = filename
+        imgInfo = allInfo[key]
+
+        if isinstance(imgInfo, fileinfo.ImageInfo):
+            # Store all null values for the (possibly reduced) set of bands.
+            # See getNoDataValueFor() for details on how this interacts with
+            # controls.selectInputImageLayers().
+            layerselection = controls.getOptionForImagename(
+                'layerselection', symbolicName)
+            if layerselection is None:
+                layerselection = numpy.arange(1, imgInfo.rasterCount + 1)
+            nullvalList = [imgInfo.nodataval[bandNum - 1]
+                for bandNum in layerselection]
+            info.nullvalLookup[arrID] = nullvalList
 
     return info
 
@@ -317,10 +340,8 @@ class ReaderInfo(object):
         """
         Get the input filename of a dataset
 
-        This is no longer implemented, and raises an exception if called.
         """
-        msg = "getFilenameFor is obsolete, and no longer implemented"
-        raise NotImplementedError(msg)
+        return self.filenameLookup[id(block)]
 
     def getGDALDatasetFor(self, block):
         """
@@ -342,21 +363,24 @@ class ReaderInfo(object):
 
     def getNoDataValueFor(self, block, band=1):
         """
-        Returns the 'no data' value for the dataset
-        underlying the block. This should be the
-        same as what was set for the stats ignore value
-        when that dataset was created. 
-        The value is cast to the same data type as the 
-        dataset.
+        Returns the 'no data' value for the dataset underlying the block.
+        This should be the same as what was set for the stats ignore value
+        when that dataset was created. The value is cast to the same data
+        type as the dataset.
 
-        This is no longer implemented, and raises an exception if called.
+        The band number starts at 1, following GDAL's convention.
+
+        Note, however, that if controls.selectInputImageLayers() was used to
+        read a reduced set of input layers from the file, then these numbers
+        are of the reduced set. For example, 1 will refer to the first of the
+        selected layers, which may not be the first in the file.
+
         """
-        msg = ("getNoDataValueFor is obsolete, and no longer implemented. " +
-            "The recommended approach is to find the required null " +
-            "values using rios.fileinfo.ImageInfo().nodataval, and pass " +
-            "those in to the user function as attributes on the otherArgs " +
-            "object")
-        raise NotImplementedError(msg)
+        nullvalList = self.nullvalLookup[id(block)]
+        nullval = nullvalList[band - 1]
+        if nullval is not None:
+            nullval = numpy.cast[block.dtype](nullval)
+        return nullval
         
     def getPercent(self):
         """
