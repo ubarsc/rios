@@ -97,6 +97,7 @@ def run():
     # We want this to work across threads and processes
     conc = applier.ConcurrencyStyle(numReadWorkers=2, numComputeWorkers=2,
         computeWorkerKind=structures.CW_SUBPROC)
+    controls.setConcurrencyStyle(conc)
 
     rtn = applier.apply(checkLookupFunctions, infiles, outfiles, otherargs,
         controls=controls)
