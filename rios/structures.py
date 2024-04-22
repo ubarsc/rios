@@ -25,12 +25,12 @@ except ImportError:
 from . import rioserrors
 
 
-CW_NONE = 1
-CW_THREADS = 2
-CW_PBS = 3
-CW_SLURM = 4
-CW_AWSBATCH = 5
-CW_SUBPROC = 10
+CW_NONE = "CW_NONE"
+CW_THREADS = "CW_THREADS"
+CW_PBS = "CW_PBS"
+CW_SLURM = "CW_SLURM"
+CW_AWSBATCH = "CW_AWSBATCH"
+CW_SUBPROC = "CW_SUBPROC"
 
 
 class ConcurrencyStyle:

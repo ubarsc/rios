@@ -113,8 +113,9 @@ class ComputeWorkerManager(ABC):
                 outBlockBuffer, forceExit, exceptionQue, workerBarrier)
         except rioserrors.UnavailableError as e:
             if str(e) == "Failed to import cloudpickle":
-                msg = ("This computeWorkerKind requires the cloudpickle " +
+                msg = ("computeWorkerKind '{}' requires the cloudpickle " +
                        "package, which appears to be unavailable")
+                msg = msg.format(self.computeWorkerKind)
                 raise rioserrors.UnavailableError(msg) from None
             else:
                 raise
