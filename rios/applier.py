@@ -187,7 +187,11 @@ class ApplierControls(object):
         
     def setLoggingStream(self, loggingstream):
         """
-        Set the rios logging stream to the given file-like object. 
+        Set the rios logging stream to the given file-like object.
+
+        This is now deprecated (v2.0.0), and has no effect. The loggingstream
+        is no longer used within RIOS.
+
         """
         msg = "The loggingstream is deprecated and ignored (v2.0.0)"
         rioserrors.deprecationWarning(msg)
@@ -301,7 +305,12 @@ class ApplierControls(object):
     def setProgress(self, progress):
         """
         Set the progress display object. Default is no progress
-        object. 
+        object.
+
+        The progress object should be an instance of one of the classes
+        from :class:`rios.cuiprogress`, and is used to generate a simple
+        progress indicator showing the percentage completed.
+
         """
         self.progress = progress
         
@@ -320,26 +329,45 @@ class ApplierControls(object):
         
     def setStatsIgnore(self, statsIgnore, imagename=None):
         """
-        Set the global default value to use as the 
-        null value when calculating stats.
-        Setting this to None means there will be no null value in the 
-        stats calculations.
+        Set the 'no data' value for the output files (also known as the
+        'null' value). This value will be written into the output files,
+        and will thus be ignored when calculating statistics, histograms
+        and overviews (pyramid layers) on those files.
+
+        If this value is given as None, then no null value will be set on
+        output files.
+
+        If imagename is given, the setting will only apply to that image,
+        otherwise it will apply to all output files.
+
+        There is currently no mechanism to set different null values for
+        different layers in an output file.
+
+        The default value is 0. This was probably a bad idea, but to avoid
+        breaking old scripts, we are not likely to change this.
+
         """
         self.setOptionForImagename('statsIgnore', imagename, statsIgnore)
         
     def setCalcStats(self, calcStats, imagename=None):
         """
         Set True to calc stats, False otherwise. If True, then statistics and 
-        pyramid layers are calculated (if supported by the driver
+        pyramid layers are calculated (if supported by the driver).
+
+        Default is True.
+
         """
         self.setOptionForImagename('calcStats', imagename, calcStats)
         
     def setOmitPyramids(self, omitPyramids, imagename=None):
         """
-        Set True to omit pyramid layers, False otherwise. If True, then when
-        statistics are being calculated, pyramid layers will be omitted, 
-        otherwise they will be created at the same time. 
-        Usual default is False. 
+        Set True to omit pyramid layers (i.e. overviews), False otherwise.
+        If True, then when statistics are being calculated, pyramid layers
+        will be omitted, otherwise they will be created at the same time.
+
+        Default is False, meaning that pyramid layers will be calculated
+        on all output files.
+
         """
         self.setOptionForImagename('omitPyramids', imagename, omitPyramids)
     
@@ -378,22 +406,36 @@ class ApplierControls(object):
         self.setOptionForImagename('overviewAggType', imagename, overviewAggType)
         
     def setThematic(self, thematicFlag, imagename=None):
-        "Set boolean value of thematic flag (may not be supported by the GDAL driver)"
+        """
+        Boolean flag to indicate whether the output file is thematic. A value
+        of True means the output will be set as thematic, although this may
+        not be supported by the output format driver.
+
+        Default is False (i.e. not thematic).
+
+        """
         self.setOptionForImagename('thematic', imagename, thematicFlag)
 
     def setLayerNames(self, layerNames, imagename=None):
         """
-        Set list of layernames to be given to the output file(s)
+        Set list of layernames to be given to the output file(s). This is not
+        really well supported by most format drivers, and should probably
+        be avoided. It seemed like a good idea at the time.
+
         """
         self.setOptionForImagename('layernames', imagename, layerNames)
         
     def setTempdir(self, tempdir):
-        "Set directory to use for temporary files for resampling, etc. "
+        """
+        Set directory to use for temporary files for resampling, etc.
+
+        Default is '.' (i.e. current directory).
+        """
         self.tempdir = tempdir
         
     def setResampleMethod(self, resampleMethod, imagename=None):
         """
-        Set resample method to be used for all resampling. Possible 
+        Set resample method to be used for resampling of input files. Possible
         options are those defined by gdalwarp, i.e. 'near', 'bilinear', 
         'cubic', 'cubicspline', 'lanczos'. 
         """
@@ -421,7 +463,10 @@ class ApplierControls(object):
         importance when burning values from a vector attribute column, as 
         this should be a distinct value from any of the values in the column. 
         If this is not so, then polygons can end up blending with the background,
-        resulting in incorrect answers. 
+        resulting in incorrect answers.
+
+        Default is 0
+
         """
         self.setOptionForImagename('vectornull', vectorname, vectornull)
     
@@ -438,13 +483,19 @@ class ApplierControls(object):
         pixels will count as "inside" a vector polygon if they touch the polygon,
         rather than only if their centre is inside. 
         If vectorname given, then set only for that vector.
+
+        Default is False.
+
         """
         self.setOptionForImagename('alltouched', vectorname, alltouched)
     
     def setVectorDatatype(self, vectordatatype, vectorname=None):
         """
-        Set numpy datatype to use for rasterized vectors
-        If vectorname given, set only for that vector
+        Set numpy datatype to use for rasterized vectors. If vectorname
+        given, set only for that vector.
+
+        Default is numpy.uint8
+
         """
         self.setOptionForImagename('vectordatatype', vectorname, vectordatatype)
     
