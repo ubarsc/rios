@@ -190,10 +190,19 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
     if isinstance(fileInfo, VectorFileInfo):
         vectorlayer = controls.getOptionForImagename('vectorlayer',
                 symbolicName)
+
         if isinstance(vectorlayer, int):
             vecNdx = vectorlayer
         else:
-            raise NotImplementedError("Vector layer by name")
+            vecNdx = None
+            for i in range(fileInfo.layerCount):
+                if fileInfo[i].name == vectorlayer:
+                    vecNdx = i
+            if vecNdx is None:
+                raise ValueError("Named vector layer '{}' not found".format(
+                    vectorlayer))
+        vecName = fileInfo[vecNdx].name
+
         vecLyrInfo = fileInfo[vecNdx]
         projection = vecLyrInfo.spatialRef.ExportToWkt()
         wgXmin = workinggrid.xMin
@@ -226,7 +235,7 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
             outputType=gdalDtype, creationOptions=gtiffOptions,
             outputBounds=outBounds, xRes=xRes, yRes=yRes, noData=vecNull,
             initValues=vecNull, burnValues=burnvalue, attribute=burnattribute,
-            allTouched=alltouched, SQLStatement=filtersql)
+            allTouched=alltouched, SQLStatement=filtersql, layers=vecName)
 
         tmprast = rasterizeMgr.rasterize(filename, rasterizeOptions,
                 tmpfileMgr)
