@@ -34,9 +34,10 @@ def getCmdArgs():
         help="Number of CPUs that each job will require")
     p.add_argument('--mem', type=int,
         help="Amount of Kb that each job will require")
-    p.add_argument('--maxjobs', type=int,
+    p.add_argument('--maxvcpus', type=int,
         help="Maximum number of jobs to run at once. " + 
-            "Ideally the same as controls.setNumThreads()")
+            "Ideally the same as controls.setNumThreads(). " +
+            "May need to be adjusted if --vcpus > 1.")
     p.add_argument('--instancetype', 
         help="Override the instance type for the jobs. This " +
             "needs to be the same architecture as the Docker images")
@@ -59,7 +60,7 @@ def main():
     cmdargs = getCmdArgs()
     
     stackId, status = createBatch(cmdargs.stackname, cmdargs.region,
-        cmdargs.ecrname, cmdargs.vcpus, cmdargs.mem, cmdargs.maxjobs, 
+        cmdargs.ecrname, cmdargs.vcpus, cmdargs.mem, cmdargs.maxvcpus, 
         cmdargs.instancetype, cmdargs.modify, cmdargs.wait, cmdargs.tag)
             
     print('stackId: {}'.format(stackId))
@@ -76,7 +77,7 @@ def addParam(params, key, value):
         'ParameterValue': value})
 
     
-def createBatch(stackname, region, ecrName, vCPUs, maxMem, maxJobs, 
+def createBatch(stackname, region, ecrName, vCPUs, maxMem, maxvCPUs, 
         instanceType, modify, wait, tag):
     """
     Do the work of creating the CloudFormation Stack
@@ -94,8 +95,8 @@ def createBatch(stackname, region, ecrName, vCPUs, maxMem, maxJobs,
     if maxMem is not None:
         addParam(params, 'MaxMemory', str(maxMem))
         
-    if maxJobs is not None:
-        addParam(params, 'MaxJobs', str(maxJobs))
+    if maxvCPUs is not None:
+        addParam(params, 'MaxVCPUS', str(maxvCPUs))
 
     if instanceType is not None:
         addParam(params, 'InstanceType', instanceType)

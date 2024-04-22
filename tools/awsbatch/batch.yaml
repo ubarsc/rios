@@ -21,9 +21,9 @@ Parameters:
   MaxMemory:
     Type: Number
     Default: 4000
-  MaxJobs:
+  MaxVCPUS:
     Type: Number
-    Default: 32
+    Default: 128
   InstanceType:
     Type: String
     Default: optimal  # for x86. Use m7g etc for Gravitron
@@ -308,7 +308,7 @@ Resources:
       ComputeResources:
         Type: EC2
         MinvCpus: 0
-        MaxvCpus: !Ref MaxJobs
+        MaxvCpus: !Ref MaxVCPUS
         InstanceTypes:
         - !Ref InstanceType
         Subnets:
@@ -350,5 +350,7 @@ Outputs:
     Value: !GetAtt BatchRepository.RepositoryUri
   BatchECRMain:
     Value: !GetAtt BatchRepositoryMain.RepositoryUri
-  BatchMaxJobs:
-    Value: !Ref MaxJobs
+  BatchVCPUS:
+    Value: !Ref VCPUS
+  BatchMaxVCPUS:
+    Value: !Ref MaxVCPUS
