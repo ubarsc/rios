@@ -249,6 +249,15 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         self.stackOutputs = self.getStackOutputs()
         self.batchClient = boto3.client('batch', region_name=self.REGION)
 
+        # check what the maximum number of jobs can be run based on the 
+        # vCPUS and maxvCPUs settings
+        maxBatchJobs = int(int(self.stackOutputs['BatchMaxVCPUS']) / 
+            int(self.stackOutputs['BatchVCPUS']))
+        if numWorkers > maxBatchJobs:
+            raise SystemExit('Number of threads greater than allowed by ' +
+                '--vcpus and --maxvcpus inputs to createbatch.py. ' +
+                'Consider increasing this number.')
+
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
             numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
