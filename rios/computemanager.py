@@ -255,9 +255,9 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         maxBatchJobs = int(int(self.stackOutputs['BatchMaxVCPUS']) / 
             int(self.stackOutputs['BatchVCPUS']))
         if numWorkers > maxBatchJobs:
-            raise ValueError('Number of threads greater than allowed by ' +
-                '--vcpus and --maxvcpus inputs to createbatch.py. ' +
-                'Consider increasing this number.')
+            raise ValueError('Requested number of compute workers is ' +
+                'greater than (MaxVCPUS / VCPUS). Either increase ' +
+                'this ratio, or reduce numComputeWorkers')
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,

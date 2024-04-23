@@ -218,7 +218,7 @@ class ConcurrencyStyle:
             raise ValueError(msg)
 
         if singleBlockComputeWorkers and (computeWorkerKind == CW_THREADS):
-            msg = ("THREADS compute workers cannot also be " +
+            msg = ("CW_THREADS compute workers cannot also be " +
                    "singleBlockComputeWorkers")
             raise ValueError(msg)
 

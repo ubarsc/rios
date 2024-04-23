@@ -1023,7 +1023,7 @@ def makeWorkingGrid(infiles, allInfo, controls):
         refPixGrid = pixgridList[0]
         match = checkAllMatch(pixgridList, refPixGrid)
         if not match:
-            msg = ('Input grids do not match. Must supply a reference'
+            msg = ('Input grids do not match. Must supply a reference ' +
                 'image or pixelgrid')
             raise rioserrors.ResampleNeededError(msg)
 
