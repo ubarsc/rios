@@ -13,6 +13,7 @@ allowing the programmer to concentrate on the processing involved.
 
 As of version 2.0, RIOS has strong support for parallel processing,
 in both reading and computation, supporting a range of paradigms.
+See :doc:`concurrency` for details.
 
 It is licensed under GPL 3.
 
