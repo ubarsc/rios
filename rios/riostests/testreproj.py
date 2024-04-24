@@ -54,7 +54,10 @@ def run():
     # Clean up
     for filename in [ramp1, ramp2]:
         riostestutils.removeRasterFile(filename)
-    
+
+    if ok:
+        riostestutils.report(TESTNAME, "Passed")
+
     return ok
 
 
