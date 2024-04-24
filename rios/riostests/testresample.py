@@ -21,7 +21,6 @@ the two, allowing a resample.
 import numpy
 from osgeo import gdal
 from rios import applier
-from rios import cuiprogress
 
 from . import riostestutils
 
@@ -67,7 +66,6 @@ def calcAverage(file1, file2, avgfile):
     controls = applier.ApplierControls()
     controls.setReferenceImage(file1)
     controls.setResampleMethod('near')
-    controls.setProgress(cuiprogress.CUIProgressBar())
     
     applier.apply(doAvg, infiles, outfiles, controls=controls)
 
