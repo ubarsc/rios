@@ -246,6 +246,11 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testreproj
+    ok = testreproj.run()
+    if not ok:
+        failureCount += 1
+
     from . import teststats
     ok = teststats.run()
     if not ok:
