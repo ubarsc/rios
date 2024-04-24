@@ -66,6 +66,71 @@ they are already confident it works well without.
 The routines for processing raster attribute tables (rios.ratapplier) are
 unaffected by any of the above, and still work entirely sequentially.
 
+Quick Start
+-----------
+This section is for those who don't really want to read all the documentation,
+but just want to start using concurrency, without understanding it all. Not
+a good idea, but here we go anyway.
+
+We shall assume that you are running on a computer with multiple cores, and
+for simplicity we will only consider the CW_THREADS kind of compute worker.
+There are others, but they require more understanding.
+
+  #. Make sure your program runs successfully with no concurrency. Use the
+     return value of the ``applier.apply()`` function to find the timings::
+
+       rtn = applier.apply(userFunc, infiles, outfiles)
+       print(rtn.timings.formatReport())
+
+     In particular, note the ``reading`` and ``userfunction`` times.
+
+  #. Find the ratio between the ``reading`` and ``userfunction`` times. This
+     tells us whether the program is dominated by I/O and computation. For many
+     simpler raster processing tasks, the dominant part is reading the input
+     files.
+  #. If the ``reading`` time is substantially larger than the ``userfunction``
+     time, the best thing is to start with some read workers. For example::
+
+       controls = applier.ApplierControls()
+       conc = applier.ConcurrencyStyle(numReadWorkers=2)
+       controls.setConcurrencyStyle(conc)
+       rtn = applier.apply(userFunc, infiles, outfiles, controls=controls)
+       print(rtn.timings.formatReport())
+
+     Note that the total time on each timer is added across all threads, and
+     may well be larger than the wall clock elapsed time.
+
+     Some points to note about read workers. Each runs as a separate thread,
+     but may spend time waiting for the device, and so may not need much
+     CPU time. If the files are compressed, then more CPU time is needed
+     for the uncompression step, in each thread. If input files are being
+     reprojected, that also adds to the CPU time required in each thread.
+     So, the benefit of read workers and/or CPUS will vary depending on
+     exactly what is going on.
+
+  #. Vary the number of read workers to reduce the total elapsed wall time.
+     If you are able to reduce this so much that the userfunction time becomes
+     a substantial part of it, then you may benefit from some compute workers::
+
+       conc = applier.ConcurrencyStyle(
+                numReadWorkers=2,
+                numComputeWorkers=2,
+                computeWorkerKind=applier.CW_THREADS)
+
+  #. Vary the number of read workers and compute workers to minimize the
+     total elapsed wall time.
+
+Note that the results of these experiments are specific to the particular
+user function you are computing, the sizes and types of files, the device
+that the files are stored on, and the computer you are running on. While past
+experiences will be a useful guide (as always), you may need to repeat
+this kind of experimentation when any of those factors changes.
+
+If you wish to make use of other kinds of compute workers, things do get more
+complicated. It is strongly recommended that you read the documentation
+thoroughly, paying particular attention to the other parameters of the
+ConcurrencyStyle() constructor.
+
 Timing
 ------
 Effective use of concurrency relies on understanding how time is spent within 
