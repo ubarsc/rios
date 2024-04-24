@@ -112,7 +112,7 @@ def run():
     
     # Clean up
     for fn in [filename, infiles.img1] + infiles.img2:
-        riostestutils.removeRasterFile(filename)
+        riostestutils.removeRasterFile(fn)
     
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
