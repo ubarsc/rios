@@ -375,6 +375,11 @@ class ReaderInfo(object):
         are of the reduced set. For example, 1 will refer to the first of the
         selected layers, which may not be the first in the file.
 
+        This is not the preferred method for the user function to access
+        the null value for an input file. A more transparent approach is to
+        make such values available on the otherArgs object. This function is
+        maintained for backward compatibility.
+
         """
         nullvalList = self.nullvalLookup[id(block)]
         nullval = nullvalList[band - 1]
