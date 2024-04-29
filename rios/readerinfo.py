@@ -71,8 +71,21 @@ def makeReaderInfo(workinggrid, blockDefn, controls, infiles, inputs, allInfo):
                 'layerselection', symbolicName)
             if layerselection is None:
                 layerselection = numpy.arange(1, imgInfo.rasterCount + 1)
-            nullvalList = [imgInfo.nodataval[bandNum - 1]
-                for bandNum in layerselection]
+
+            # Work out what null value(s) to use, honouring anything set
+            # with controls.setInputNoDataValue().
+            nullvalList = controls.getOptionForImagename('inputnodata',
+                    symbolicName)
+            if nullvalList is not None and not isinstance(nullvalList, list):
+                # Turn a scalar into a list, one for each band in the file
+                nullvalList = [nullvalList] * len(layerselection)
+
+            # If we have None from controls, then use whatever is
+            # specified on imgInfo, while also honouring layerselection
+            if nullvalList is None:
+                nullvalList = [imgInfo.nodataval[bandNum - 1]
+                    for bandNum in layerselection]
+
             info.nullvalLookup[arrID] = nullvalList
 
     return info

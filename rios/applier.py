@@ -85,6 +85,7 @@ class ApplierControls(object):
         * **loggingstream**   file-like for logging of messages
         * **progress**        progress object
         * **statsIgnore**     global stats ignore value for output (i.e. null value)
+        * **inputnodata**     Over-ride of null value for input file, in reprojecting
         * **calcStats**       True/False to signal calculate statistics and pyramids
         * **omitPyramids**    True/False to omit pyramids when doing stats
         * **overviewLevels**  List of level factors used when calculating output image overviews
@@ -122,6 +123,7 @@ class ApplierControls(object):
         self.progress = None
         self.creationoptions = None
         self.statsIgnore = 0
+        self.inputnodata = None
         self.calcStats = True
         self.omitPyramids = False
         self.overviewLevels = DEFAULT_OVERVIEWLEVELS
@@ -348,6 +350,36 @@ class ApplierControls(object):
 
         """
         self.setOptionForImagename('statsIgnore', imagename, statsIgnore)
+
+    def setInputNoDataValue(self, nodataValue, imagename=None):
+        """
+        Set a 'no data' value for input file(s). This over-rides whatever
+        null value may be defined within the file itself, and most importantly,
+        will over-ride when the file does not have a null value set at all.
+
+        The main reason this is important is when an input file does not
+        have a null value, and is being reprojected on input. Since it has no
+        null value, the resampling on the edge of any null value region in the
+        image will risk blurring the nulls into the non-null area. Normally
+        this is avoided if the file has a null value set. If the input file
+        is not under the control of the user, then it cannot be set before
+        reading, so this allows the user to over-ride it, and behave as though
+        it had been set on the original file.
+
+        If the supplied value is a single scalar, it will apply to all bands
+        of the input, but if it is a list of values, they will apply
+        per-band.
+
+        If there is no reprojection on input, then this setting will have no
+        effect on the data. However, it will be honoured by a call to
+        info.getNoDataValueFor(), inside the user function (although that
+        is itself discouraged).
+
+        If the ``imagename`` parameter is used, then the setting will apply
+        only to that input, otherwise it will be applied to all inputs.
+
+        """
+        self.setOptionForImagename('inputnodata', imagename, nodataValue)
         
     def setCalcStats(self, calcStats, imagename=None):
         """

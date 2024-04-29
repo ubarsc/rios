@@ -284,12 +284,24 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
             outBounds = (workinggrid.xMin, workinggrid.yMin,
                 workinggrid.xMax, workinggrid.yMax)
 
+        # Work out what null value(s) to use, honouring anything set
+        # with controls.setInputNoDataValue().
+        nullvalList = controls.getOptionForImagename('inputnodata',
+                symbolicName)
+        if nullvalList is not None and not isinstance(nullvalList, list):
+            # Turn a scalar into a list, one for each band in the file
+            nullvalList = [nullvalList] * fileInfo.rasterCount
+        # If we have None from controls, then use whatever is
+        # specified on fileInfo
+        if nullvalList is None:
+            nullvalList = fileInfo.nodataval
+
         # The warp options constructor has weird expectations about the
         # null values, so construct what it requires.
-        if None in fileInfo.nodataval:
+        if None in nullvalList:
             nullval = None
         else:
-            nullval = ' '.join([repr(n) for n in fileInfo.nodataval])
+            nullval = ' '.join([repr(n) for n in nullvalList])
         overviewLevel = 'NONE'
         if controls.getOptionForImagename('allowOverviewsGdalwarp',
                 symbolicName):
