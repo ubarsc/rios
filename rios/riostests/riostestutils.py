@@ -184,7 +184,7 @@ def reportStart(testName):
     """
     Report the beginning of a given test
     """
-    print("\n####################")
+    print("####################")
     print("Starting test:", testName)
 
 
