@@ -572,6 +572,8 @@ class ApplierControls(object):
         :class:`rios.structures.ConcurrencyStyle` class. See there
         for full details of how to use this.
 
+        New in version 2.0
+
         """
         self.concurrency = concurrencyStyle
     
@@ -710,7 +712,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     aspects of the reading and writing of images. See the class 
     documentation for further details.
 
-    The apply function returns a :class:`rios.structures.ApplierReturn` object.
+    The apply function returns a :class:`rios.structures.ApplierReturn` object
+    (new in version 2.0).
 
     There is a page dedicated to :doc:`applierexamples`.
 
