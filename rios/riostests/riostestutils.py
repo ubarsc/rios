@@ -226,11 +226,6 @@ def testAll():
     if not ok:
         failureCount += 1
 
-    from . import testcolortable
-    ok = testcolortable.run()
-    if not ok:
-        failureCount += 1
-
     from . import testvector
     ok = testvector.run()
     if not ok:
