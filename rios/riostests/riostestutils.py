@@ -241,6 +241,16 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testfootprint
+    ok = testfootprint.run()
+    if not ok:
+        failureCount += 1
+
+    from . import testoverlap
+    ok = testoverlap.run()
+    if not ok:
+        failureCount += 1
+
     from . import testreproj
     ok = testreproj.run()
     if not ok:
