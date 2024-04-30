@@ -539,26 +539,7 @@ class ApplierControls(object):
         a layer name. If vectorname given, set only for that vector.
         """
         self.setOptionForImagename('vectorlayer', vectorname, vectorlayer)
-    
-    def makeResampleDict(self, imageDict):
-        """
-        Make a dictionary of resample methods, one for every image
-        name in the given dictionary. This method is for internal use only. 
-        """
-        d = {}
-        imagenamelist = imageDict.keys()
-        for name in imagenamelist:
-            method = self.getOptionForImagename('resampleMethod', name)
-            if isinstance(imageDict[name], list):
-                # We have a list of images for this name, so make a list of 
-                # resample methods
-                d[name] = [method] * len(imageDict[name])
-            else:
-                # We have just one image, so the corresponding entry is just one 
-                # resample method
-                d[name] = method
-        return d
-    
+
     def selectInputImageLayers(self, layerselection, imagename=None):
         """
         Set which layers are to be read from the input image(s). Default
