@@ -24,7 +24,10 @@ but with the right overlap, there should be none.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy
-from scipy.ndimage import maximum_filter
+try:
+    from scipy.ndimage import maximum_filter
+except ImportError:
+    maximum_filter = None
 from osgeo import gdal
 
 from rios import applier
@@ -41,6 +44,9 @@ def run():
     allOK = True
     
     riostestutils.reportStart(TESTNAME)
+    if maximum_filter is None:
+        riostestutils.report(TESTNAME, "Skipped, as scipy is unavailable")
+        return allOK
 
     img = 'img.img'
     outimg = 'outimg.img'
