@@ -101,11 +101,23 @@ def readBlockOneFile(blockDefn, symbolicName, seqNum, filename, gdalObjCache,
     shape = (nBands, ysize + 2 * margin, xsize + 2 * margin)
     gdalType = bandObjList[0].DataType
     dtype = gdal_array.GDALTypeCodeToNumericTypeCode(gdalType)
-    nullval = bandObjList[0].GetNoDataValue()
-    if nullval is None:
-        # We need some fallback value if null is not supplied
-        nullval = 0
-    outArray = numpy.full(shape, nullval, dtype=dtype)
+
+    # We need a null value to initialize the array. Figure out
+    # what to use, depending on what is available.
+    nullvalList = controls.getOptionForImagename('inputnodata',
+                symbolicName)
+    if nullvalList is not None and not isinstance(nullvalList, list):
+        nullvalList = [nullvalList] * len(bandObjList)
+    if nullvalList is None:
+        nullvalList = [bandObjList[i].GetNoDataValue()
+                   for i in range(len(bandObjList))]
+
+    # Now fill each layer with its corresponding null value. We start with
+    # zeros, so if any of the null values is None, it will fallback to zero
+    outArray = numpy.zeros(shape, dtype=dtype)
+    for i in range(len(nullvalList)):
+        if nullvalList[i] is not None:
+            outArray[i].fill(nullvalList[i])
 
     for i in range(nBands):
         readIntoArray(outArray[i], ds, bandObjList[i], top, left,
