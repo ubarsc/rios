@@ -28,10 +28,10 @@ def run():
     onelayerArr = riostestutils.genRampArray()
     lyrList = []
     for i in range(numBands):
-        lyr = (onelayerArr + 1)
+        arr = (onelayerArr + i)
         band = ds.GetRasterBand(i + 1)
-        band.WriteArray(lyr)
-        lyrList.append(lyr)
+        band.WriteArray(arr)
+        lyrList.append(arr)
     del ds
         
     stack = numpy.array(lyrList)
