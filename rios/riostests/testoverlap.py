@@ -77,6 +77,9 @@ def run():
             directFiltered.size)
         riostestutils.report(TESTNAME, msg)
 
+    for fn in [img, outimg]:
+        riostestutils.removeRasterFile(fn)
+
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
 
