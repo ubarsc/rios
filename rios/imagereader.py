@@ -308,12 +308,16 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         if nullvalList is None:
             nullvalList = fileInfo.nodataval
 
-        # The warp options constructor has weird expectations about the
-        # null values, so construct what it requires.
-        if None in nullvalList:
+        # The WarpOptions constructor has weird expectations about the
+        # null values, so construct what it requires. It accepts other
+        # forms, but they result in performance penalties, sometimes
+        # quite severe. Not sure if this is the best form, but it is the
+        # best I could find.
+        if all([n is None for n in nullvalList]):
             nullval = None
         else:
             nullval = ' '.join([repr(n) for n in nullvalList])
+
         overviewLevel = 'NONE'
         if controls.getOptionForImagename('allowOverviewsGdalwarp',
                 symbolicName):
