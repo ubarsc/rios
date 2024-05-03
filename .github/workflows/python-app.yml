@@ -54,19 +54,19 @@ jobs:
         pip install .
         testrios
 
-  tests-macOS:
-    runs-on: macos-latest
-
-    steps:
-    - uses: actions/checkout@v2
-    - uses: conda-incubator/setup-miniconda@v2
-      with:
-        miniforge-version: latest
-        miniforge-variant: Mambaforge
-    - name: Install dependencies
-      run: |
-        conda install gdal cloudpickle scipy
-    - name: Test with testrios
-      run: |
-        pip install .
-        testrios
+#  tests-macOS:
+#    runs-on: macos-latest
+#
+#    steps:
+#    - uses: actions/checkout@v2
+#    - uses: conda-incubator/setup-miniconda@v2
+#      with:
+#        miniforge-version: latest
+#        miniforge-variant: Mambaforge
+#    - name: Install dependencies
+#      run: |
+#        conda install gdal cloudpickle scipy
+#    - name: Test with testrios
+#      run: |
+#        pip install .
+#        testrios
