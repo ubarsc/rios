@@ -60,7 +60,9 @@ def run():
         if not (table == table_fromfile).all():
             riostestutils.report(TESTNAME, "Value mis-match for color table")
             allOK = False
-        
+
+    del ds
+
     if os.path.exists(imgfile):
         riostestutils.removeRasterFile(imgfile)
 
