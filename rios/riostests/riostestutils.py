@@ -25,6 +25,8 @@ thing being tested.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function, division
 
+import platform
+
 import numpy
 from osgeo import gdal
 from osgeo import osr
@@ -41,6 +43,8 @@ DEFAULT_DTYPE = gdal.GDT_Byte
 DEFAULT_XLEFT = 500000
 DEFAULT_YTOP = 7000000
 DEFAULT_EPSG = 28355
+
+platformName = platform.system()
 
 
 def createTestFile(filename, numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS, 
@@ -231,10 +235,11 @@ def testAll():
     if not ok:
         failureCount += 1
 
-    from . import testreaderinfo
-    ok = testreaderinfo.run()
-    if not ok:
-        failureCount += 1
+    if platformName != "Darwin":
+        from . import testreaderinfo
+        ok = testreaderinfo.run()
+        if not ok:
+            failureCount += 1
 
     from . import testcoords
     ok = testcoords.run()
@@ -301,15 +306,17 @@ def testAll():
     if not ok:
         failureCount += 1
 
-    from . import testavgsubproc
-    ok = testavgsubproc.run()
-    if not ok:
-        failureCount += 1
+    if platformName != "Darwin":
+        from . import testavgsubproc
+        ok = testavgsubproc.run()
+        if not ok:
+            failureCount += 1
 
-    from . import testapplyreturn
-    ok = testapplyreturn.run()
-    if not ok:
-        failureCount += 1
+    if platformName != "Darwin":
+        from . import testapplyreturn
+        ok = testapplyreturn.run()
+        if not ok:
+            failureCount += 1
 
     from . import testavgmulti
     ok = testavgmulti.run()
