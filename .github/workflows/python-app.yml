@@ -28,8 +28,10 @@ jobs:
         miniforge-version: latest
         miniforge-variant: Mambaforge
     - name: Install dependencies
+      shell: bash -l {0}
       run: conda install gdal cloudpickle scipy
     - name: Test with testrios.py
+      shell: bash -l {0}
       run: |
         pip install .
         testrios.py
