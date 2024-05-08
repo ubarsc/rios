@@ -4,10 +4,14 @@ Parallel Processing using AWS Batch
 
 This directory contains an example of using RIOS with AWS Batch.
 
-Please ensure you understand the concepts used and the changes (and costs!)
-associated with these examples before you use them.
+It is assumed that you already have a reasonable understanding of the
+AWS Batch system. Please ensure you understand the concepts used and the
+changes (and costs!) associated with these examples before you use them.
 
-The helper scripts below assume RIOS is installed on the machine you are using them on.
+The helper scripts below assume RIOS is installed on the machine you are using
+them on. The CW_AWSBATCH compute worker kind is currently very entangled
+with these scripts, and depends on the AWS Batch environment having been created
+using these methods.
 
 Files
 -----
