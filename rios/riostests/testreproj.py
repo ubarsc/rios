@@ -6,8 +6,8 @@ RIOS inputs, allowing RIOS to reproject the original on-the-fly. They should
 thus be the same when checked inside the userFunction. The check is a per-pixel
 match, looking for zero mis-matched pixel values.
 
-This test is a little bit flaky, because the code in GDAL is not completely
-stable. With this in mind, don't be in a hurry to change this test much.
+This test is a little bit sensitive, because the code in GDAL is not completely
+stable. With this in mind, don't be in a hurry to change the detail of this test.
 
 """
 # This file is part of RIOS - Raster I/O Simplification
