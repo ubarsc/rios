@@ -253,6 +253,26 @@ class ConcurrencyStyle:
                 numCpus, numComputeWorkers)
             raise ValueError(msg)
 
+    def __repr__(self):
+        s = ("ConcurrencyStyle(" +
+             "numReadWorkers={}, ".format(self.numReadWorkers) +
+             "numComputeWorkers={}, ".format(self.numComputeWorkers) +
+             "computeWorkerKind={}, ".format(self.computeWorkerKind) +
+             "computeWorkersRead={}, ".format(self.computeWorkersRead) +
+             "singleBlockComputeWorkers={}, ".format(
+                  self.singleBlockComputeWorkers) +
+             "haveSharedTemp={}, ".format(self.haveSharedTemp) +
+             "readBufferInsertTimeout={}, ".format(
+                  self.readBufferInsertTimeout) +
+             "readBufferPopTimeout={}, ".format(self.readBufferPopTimeout) +
+             "computeBufferInsertTimeout={}, ".format(
+                  self.computeBufferInsertTimeout) +
+             "computeBufferPopTimeout={}, ".format(
+                  self.computeBufferPopTimeout) +
+             "computeBarrierTimeout={})".format(self.computeBarrierTimeout)
+            )
+        return s
+
 
 class FilenameAssociations(object):
     """
