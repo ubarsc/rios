@@ -100,6 +100,8 @@ def main():
         )
         controls.setConcurrencyStyle(conc)
         print(conc)
+    else:
+        print("No concurrency requested")
 
     t0 = time.time()
     rtn = applier.apply(doMedian, infiles, outfiles, controls=controls)
