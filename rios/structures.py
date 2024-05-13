@@ -260,17 +260,17 @@ class ConcurrencyStyle:
              "computeWorkerKind={}, ".format(self.computeWorkerKind) +
              "computeWorkersRead={}, ".format(self.computeWorkersRead) +
              "singleBlockComputeWorkers={}, ".format(
-                  self.singleBlockComputeWorkers) +
+                 self.singleBlockComputeWorkers) +
              "haveSharedTemp={}, ".format(self.haveSharedTemp) +
              "readBufferInsertTimeout={}, ".format(
-                  self.readBufferInsertTimeout) +
+                 self.readBufferInsertTimeout) +
              "readBufferPopTimeout={}, ".format(self.readBufferPopTimeout) +
              "computeBufferInsertTimeout={}, ".format(
-                  self.computeBufferInsertTimeout) +
+                 self.computeBufferInsertTimeout) +
              "computeBufferPopTimeout={}, ".format(
-                  self.computeBufferPopTimeout) +
+                 self.computeBufferPopTimeout) +
              "computeBarrierTimeout={})".format(self.computeBarrierTimeout)
-            )
+             )
         return s
 
 
