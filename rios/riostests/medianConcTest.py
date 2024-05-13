@@ -84,14 +84,22 @@ def main():
         controls.setResampleMethod(cmdargs.resample)
     if cmdargs.numreadworkers > 0 or cmdargs.numcomputeworkers > 0:
         cwKind = CW_NONE
+        computeWorkersRead=False
         if cmdargs.numcomputeworkers > 0:
             cwKind = eval("CW_{}".format(cmdargs.kind.upper()))
+        if cwKind == CW_AWSBATCH:
+            # This does not always have to be True, but for our tests it
+            # is the correct choice
+            computeWorkersRead = True
+
         conc = applier.ConcurrencyStyle(
             numReadWorkers=cmdargs.numreadworkers,
             numComputeWorkers=cmdargs.numcomputeworkers,
-            computeWorkerKind=cwKind
+            computeWorkerKind=cwKind,
+            computeWorkersRead=computeWorkersRead
         )
         controls.setConcurrencyStyle(conc)
+        print(conc)
 
     t0 = time.time()
     rtn = applier.apply(doMedian, infiles, outfiles, controls=controls)
