@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Main script for a compute worker
+Main script for a compute worker running in a separate process.
 """
 import argparse
 
@@ -8,6 +8,11 @@ from osgeo import gdal
 
 from rios import applier
 from rios.structures import NetworkDataChannel, Timers, WorkerErrorRecord
+
+
+# Compute workers in separate processes should always use GDAL exceptions,
+# regardless of whether the main script is doing so.
+gdal.UseExceptions()
 
 
 def getCmdargs():

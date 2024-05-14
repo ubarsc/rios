@@ -25,6 +25,7 @@ import sys
 import queue
 
 import numpy
+from osgeo import gdal
 
 # Some symbols are imported to here for easy access by the user, even
 # though they are not used in this module. Hence the "# noqa: F401"
@@ -731,6 +732,11 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     There is a page dedicated to :doc:`applierexamples`.
 
     """
+    # We always want to be using exceptions, but don't wish to force this
+    # on the calling program, so save what they were using
+    usingGdalExceptions = gdal.GetUseExceptions()
+    gdal.UseExceptions()
+
     if controls is None:
         controls = ApplierControls()
     controls.emulateOldJobManager()
@@ -756,6 +762,10 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
                 otherArgs, controls, allInfo, workinggrid, blockList)
 
     rtn.timings.merge(timings)
+
+    if not usingGdalExceptions:
+        # Restore the calling program's preference
+        gdal.DontUseExceptions()
     return rtn
 
 
