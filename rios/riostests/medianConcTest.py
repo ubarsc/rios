@@ -9,7 +9,10 @@ import json
 import time
 
 import numpy
-import pystac_client
+try:
+    import pystac_client
+except ImportError:
+    pystac_client = None
 from osgeo import gdal, ogr
 from numba import jit
 
@@ -31,6 +34,10 @@ def getCmdargs():
     """
     p = argparse.ArgumentParser()
 
+    p.add_argument("--loadfilelist", help=("Name of an input text " +
+        "file. If given, then skip the STAC search, and instead read " +
+        "a list of image filenames from this file (one file per line)"))
+
     search = p.add_argument_group('Search Parameters')
     search.add_argument("-t", "--tile", default="56JPQ",
         help="Nominated tile (default=%(default)s)")
@@ -42,6 +49,9 @@ def getCmdargs():
         choices=['B01', 'B02', 'B03', 'B04', 'B05', 'B06', 'B07', 'B08',
             'B8A', 'B09', 'B10', 'B11', 'B12'],
         help="Band ID string (default=%(default)s)")
+    search.add_argument("--savefilelist", help=("Name of an output text " +
+        "file. If given, the list of files resulting from the STAC search " +
+        "is written into this (one file per line)"))
 
     conc = p.add_argument_group("Concurrency Parameters")
     conc.add_argument("-r", "--numreadworkers", type=int, default=0,
@@ -66,7 +76,10 @@ def getCmdargs():
 def main():
     cmdargs = getCmdargs()
 
-    fileList = searchStac(cmdargs)
+    if cmdargs.loadfilelist is not None:
+        fileList = [line.strip() for line in open(cmdargs.loadfilelist)]
+    else:
+        fileList = searchStac(cmdargs)
     print("Found {} dates".format(len(fileList)))
 
     infiles = applier.FilenameAssociations()
@@ -214,6 +227,12 @@ def searchStac(cmdargs):
     fileList = ["{}/{}.tif".format(fn, cmdargs.band) for fn in fileList]
     # Make the names suitable for GDAL
     fileList = [fn.replace('s3:/', '/vsis3') for fn in fileList]
+
+    if cmdargs.savefilelist is not None:
+        outf = open(cmdargs.savefilelist, 'w')
+        for fn in fileList:
+            outf.write(fn + '\n')
+        outf.close()
 
     return fileList
 
