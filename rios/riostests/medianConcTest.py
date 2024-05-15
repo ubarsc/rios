@@ -10,7 +10,7 @@ import time
 
 import numpy
 import pystac_client
-from osgeo import ogr
+from osgeo import gdal, ogr
 from numba import jit
 
 from rios import applier, pixelgrid, fileinfo
@@ -18,6 +18,7 @@ from rios import RIOS_VERSION, VersionObj
 from rios.applier import CW_NONE, CW_THREADS, CW_AWSBATCH       # noqa: F401
 
 
+gdal.UseExceptions()
 ogr.UseExceptions()
 
 stacServer = "https://earth-search.aws.element84.com/v1/"
