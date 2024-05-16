@@ -37,6 +37,9 @@ def getCmdargs():
     p.add_argument("--loadfilelist", help=("Name of an input text " +
         "file. If given, then skip the STAC search, and instead read " +
         "a list of image filenames from this file (one file per line)"))
+    p.add_argument("-i", "--iterations", default=1, type=int,
+        help=("Number of iterations, used to increase the compute " +
+            "requirement (default=%(default)s)"))
 
     search = p.add_argument_group('Search Parameters')
     search.add_argument("-t", "--tile", default="56JPQ",
@@ -85,6 +88,7 @@ def main():
     infiles = applier.FilenameAssociations()
     outfiles = applier.FilenameAssociations()
     controls = applier.ApplierControls()
+    otherargs = applier.OtherInputs()
 
     infiles.img = fileList
     outfiles.median = 'median.tif'
@@ -117,8 +121,11 @@ def main():
     else:
         print("No concurrency requested")
 
+    otherargs.iterations = cmdargs.iterations
+
     t0 = time.time()
-    rtn = applier.apply(doMedian, infiles, outfiles, controls=controls)
+    rtn = applier.apply(doMedian, infiles, outfiles, otherargs,
+        controls=controls)
     t1 = time.time()
     if rtn is not None:
         print(rtn.timings.formatReport())
@@ -126,7 +133,7 @@ def main():
         print("Wall clock elapsed time: {:.1f} seconds".format(t1 - t0))
 
 
-def doMedian(info, inputs, outputs):
+def doMedian(info, inputs, outputs, otherargs):
     """
     Calculate per-pixel median of the list of files. Sam's code
     """
@@ -149,7 +156,8 @@ def doMedian(info, inputs, outputs):
             # extract the band we want
             dataStack[:, :, imgIdx] = image[bandIdx]
 
-        medianVal = numbaMedian(dataStack, nodata)
+        for i in range(otherargs.iterations):
+            medianVal = numbaMedian(dataStack, nodata)
         outStack[bandIdx] = medianVal
 
     outputs.median = outStack
