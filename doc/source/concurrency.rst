@@ -13,9 +13,9 @@ Computation can be spread across multiple worker threads (or processes or
 batch jobs), and all of this can be simultaneous with writing of output files. 
 The default behaviour has no concurrency, but options available through the
 controls object can turn on some or all of these features, without
-requiring changes to the computation in the user function.
+requiring changes to the code in the user function.
 
-The controls object now has a :func:`rios.applier.ApplierControls.setConcurrencyStyle` 
+The controls object now has a ``setConcurrencyStyle()``
 method, which takes a :class:`rios.structures.ConcurrencyStyle` object. 
 The constructor for this class has a number of options (see the class
 docstring for full details). 
@@ -57,14 +57,14 @@ The docstring for the :class:`rios.structures.ConcurrencyStyle` class
 contains a more detailed explanation of how the various style parameters 
 interact, and how to choose a good concurrency style for a particular 
 problem and hardware configuration. The `Compute Worker Kinds`_ section
-has deeper discussion on appropriate use of each compute worker kind.
+below has deeper discussion on appropriate use of each compute worker kind.
 
 It is strongly recommended that a new program be largely debugged with
 no concurrency, and that developers only switch on the concurrency after 
 they are already confident it works well without.
 
-The routines for processing raster attribute tables (rios.ratapplier) are
-unaffected by any of the above, and still work entirely sequentially.
+Note that the routines for processing raster attribute tables (rios.ratapplier)
+are unaffected by any of the above, and still work entirely sequentially.
 
 Quick Start
 -----------
@@ -85,7 +85,7 @@ There are others, but they require more understanding.
      In particular, note the ``reading`` and ``userfunction`` times.
 
   #. Find the ratio between the ``reading`` and ``userfunction`` times. This
-     tells us whether the program is dominated by I/O and computation. For many
+     tells us whether the program is dominated by I/O or computation. For many
      simpler raster processing tasks, the dominant part is reading the input
      files.
   #. If the ``reading`` time is substantially larger than the ``userfunction``
@@ -109,7 +109,7 @@ There are others, but they require more understanding.
      exactly what is going on.
 
   #. Vary the number of read workers to reduce the total elapsed wall time.
-     If you are able to reduce this so much that the userfunction time becomes
+     If you are able to reduce this so much that the ``userfunction`` time becomes
      a substantial part of it, then you may benefit from some compute workers::
 
        conc = applier.ConcurrencyStyle(
@@ -139,7 +139,7 @@ with this. The apply() function returns an object with a field called timings.
 This timings object can generate a simple report on where time is being spent
 during the run. ::
 
-    rtn = apply(userFunc, infiles, outfiles)
+    rtn = apply(userFunc, infiles, outfiles, controls=controls)
     timings = rtn.timings
     reportStr = timings.formatReport()
     print(reportStr)
@@ -159,7 +159,8 @@ This will show a simple report like the following::
     add_outbuffer          0.0
     pop_outbuffer          7.5
 
-This example was run with 4 compute workers and 1 read worker. The total amount
+This example was run with 4 compute workers and 1 read worker (it was a
+very compute-intensive task). The total amount
 of time spent in each category is added up across threads, so will be larger
 than the elapsed wall clock time shown at the top.
 
@@ -269,12 +270,13 @@ the PBS scheduler would find it easy to allocate each of the individual jobs,
 and so throughput would be quite high. However, it does imply a reasonable 
 level of availability on the queue. The main originating thread will be waiting
 for some output to come from the individual jobs, and if they get stuck
-behind other jobs for too long, the main job will timeout.
+behind other jobs for too long, the main job will timeout. This may require a
+much larger value for computeBufferPopTimeout.
 
 Communication between the jobs and the main thread is handled via a network
 socket, which is managed by an extra thread running in the main process. 
 That last point means that the main script may run one more thread than you
-expect. By default, the network address of this socket is given to the compute
+expect. By default, the network address of this socket is passed to the compute
 worker jobs via a small file in a shared temporary directory. If no
 shared temporary directory is available to the batch nodes, then
 set sharedTempDir=False, and it will be passed on the command line for each
@@ -314,7 +316,7 @@ descriptions.
 This was implemented mainly for testing, and is not intended for general
 use.
 
-Each compute worker runs as a separate process, started with subprocess.Popen,
+Each compute worker runs as a separate process, started with ``subprocess.Popen``,
 and thus runs in its own Python interpreter. For this reason, it may be a
 useful alternative to CW_THREADS, for tasks which do not release the GIL. 
 However, apart from that, there is probably no good reason to use this, and
