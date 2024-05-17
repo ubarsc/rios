@@ -30,7 +30,7 @@ RIOS processing falls into three stages.
 By default, no concurrency is enabled. The three stages above take place
 in sequence, for each block, before moving to the next block
 
-If concurrency is enabled, the same model still operates, but parts of it can
+If concurrency is enabled, the same model still operates, but these stages can
 be performed simultaneously, within the limits of the available hardware.
 
 The reading of input data is divided up at the level of single blocks of data
