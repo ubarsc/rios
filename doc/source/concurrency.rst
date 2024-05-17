@@ -194,7 +194,14 @@ parameters for the ConcurrencyStyle.
 Compute Worker Kinds
 --------------------
 This section describes the details of each of the different kinds of
-compute worker.
+compute worker. The simplest compute worker kind is CW_THREADS, and is likely
+to be the most useful for the majority of users.
+
+The other compute worker kinds should be regarded as somewhat experimental.
+They are all intended to provide ways of making greater use of a larger
+cluster which is managed by some kind of batch system, but the complexities
+of this may mean they are more trouble than they are worth. Feedback is
+welcome.
 
 **CW_THREADS**
 
