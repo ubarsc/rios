@@ -10,7 +10,8 @@ New Features
     a non-parallel architecture, and was never very good.
 
     - New concurrency model is more efficient and more flexible and
-      configurable. See :class:`rios.structures.ConcurrencyStyle`.
+      configurable. See :doc:`concurrency` and 
+      :class:`rios.structures.ConcurrencyStyle` for further details.
     - Allows overlapping of read, compute, and write operations.
     - Supports a number of different parallel system configurations,
       including multiple threads within one process, compute workers
