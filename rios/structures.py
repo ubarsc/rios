@@ -96,13 +96,16 @@ class ConcurrencyStyle:
             Selects the paradigm used to distribute compute workers.
             The CW_THREADS option means a pool of compute threads
             running within the same process as the rest of RIOS. This is
-            almost certainly the best option to start exploring concurrency
-            in RIOS.
-            The PBS, SLURM and AWSBATCH options all refer to different
+            almost certainly the best option to start exploring compute
+            concurrency in RIOS.
+
+            The CW_PBS, CW_SLURM and CW_AWSBATCH options all refer to different
             batch queue systems, so that compute workers can run as jobs
             on the batch queue. In those cases, not only do the workers
             run as separate processes, they may also be running on separate
-            machines.
+            machines. All these options are currently somewhat experimental,
+            and should be treated with caution.
+
             A value of CW_NONE means that computation happens sequentially
             within the main processing loop.
 
