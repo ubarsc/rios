@@ -216,6 +216,11 @@ class ConcurrencyStyle:
                    "singleBlockComputeWorkers is True")
             raise ValueError(msg)
 
+        if singleBlockComputeWorkers and numReadWorkers > 0:
+            msg = ("singleBlockComputeWorkers must have " +
+                   "numReadWorkers=0")
+            raise ValueError(msg)
+
         if (computeWorkersRead and computeWorkerKind == CW_THREADS):
             msg = "CW_THREADS compute workers cannot do their own reading"
             raise ValueError(msg)
