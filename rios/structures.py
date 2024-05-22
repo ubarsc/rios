@@ -141,7 +141,7 @@ class ConcurrencyStyle:
             running concurrently. This is likely to be of most benefit
             for large shared PBS and SLURM batch queues with plenty of
             available nodes. However, it should be used with caution, with
-            regard to the timouts which could occur (see below).
+            regard to the timeouts which could occur (see below).
         haveSharedTemp: bool
             If True, then the compute workers are all able to see a shared
             temporary directory. This is ignored for some computeWorkerKinds,
