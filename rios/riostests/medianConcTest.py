@@ -40,6 +40,7 @@ def getCmdargs():
     p.add_argument("-i", "--iterations", default=1, type=int,
         help=("Number of iterations, used to increase the compute " +
             "requirement (default=%(default)s)"))
+    p.add_argument("--bands")
 
     search = p.add_argument_group('Search Parameters')
     search.add_argument("-t", "--tile", default="56JPQ",
@@ -100,6 +101,9 @@ def main():
         pixGrid = makeRefPixgrid(fileList[0])
         controls.setReferencePixgrid(pixGrid)
         controls.setResampleMethod(cmdargs.resample)
+    if cmdargs.bands is not None:
+        bandList = [int(w) for w in cmdargs.bands.split(',')]
+        controls.selectInputImageLayers(bandList, imagename='img')
     if cmdargs.numreadworkers > 0 or cmdargs.numcomputeworkers > 0:
         cwKind = CW_NONE
         computeWorkersRead=False
