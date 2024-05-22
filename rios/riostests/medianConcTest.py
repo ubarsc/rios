@@ -97,6 +97,7 @@ def main():
     if VersionObj(RIOS_VERSION) < VersionObj('2.0.0'):
         # Get rid of rios-1.4 reproj messages
         controls.setLoggingStream(open('/dev/null', 'w'))
+    controls.setFootprintType(applier.UNION)
     if cmdargs.reproj:
         pixGrid = makeRefPixgrid(fileList[0])
         controls.setReferencePixgrid(pixGrid)
