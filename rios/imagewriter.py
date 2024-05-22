@@ -171,7 +171,8 @@ def openOutfile(symbolicName, filename, controls, arr, workinggrid):
         band = ds.GetRasterBand(i + 1)
         if thematic:
             band.SetMetadataItem('LAYER_TYPE', 'thematic')
-        band.SetNoDataValue(nullVal)
+        if nullVal is not None:
+            band.SetNoDataValue(nullVal)
         if layernames is not None:
             band.SetDescription(layernames[i])
 
