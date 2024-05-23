@@ -21,7 +21,7 @@ from __future__ import division
 
 import math
 
-from rios import applier
+from rios import applier, structures
 
 from . import riostestutils
 
@@ -94,21 +94,25 @@ def run():
         nullval = otherargs.nulls[key]
         riostestutils.genRampImageFile(fn, nullVal=nullval)
 
-    # We want this to work across threads and processes
-    conc = applier.ConcurrencyStyle(numReadWorkers=2, numComputeWorkers=2,
-        computeWorkerKind=applier.CW_SUBPROC)
-    controls.setConcurrencyStyle(conc)
+    if structures.cloudpickle is not None:
+        # We want this to work across threads and processes
+        conc = applier.ConcurrencyStyle(numReadWorkers=2, numComputeWorkers=2,
+            computeWorkerKind=applier.CW_SUBPROC)
+        controls.setConcurrencyStyle(conc)
 
-    rtn = applier.apply(checkLookupFunctions, infiles, outfiles, otherargs,
-        controls=controls)
-    errorList = []
-    for oa in rtn.otherArgsList:
-        errorList.extend(oa.errors)
+        rtn = applier.apply(checkLookupFunctions, infiles, outfiles, otherargs,
+            controls=controls)
+        errorList = []
+        for oa in rtn.otherArgsList:
+            errorList.extend(oa.errors)
 
-    ok = (len(errorList) == 0)
-    for msg in errorList:
-        riostestutils.report(TESTNAME, msg)
-    allOK = (ok and allOK)
+        ok = (len(errorList) == 0)
+        for msg in errorList:
+            riostestutils.report(TESTNAME, msg)
+        allOK = (ok and allOK)
+    else:
+        riostestutils.report(TESTNAME,
+            "Skipping process test, as cloudpickle unavailable")
     
     # Clean up
     for fn in [filename, infiles.img1] + infiles.img2:
