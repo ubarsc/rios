@@ -1,7 +1,7 @@
 Release Notes
 =============
 
-Version 2.0.0 (unknown date)
+Version 2.0.0 (2024-05-23)
 ----------------------------
 
 New Features
