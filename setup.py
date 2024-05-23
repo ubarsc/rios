@@ -46,7 +46,8 @@ setup(name='rios',
           'console_scripts': [
               'testrios = rios.riostests.riostestutils:testAll',
               'rioscalcstats = rios.cmdline.rioscalcstats:main',
-              'riosprintstats = rios.cmdline.riosprintstats:main'
+              'riosprintstats = rios.cmdline.riosprintstats:main',
+              'rios_computeworker = rios.cmdline.rios_computeworker:mainCmd'
           ]},
       packages=['rios', 'rios/parallel', 'rios/parallel/aws',
                         'rios/riostests', 'rios/cmdline'],

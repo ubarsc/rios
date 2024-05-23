@@ -9,7 +9,12 @@ A set of Python modules which makes it easy to write raster processing
 code in Python. Built on top of GDAL, it handles the details of 
 opening and closing files, checking alignment of projection and 
 raster grid, stepping through the raster in small blocks, etc., 
-allowing the programmer to concentrate on the processing involved. 
+allowing the programmer to concentrate on the processing involved.
+
+As of version 2.0, RIOS has strong support for parallel processing,
+in both reading and computation, supporting a range of paradigms.
+See :doc:`concurrency` for details.
+
 It is licensed under GPL 3.
 
 Example
@@ -64,7 +69,9 @@ High level functions
 .. toctree::
     :maxdepth: 1
 
+    RIOS Basic Examples <applierexamples>
     Processing Raster and Vector files with rios.applier <rios_applier>
+    Understanding RIOS's concurrency model <concurrency>
     Processing Raster Attribute Tables with rios.ratapplier <rios_ratapplier>
     Obtaining information on files with rios.fileinfo <rios_fileinfo>
     RIOS Environment Variables <environmentvars>
@@ -76,11 +83,19 @@ Low level functions
 
     rios_imagereader
     rios_imagewriter
-    rios_parallel
-    rios_parallel_aws_batch
+    rios_computemanager
+    rios_structures
     rios_rat
     rios_colortable
     rios_readerinfo
+
+Deprecated (see version 2.0 notes)
+----------------------------------
+.. toctree::
+    :maxdepth: 1
+
+    rios_parallel
+    rios_parallel_aws_batch
     
 
 Command Line Programs

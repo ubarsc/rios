@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 """
 Utility class PixelGridDefn, which defines a pixel grid,
 plus useful operations on it. 
@@ -63,11 +62,11 @@ class PixelGridDefn(object):
 
     The projection is given as a WKT string.
 
-    The constructor takes the projection, the number of rows and columns,
-    and EITHER a complete GDAL geotransform tuple, OR a grid specified
-    with all the extent limits and the pixel resolutions (xRes and yRes).
-    If the geotransform is given, then the xMin, xMax, xRes and so on
-    are calculated from it.
+    The constructor takes the projection, and EITHER a complete GDAL
+    geotransform tuple, with the number of rows and columns, OR a grid
+    specified with all the extent limits and the pixel resolutions
+    (xRes and yRes). If the geotransform is given, then the xMin, xMax, xRes
+    and so on are calculated from it.
     
     """
     def __init__(self, geotransform=None, nrows=None, ncols=None, projection=None,
@@ -357,16 +356,21 @@ def findCommonRegion(gridList, refGrid, combine=imageio.INTERSECTION):
     or BOUNDS_FROM_REFERENCE is performed. 
     
     """
-    newGrid = refGrid
-    if combine != imageio.BOUNDS_FROM_REFERENCE:
+    if combine == imageio.BOUNDS_FROM_REFERENCE:
+        newGrid = refGrid
+    else:
+        newGrid = None
         for grid in gridList:
-            if not newGrid.alignedWith(grid):
+            if not refGrid.alignedWith(grid):
                 grid = grid.reproject(refGrid)
 
-            if combine == imageio.INTERSECTION:
-                newGrid = newGrid.intersection(grid)
-            elif combine == imageio.UNION:
-                newGrid = newGrid.union(grid)
+            if newGrid is None:
+                newGrid = grid
+            else:
+                if combine == imageio.INTERSECTION:
+                    newGrid = newGrid.intersection(grid)
+                elif combine == imageio.UNION:
+                    newGrid = newGrid.union(grid)
         
     return newGrid
 

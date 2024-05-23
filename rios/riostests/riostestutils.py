@@ -25,6 +25,8 @@ thing being tested.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function, division
 
+import platform
+
 import numpy
 from osgeo import gdal
 from osgeo import osr
@@ -41,6 +43,8 @@ DEFAULT_DTYPE = gdal.GDT_Byte
 DEFAULT_XLEFT = 500000
 DEFAULT_YTOP = 7000000
 DEFAULT_EPSG = 28355
+
+platformName = platform.system()
 
 
 def createTestFile(filename, numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS, 
@@ -83,7 +87,8 @@ def genRampArray(nRows=DEFAULT_ROWS, nCols=DEFAULT_COLS):
     return ramp
 
 
-def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT, yTop=DEFAULT_YTOP):
+def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT,
+        yTop=DEFAULT_YTOP, nullVal=None):
     """
     Generate a test image of a simple 2-d linear ramp. 
     """
@@ -95,6 +100,8 @@ def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT, yTop=DEFAULT_
     
     band = ds.GetRasterBand(1)
     band.WriteArray(ramp)
+    if nullVal is not None:
+        band.SetNoDataValue(nullVal)
     del ds
 
 
@@ -109,6 +116,28 @@ def genThematicFile(filename):
     band.WriteArray(arr)
     
     band.SetMetadataItem('LAYER_TYPE', 'thematic')
+    del ds
+
+
+def genRowColImage(filename, nrows, ncols, xPix, yPix, xLeft, yTop):
+    """
+    Generate a 2-layer image. For each pixel, the two layer values
+    are the row and column number for that pixel
+    """
+    ds = createTestFile(filename, numRows=nrows, numCols=ncols,
+        dtype=gdal.GDT_UInt16, numBands=2, xLeft=xLeft, yTop=yTop,
+        xPix=xPix, yPix=yPix)
+
+    (row, col) = numpy.mgrid[:nrows, :ncols]
+    row = row.astype(numpy.uint16)
+    col = col.astype(numpy.uint16)
+
+    band = ds.GetRasterBand(1)
+    band.WriteArray(row)
+    band = ds.GetRasterBand(2)
+    band.WriteArray(col)
+    band.FlushCache()
+    ds.FlushCache()
     del ds
 
 
@@ -159,7 +188,7 @@ def reportStart(testName):
     """
     Report the beginning of a given test
     """
-    print("\n####################")
+    print("####################")
     print("Starting test:", testName)
 
 
@@ -201,18 +230,39 @@ def testAll():
     if not ok:
         failureCount += 1
 
-    from . import testcolortable
-    ok = testcolortable.run()
-    if not ok:
-        failureCount += 1
-
     from . import testvector
     ok = testvector.run()
     if not ok:
         failureCount += 1
 
+    if platformName != "Darwin":
+        from . import testreaderinfo
+        ok = testreaderinfo.run()
+        if not ok:
+            failureCount += 1
+
     from . import testcoords
     ok = testcoords.run()
+    if not ok:
+        failureCount += 1
+
+    from . import testfootprint
+    ok = testfootprint.run()
+    if not ok:
+        failureCount += 1
+
+    from . import testoverlap
+    ok = testoverlap.run()
+    if not ok:
+        failureCount += 1
+
+    from . import testreproj
+    ok = testreproj.run()
+    if not ok:
+        failureCount += 1
+
+    from . import testsetinputnull
+    ok = testsetinputnull.run()
     if not ok:
         failureCount += 1
 
@@ -250,6 +300,23 @@ def testAll():
     ok = testlayerselection.run()
     if not ok:
         failureCount += 1
+
+    from . import testavgthreads
+    ok = testavgthreads.run()
+    if not ok:
+        failureCount += 1
+
+    if platformName != "Darwin":
+        from . import testavgsubproc
+        ok = testavgsubproc.run()
+        if not ok:
+            failureCount += 1
+
+    if platformName != "Darwin":
+        from . import testapplyreturn
+        ok = testapplyreturn.run()
+        if not ok:
+            failureCount += 1
 
     from . import testavgmulti
     ok = testavgmulti.run()

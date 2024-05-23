@@ -28,28 +28,22 @@ def getCmdArgs():
     return cmdargs
 
 
-def deleteAllS3Files(outputs):
-    """
-    See https://stackoverflow.com/questions/43326493/what-is-the-fastest-way-to-empty-s3-bucket-using-boto3
-
-    Needed before you can delete the bucket
-    """
-    s3 = boto3.resource('s3')
-    bucket = s3.Bucket(outputs['BatchBucket'])
-    bucket.objects.all().delete()
-
-
 def deleteAllECRImages(outputs):
     """
     See https://stackoverflow.com/questions/58843927/boto3-script-to-delete-all-images-which-are-untagged
 
-    Needed before you can delete the repo
+    Needed before you can delete the repos
     """
-    client = boto3.client('ecr')
-    response = client.list_images(repositoryName='riosecr')
-    imageList = [image for image in response['imageIds']]
-    if len(imageList) > 0:
-        client.batch_delete_image(repositoryName='riosecr', imageIds=imageList)
+    client = boto3.client('ecr', region_name=REGION)
+    for name in ['riosecr', 'riosecrmain']:
+        try:
+            response = client.list_images(repositoryName=name)
+            imageList = [image for image in response['imageIds']]
+            if len(imageList) > 0:
+                client.batch_delete_image(repositoryName=name, 
+                        imageIds=imageList)
+        except client.exceptions.RepositoryNotFoundException:
+            pass
 
 
 def main():
@@ -60,7 +54,6 @@ def main():
 
     outputs = getStackOutputs()
 
-    deleteAllS3Files(outputs)
     deleteAllECRImages(outputs)
 
     client = boto3.client('cloudformation', region_name=REGION)

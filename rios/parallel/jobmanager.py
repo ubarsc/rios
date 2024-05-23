@@ -1,4 +1,6 @@
 """
+This file is entirely deprecated, as of version 2.0.0.
+
 Base class and sub-classes for managing parallel processing in RIOS. 
 
 It should be emphasised at the start that it is only worth using
@@ -181,6 +183,7 @@ class JobManager(object):
         """
         numSubJobs is the number of sub-jobs
         """
+        rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
         self.numSubJobs = numSubJobs
         self.tempdir = '.'
     
@@ -672,6 +675,8 @@ class MpiJobManager(JobManager):
     dest = 0
 
     def __init__(self, numSubJobs):
+        rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
         from mpi4py import MPI
 
         # find the path to rios_subproc_mpi.py
@@ -789,6 +794,8 @@ class MultiJobManager(JobManager):
     pool = None
 
     def __init__(self, numSubJobs):
+        rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
         from multiprocessing import Pool
 
         # base class does one job in current process so we don't
@@ -859,6 +866,8 @@ def getJobManagerClassByType(jobMgrType):
     given jobMgrType string. 
         
     """
+    rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
     jobMgr = None
     subClasses = JobManager.__subclasses__()
     for c in subClasses:
@@ -872,6 +881,8 @@ def getAvailableJobManagerTypes():
     Return a list of currently known job manager types
     
     """
+    rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
     subClasses = JobManager.__subclasses__()
     typeList = [c.jobMgrType for c in subClasses]
     return typeList
@@ -884,6 +895,8 @@ def getJobMgrObject(controls):
     If none is required, or none is available, then return None
     
     """
+    rioserrors.deprecationWarning("The JobManager class is deprecated (v2.0.0)")
+
     jobmgr = None
     if controls.numThreads > 1:
         if controls.jobManagerType is None:

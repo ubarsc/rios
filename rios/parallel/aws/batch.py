@@ -1,4 +1,6 @@
 """
+This file is entirely deprecated, as of version 2.0.0.
+
 Module for implementing parallel with AWS Batch. 
 
 See the class AWSBatchJobManager for the implementation.

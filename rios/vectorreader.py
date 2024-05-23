@@ -5,6 +5,9 @@ class that perform on-the-fly rasterization of
 vectors into raster blocks to fit in with
 ImageReader and ImageWriter classes.
 
+As of version 2.0.0, everything in this module is deprecated. Vector reading
+is now handled much more neatly within the imagereader module.
+
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -66,6 +69,9 @@ class Vector(object):
         for the temporary rasterised file.
 
         """
+        msg = "The Vector class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
+
         # open the file and get the requested layer
         self.filename = filename
         self.layerid = inputlayer
@@ -228,6 +234,9 @@ class VectorReader(object):
         progress is an instance of a Progress class, if none 
         an instance of cuiprogress.CUIProgress is created an used
         """
+        msg = "The VectorReader class is now deprecated (v2.0.0)"
+        rioserrors.deprecationWarning(msg)
+
         self.vectorContainer = vectorContainer
         if progress is None:
             self.progress = cuiprogress.SilentProgress()

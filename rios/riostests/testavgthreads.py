@@ -1,7 +1,11 @@
 """
-A simple test with resampling required. Two input images
-are generated on a slightly different grid, and then rios averages
-the two, allowing a resample. 
+Does a basic test of rios concurrency, using the CW_THREADS option.
+
+Generates a pair of images, and then applies a function to calculate
+the average of them. Checks the resulting output against a known 
+correct answer. 
+
+Steals heavily from testavg
 """
 # This file is part of RIOS - Raster I/O Simplification
 # Copyright (C) 2012  Sam Gillingham, Neil Flood
@@ -18,13 +22,16 @@ the two, allowing a resample.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from __future__ import print_function
+import os
 import numpy
 from osgeo import gdal
-from rios import applier
-
+from rios import applier, structures
 from . import riostestutils
 
-TESTNAME = "TESTRESAMPLE"
+TESTNAME = "TESTAVGTHREADS"
+
+TEST_NCPUS = 2
 
 
 def run():
@@ -32,41 +39,43 @@ def run():
     Run the test
     """
     riostestutils.reportStart(TESTNAME)
-
+    
     ramp1 = 'ramp1.img'
     ramp2 = 'ramp2.img'
     riostestutils.genRampImageFile(ramp1)
-    # Now generate a similar file, but with a small offset. This corresponds 
-    # to shifting the image 1 pixel across and 2 pixels down, although not precisely
-    xLeft = riostestutils.DEFAULT_XLEFT + 9
-    yTop = riostestutils.DEFAULT_YTOP - 19
-    riostestutils.genRampImageFile(ramp2, xLeft=xLeft, yTop=yTop)
+    riostestutils.genRampImageFile(ramp2, reverse=True)
     outfile = 'rampavg.img'
-    
-    calcAverage(ramp1, ramp2, outfile)
-    
-    ok = checkResult(outfile)
-    
-    # Clean up
-    for filename in [ramp1, ramp2, outfile]:
-        riostestutils.removeRasterFile(filename)
+
+    try:
+        calcAverage(ramp1, ramp2, outfile)
+        ok = checkResult(outfile)
+    finally:
+        # Clean up, even when an exception raised
+        for filename in [ramp1, ramp2, outfile]:
+            if os.path.exists(filename):
+                try:
+                    riostestutils.removeRasterFile(filename)
+                except Exception:
+                    pass
     
     return ok
 
 
 def calcAverage(file1, file2, avgfile):
     """
-    Use RIOS to calculate the average of two files. Allows
-    nearest-neighbour resampling of the second file. 
+    Use RIOS to calculate the average of two files using MPI.
+
     """
     infiles = applier.FilenameAssociations()
     outfiles = applier.FilenameAssociations()
     infiles.img = [file1, file2]
     outfiles.avg = avgfile
+
     controls = applier.ApplierControls()
-    controls.setReferenceImage(file1)
-    controls.setResampleMethod('near')
-    
+    conc = structures.ConcurrencyStyle(numReadWorkers=1,
+        numComputeWorkers=2, computeWorkerKind=structures.CW_THREADS)
+    controls.setConcurrencyStyle(conc)
+
     applier.apply(doAvg, infiles, outfiles, controls=controls)
 
 
@@ -90,10 +99,7 @@ def checkResult(avgfile):
     """
     # Work out the correct answer
     ramp1 = riostestutils.genRampArray()
-    # Do a nearest-neighbour resample of the second array
-    ramp2 = ramp1[:-2, :-1]
-    # Get the corresponding part of the first array
-    ramp1 = ramp1[2:, 1:]
+    ramp2 = riostestutils.genRampArray()[:, ::-1]
     tot = (ramp1.astype(numpy.float32) + ramp2)
     avg = (tot / 2.0).astype(numpy.uint8)
     
@@ -115,3 +121,7 @@ def checkResult(avgfile):
         riostestutils.report(TESTNAME, "Passed")
 
     return ok
+
+
+if __name__ == "__main__":
+    run()

@@ -251,20 +251,24 @@ and presented inside the user's function as numpy arrays, in exactly the same wa
 Some attributes are added to the :class:`rios.applier.ApplierControls` object to manage the rasterizing process, 
 setting such things as a burn value (i.e. the value in the array corresponding to pixels "inside" the polygons. 
 
-Parallel Processing
--------------------
+Concurrency
+-----------
 
-As of RIOS 1.4 each block can be processed on a seperate CPU using either PBS, SLURM, MPI, multiprocessing
-or Python's native subprocess module. The :mod:`rios.parallel.jobmanager` module has more information on the details.
-Making use of this facility is very easy and in most cases should be as simple as setting some more options on the 
-control class as below::
+As of RIOS 2.0, there is much stronger support for concurrency in both reading of image data
+and computing the user function. The reader is referred to :doc:`concurrency` for a detailed
+description of the concurrency model. It is activated by creating a ConcurrencyStyle object,
+and giving this to the controls object::
 
     from rios import applier
-    controls = applier.ApplierControls()
-    controls.setNumThreads(5)
-    controls.setJobManagerType('mpi')
 
-Advanced Examples
+    controls = applier.Controls()
+    concurrency = applier.ConcurrencyStyle(numReadWorkers=3)
+    controls.setConcurrencyStyle(concurrency)
+
+The earlier parallel processing paradigm (from version 1.4) is now disabled, and should not be used.
+
+Other Examples
 -----------------
 
-More advanced RIOS examples are available from the `Spectraldifferences site <https://spectraldifferences.wordpress.com/tag/rios/>`_.
+The good people from the `Spectraldifferences blog <https://spectraldifferences.wordpress.com/tag/rios/>`_
+have made available some other examples of their uses of RIOS.

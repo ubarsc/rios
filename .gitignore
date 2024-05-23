@@ -1,3 +1,4 @@
 *.pyc
 *.img
 *.kea
+rios.egg-info

@@ -1,6 +1,6 @@
 
 # Based off Ubuntu
-FROM ubuntu:22.04
+FROM public.ecr.aws/ubuntu/ubuntu:22.04
 
 # These need to be passed in as --build-args
 ARG EXTRA_PACKAGES
@@ -11,6 +11,13 @@ ENV AWS_REGION_ENV=$AWS_REGION
 
 ARG DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV GDAL_HTTP_MERGE_CONSECUTIVE_RANGES=YES
+ENV GDAL_HTTP_MULTIPLEX=YES
+ENV VSI_CACHE=True
+ENV GDAL_HTTP_MAX_RETRY=10
+ENV GDAL_HTTP_RETRY_DELAY=5
+ENV GDAL_DISABLE_READDIR_ON_OPEN=EMPTY_DIR
+ENV CPL_ZIP_ENCODING=UTF-8
 
 # use local mirror
 RUN sed -i "s/http:\/\/ports./http:\/\/${AWS_REGION_ENV}.ec2.ports./g" /etc/apt/sources.list
@@ -29,7 +36,7 @@ RUN cd /tmp && tar xf rios-$RIOS_VER.tar.gz \
     && cd .. && rm -rf rios-$RIOS_VER rios-$RIOS_VER.tar.gz
 
 # Set our subproc script for AWS Batch as the entrypoint.
-ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/rios_subproc_awsbatch.py"]
+ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/rios_computeworker"]
 
 # any pip packages?
 RUN if [ -n "$PIP_PACKAGES" ] ; then pip install $PIP_PACKAGES; fi

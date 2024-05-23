@@ -305,6 +305,7 @@ class VectorFileInfo(object):
             raise rioserrors.VectorLayerError("Unable to open vector dataset '%s'"%filename)
         layerCount = ds.GetLayerCount()
         self.layerInfo = [VectorLayerInfo(ds, i) for i in range(layerCount)]
+        self.layerCount = layerCount
     
     def __getitem__(self, i):
         return self.layerInfo[i]
@@ -344,7 +345,8 @@ class VectorLayerInfo(object):
         lyr = ds.GetLayer(i)
         if lyr is None:
             raise rioserrors.VectorLayerError("Unable to open layer %s in dataset '%s'"%(i, ds.GetName()))
-        
+
+        self.name = lyr.GetName()
         self.featureCount = lyr.GetFeatureCount()
         extent = lyr.GetExtent()
         self.xMin = extent[0]

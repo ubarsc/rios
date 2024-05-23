@@ -1,6 +1,80 @@
 Release Notes
 =============
 
+Version 2.0.0 (2024-05-23)
+----------------------------
+
+New Features
+  * New options for concurrency, strongly supported by a new internal 
+    architecture. The previous parallel processing had been tacked on to
+    a non-parallel architecture, and was never very good.
+
+    - New concurrency model is more efficient and more flexible and
+      configurable. See :doc:`concurrency` and 
+      :class:`rios.structures.ConcurrencyStyle` for further details.
+    - Allows overlapping of read, compute, and write operations.
+    - Supports a number of different parallel system configurations,
+      including multiple threads within one process, compute workers
+      as batch queue jobs with PBS or SLURM queues, or running on
+      separate nodes in an AWS cloud configuration
+
+  * The apply() function now returns a :class:`rios.structures.ApplierReturn`
+    object, with the following attributes
+
+    - timings. A Timers object, which allows reporting of the time spent
+      in different parts of RIOS. This is very useful in tuning the best
+      combination of concurrency parameters.
+    - otherArgsList. This is a list of :class:`rios.structures.OtherInputs`
+      objects which were given to individual compute workers, allowing them
+      to be recombined in whatever way makes sense.
+
+Disabled Features
+  * The getGDALDatasetFor & getGDALBandFor methods of the ReaderInfo object
+    (i.e. the first argument of the user function), gave access to the
+    underlying GDAL Dataset and Band objects for each input file. However,
+    these do not translate well to a multi-threaded context, since GDAL objects
+    are not thread-safe. For this reason, these two methods are now disabled
+    completely.
+
+Deprecations
+  * The old parallel computation facilities are no longer supported, but will
+    be emulated using the new concurrency support (with a deprecation warning).
+    Users should move to using the new style.
+  * Many old classes for reading and writing imagery are now deprecated,
+    and likely to be removed from the system in future releases. This includes
+    ImageReader, ImageWriter, InputCollections, and a number of other components.
+  * controls.setLoggingStream now does nothing. The old loggingstream was
+    hardly used internally anyway, and is now not used at all.
+
+Changed Behaviour
+  * Most existing RIOS scripts should work as before. Deprecation warnings may
+    be printed to stderr for certain situations.
+  * Vector inputs are still handled as before, but if there is a reprojection
+    involved, it now happens after rasterization instead of before. This means
+    that polygon edges can now become curved lines in the working grid
+    coordinate system. Neither the old or new approach is more correct, but
+    the difference could lead to slightly different results.
+  * controls.setReferenceImage will now accept either an external filename
+    (the old behaviour) or an internal symbolic name (more consistent with
+    everything else). The old behaviour is still perfectly valid, and will
+    be kept into the future.
+
+Bug Fixes
+  * In earlier versions, if a reference pixel grid or image were given, and
+    the footprint type was either INTERSECTION or UNION, the bounds of the
+    reference grid were erroneously included in the intersection or union
+    operation. If the reference bounds lay outside the correct footprint
+    region, this would lead to an unexpected working grid and output extent.
+    This was not the intended behaviour, and has now been fixed. The bounds
+    of the reference are now only used in the BOUNDS_FROM_REFERENCE case.
+  * Since version 1.4.1, a check was applied for GTiff format output files to
+    ensure that the selected RIOS blocksize did not conflict with the blocksize
+    of output files. The purpose was to avoid creating output GTiff files with
+    lots of unreclaimed re-written blocks. However, this check then
+    over-reached, and tried to fix the GTiff blocksize if they were
+    incompatible. This was not well implemented, and the check now just
+    raises an exception if an incompatibility is found.
+
 Version 1.4.17 (2024-03-01)
 ---------------------------
 
@@ -12,7 +86,6 @@ Improvements:
   * Improve doc for examples of controlling reading/writing https://github.com/ubarsc/rios/pull/73
   * add new controls method 'setWindowSize' which allows X and Y window sizes to be set at once https://github.com/ubarsc/rios/pull/74
   * use GDAL's type conversion functions instead https://github.com/ubarsc/rios/pull/75
-
 
 Version 1.4.16 (2023-09-28)
 ---------------------------
