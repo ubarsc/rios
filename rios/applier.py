@@ -827,7 +827,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                         blockDefn, allInfo, gdalObjCache, controls,
                         tmpfileMgr, rasterizeMgr)
             else:
-                with timings.interval('pop_inbuffer'):
+                with timings.interval('pop_readbuffer'):
                     (blockDefn, inputs) = inBlockBuffer.popNextBlock()
 
             readerInfo = makeReaderInfo(workinggrid, blockDefn, controls,
@@ -846,7 +846,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                     writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
                         controls, workinggrid)
             else:
-                with timings.interval('add_outbuffer'):
+                with timings.interval('insert_computebuffer'):
                     outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
             blockNdx += 1
@@ -933,7 +933,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             prog.update(blockNdx)
 
             try:
-                with timings.interval('pop_outbuffer'):
+                with timings.interval('pop_computebuffer'):
                     (blockDefn, outputs) = outBlockBuffer.popNextBlock()
 
                 with timings.interval('writing'):

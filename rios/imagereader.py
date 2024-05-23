@@ -465,7 +465,7 @@ class ReadWorkerMgr:
                         filename, gdalObjCache, controls, tmpfileMgr,
                         rasterizeMgr, workinggrid, allInfo)
 
-                with timings.interval('add_inbuffer'):
+                with timings.interval('insert_readbuffer'):
                     blockBuffer.addBlockData(blockDefn, symName, seqNum, arr)
 
                 try:

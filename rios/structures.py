@@ -796,25 +796,25 @@ class Timers:
             "Wall clock elapsed time: {:.1f} seconds".format(
                 d['walltime']['tot']),
             "",
-            "{:14s}       {:11s}".format("Timer", "Total (sec)"),
+            "{:20s}       {:11s}".format("Timer", "Total (sec)"),
             ("-" * 32)
         ]
         fieldOrder = ['reading', 'userfunction', 'writing', 'closing',
-            'add_inbuffer', 'pop_inbuffer', 'add_outbuffer',
-            'pop_outbuffer']
+            'insert_readbuffer', 'pop_readbuffer', 'insert_computebuffer',
+            'pop_computebuffer']
         for name in fieldOrder:
             if name in d:
-                line = "{:14s}    {:8.1f}".format(name, d[name]['tot'])
+                line = "{:20s}    {:8.1f}".format(name, d[name]['tot'])
                 reportLines.append(line)
 
         if level > 0:
-            head = "{:14s}       {}".format("Timer",
+            head = "{:20s}       {}".format("Timer",
                 "N,Min,Lower,Median,Upper,Max")
             reportLines.extend(["", "", head, ("-" * len(head))])
             for name in fieldOrder:
                 if name in d:
                     s = d[name]
-                    line = "{:14s}    {},{:.4f},{:.4f},{:.4f},{:.4f},{:.4f}"
+                    line = "{:20s}    {},{:.4f},{:.4f},{:.4f},{:.4f},{:.4f}"
                     line = line.format(name, s['N'], s['min'], s['lower'],
                         s['median'], s['upper'], s['max'])
                     reportLines.append(line)

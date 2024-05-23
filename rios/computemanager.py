@@ -188,7 +188,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
             timings = Timers()
             blockNdx = 0
             while blockNdx < numBlocks and not self.forceExit.is_set():
-                with timings.interval('pop_inbuffer'):
+                with timings.interval('pop_readbuffer'):
                     (blockDefn, inputs) = inBlockBuffer.popNextBlock()
                 readerInfo = makeReaderInfo(workinggrid, blockDefn, controls,
                     infiles, inputs, allInfo)
@@ -200,7 +200,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
                 with timings.interval('userfunction'):
                     userFunction(*userArgs)
 
-                with timings.interval('add_outbuffer'):
+                with timings.interval('insert_computebuffer'):
                     outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
                 blockNdx += 1
