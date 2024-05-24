@@ -24,8 +24,11 @@ Steals heavily from testavg
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from __future__ import print_function
 import os
+from multiprocessing import cpu_count
+
 import numpy
 from osgeo import gdal
+
 from rios import applier, structures
 from . import riostestutils
 
@@ -72,8 +75,10 @@ def calcAverage(file1, file2, avgfile):
     outfiles.avg = avgfile
 
     controls = applier.ApplierControls()
+    numComputeWorkers = min(2, cpu_count())
     conc = structures.ConcurrencyStyle(numReadWorkers=1,
-        numComputeWorkers=2, computeWorkerKind=structures.CW_THREADS)
+        numComputeWorkers=numComputeWorkers,
+        computeWorkerKind=structures.CW_THREADS)
     controls.setConcurrencyStyle(conc)
 
     applier.apply(doAvg, infiles, outfiles, controls=controls)
