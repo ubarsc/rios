@@ -20,8 +20,9 @@ multiple compute threads.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from rios import applier, structures
+from multiprocessing import cpu_count
 
+from rios import applier, structures
 from . import riostestutils
 
 TESTNAME = "TESTAPPLYRETURN"
@@ -64,7 +65,8 @@ def calcAverage(file1, cwKind):
     controls = applier.ApplierControls()
     controls.setWindowXsize(100)
     controls.setWindowYsize(100)
-    conc = structures.ConcurrencyStyle(numComputeWorkers=4,
+    numComputeWorkers = min(4, cpu_count())
+    conc = structures.ConcurrencyStyle(numComputeWorkers=numComputeWorkers,
         computeWorkerKind=cwKind, numReadWorkers=1)
     controls.setConcurrencyStyle(conc)
     

@@ -20,6 +20,7 @@ Test the ReaderInfo object for correctness
 from __future__ import division
 
 import math
+from multiprocessing import cpu_count
 
 from rios import applier, structures
 
@@ -94,9 +95,11 @@ def run():
         nullval = otherargs.nulls[key]
         riostestutils.genRampImageFile(fn, nullVal=nullval)
 
-    if structures.cloudpickle is not None:
+    numComputeWorkers = min(2, cpu_count())
+    if structures.cloudpickle is not None and numComputeWorkers > 1:
         # We want this to work across threads and processes
-        conc = applier.ConcurrencyStyle(numReadWorkers=2, numComputeWorkers=2,
+        conc = applier.ConcurrencyStyle(numReadWorkers=2,
+            numComputeWorkers=numComputeWorkers,
             computeWorkerKind=applier.CW_SUBPROC)
         controls.setConcurrencyStyle(conc)
 
