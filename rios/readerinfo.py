@@ -397,7 +397,7 @@ class ReaderInfo(object):
         nullvalList = self.nullvalLookup[id(block)]
         nullval = nullvalList[band - 1]
         if nullval is not None:
-            nullval = numpy.cast[block.dtype](nullval)
+            nullval = numpy.asarray(nullval, dtype=block.dtype)
         return nullval
         
     def getPercent(self):
