@@ -8,6 +8,13 @@
 # what to do.
 #
 
+# Currently allowing setuptools to "discover" the package directories,
+# but we could specify them if required, with [tool.setuptools]/packages=
+
+# The old setup.py currently has scripts=glob("bin/*.py"). When (or if)
+# we remove setup.py, we should also remove bin/, because the new
+# approach is via projects.scripts, which installs without the .py suffix
+
 [build-system]
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
@@ -21,18 +28,11 @@ authors = [
 ]
 description = "Raster Input/Output Simplification"
 readme = "README.md"
-license = {text = "LICENSE.txt"}
+license = {file = "LICENSE.txt"}
 
 [project.optional-dependencies]
 # For those computeWorkerKinds which run across multiple machines
 multimachine = ["cloudpickle"]
-
-# Currently allowing setuptools to "discover" the package directories,
-# but we could specify them if required, with [project]/packages=
-
-# The old setup.py currently has scripts=glob("bin/*.py"). When/if
-# we remove setup.py, we should also remove bin/, becuase the new
-# approach is via projects.scripts, which installs without the .py suffix
 
 [project.scripts]
 testrios = "rios.riostests.riostestutils:testAll"
