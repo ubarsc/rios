@@ -22,15 +22,13 @@ the scripts.
 import os
 from setuptools import setup
 import glob
-# Only need these for the site.ENABLE_USER_SITE further down
-import site
 import sys
 
-import rios
-
-
-# This next line is to get around https://github.com/pypa/pip/issues/7953
-site.ENABLE_USER_SITE = "--user" in sys.argv[1:]
+# When run via pyproject.toml, we seem unable to import our own package.
+# To get around this, we need to add to the path. I have no idea why,
+# but this seems to work fine.
+sys.path.insert(0, '')
+import rios    # noqa: E402
 
 # Are we installing the command line scripts?
 # this is an experimental option for users who are
