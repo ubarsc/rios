@@ -23,6 +23,11 @@ import os
 from setuptools import setup
 import glob
 
+# These next lines are to get around https://github.com/pypa/pip/issues/7953
+import site
+import sys
+site.ENABLE_USER_SITE = "--user" in sys.argv[1:]
+
 import rios
 
 # Are we installing the command line scripts?
