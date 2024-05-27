@@ -1,6 +1,6 @@
-# This currently fails if the installed versions of pip and setuptools
-# are too old (e.g. Ubuntu 22.04). These can be locally upgraded using
-#    pip install --user -U pip setuptools
+# This currently fails if the installed version of pip is before 23.0
+# (e.g. Ubuntu 22.04). This can be locally upgraded using
+#    pip install --user -U pip
 #
 # However, without that, the mere presence of this file as pyproject.toml
 # will cause the install to fail. Not wishing to break existing recipes,
@@ -16,7 +16,7 @@
 # approach is via projects.scripts, which installs without the .py suffix
 
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
