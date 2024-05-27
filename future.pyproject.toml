@@ -2,9 +2,9 @@
 # are too old (e.g. Ubuntu 22.04). These can be locally upgraded using
 #    pip install --user -U pip setuptools
 #
-# However, without that, the mere presence of this file as pyprojects.toml
+# However, without that, the mere presence of this file as pyproject.toml
 # will cause the install to fail. Not wishing to break existing recipes,
-# the file is currently named future.pyprojects.toml, until I work out
+# the file is currently named future.pyproject.toml, until I work out
 # what to do.
 #
 
