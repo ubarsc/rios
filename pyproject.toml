@@ -1,14 +1,16 @@
-# This currently fails if the installed version of pip is before 23.0
-# (e.g. Ubuntu 22.04). This can be locally upgraded using
-#    pip install --user -U pip
+# WARNING: The presence of this pyproject.toml file will make 'pip install'
+# use it. However, on older systems such as Ubuntu 22.04, the system version
+# of pip won't cope, and will fail fairly cryptically.
+# It requires at least version 23 of pip.
 #
-# However, without that, the mere presence of this file as pyproject.toml
-# will cause the install to fail. Not wishing to break existing recipes,
-# the file is currently named future.pyproject.toml, until I work out
-# what to do.
+# If you run into this problem, you should upgrade your pip with something
+# like the following:
+#    pip install --user -U pip
+# After that, you should be OK to install RIOS using pip, as normal.
 #
 
-# Currently allowing setuptools to "discover" the package directories,
+# Notes
+# Currently we allow setuptools to "discover" the package directories,
 # but we could specify them if required, with [tool.setuptools]/packages=
 
 # The old setup.py currently has scripts=glob("bin/*.py"). When (or if)
