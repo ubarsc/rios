@@ -1,0 +1,43 @@
+# Notes
+# Currently we allow setuptools to "discover" the package directories,
+# but we could specify them if required, with [tool.setuptools]/packages=
+
+# The old setup.py currently has scripts=glob("bin/*.py"). When (or if)
+# we remove setup.py, we should also remove bin/, because the new
+# approach is via projects.scripts, which installs without the .py suffix
+
+# The installation requires pip>=23.0. If not, it will fail in rather
+# cryptic ways (depending exactly what options are used).
+#
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rios"
+dynamic = ["version"]
+authors = [
+  {name = "Sam Gillingham"},
+  {name = "Neil Flood"}
+]
+description = "Raster Input/Output Simplification"
+readme = "README.md"
+license = {file = "LICENSE.txt"}
+
+[project.optional-dependencies]
+# For those computeWorkerKinds which run across multiple machines
+multimachine = ["cloudpickle"]
+
+[project.scripts]
+testrios = "rios.riostests.riostestutils:testAll"
+rioscalcstats = "rios.cmdline.rioscalcstats:main"
+riosprintstats = "rios.cmdline.riosprintstats:main"
+rios_computeworker = "rios.cmdline.rios_computeworker:mainCmd"
+
+[project.urls]
+Repository = "https://github.com/ubarsc/rios.git"
+Homepage = "https://www.rioshome.org"
+
+[tool.setuptools.dynamic]
+version = {attr = "rios.__version__"}
