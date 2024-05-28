@@ -6,8 +6,8 @@
 # we remove setup.py, we should also remove bin/, because the new
 # approach is via projects.scripts, which installs without the .py suffix
 
-# When doing an editable install (-e, --editable), you must be using a
-# version of pip >= 23.0. If not, it will fail very cryptically.
+# The installation requires pip>=23.0. If not, it will fail in rather
+# cryptic ways (depending exactly what options are used).
 #
 
 [build-system]
