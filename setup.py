@@ -23,6 +23,10 @@ import os
 from setuptools import setup
 import glob
 import sys
+import site
+
+
+site.ENABLE_USER_SITE = ("--user" in sys.argv[1:])
 
 # When run via pyproject.toml, we seem unable to import our own package.
 # To get around this, we need to add to the path. I have no idea why,
