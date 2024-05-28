@@ -44,7 +44,6 @@ jobs:
     - name: Install dependencies
       shell: bash -l {0}
       run: |
-        apt-get update
         apt-get install -y --no-install-recommends \
           python3-numpy \
           python3-gdal python3-cloudpickle python3-scipy python3-pip
