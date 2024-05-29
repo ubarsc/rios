@@ -1,26 +1,35 @@
-How to create a distribution of RIOS. 
+How to create a distribution of RIOS. You will need the 'build' module
+installed ("conda install build" or "pip install build").
 
 1. Ensure that you have fetched and committed everything which needs to go in.
 2. Change the version number in the rios/__init__.py. Version number
    is of the form a.b.c, as discussed below. 
-3. Update the release notes page at doc/source/releasenotes.rst, by going through the 
-   change logs since the last release, and noting what has been done. 
+3. Update the release notes page at doc/source/releasenotes.rst, by going
+   through the change logs since the last release, and noting what has been
+   done.
    DON'T FORGET TO COMMIT THIS, BEFORE THE NEXT STEP!!!!
 4. Push the changes to github with "git push". 
+
+   In practice, steps 2-3 are usually done as a single pull request, and
+   merged, rather than pushed directly, but I am skipping all the detail
+   of how to do a PR.
 5. Check out a clean copy of the repository into /tmp or
    somewhere similar and 'cd' into it.
-6. Create the distribution tarball, using
-    python setup.py sdist --formats=gztar,zip
-   This creates both a tar.gz and a zip, under a subdirectory called dist
-7. Create checksums of each of these, e.g.
+6. Create the distribution tar.gz file, using
+       python -m build .
+   This creates a tar.gz, under a subdirectory called dist/,
+       e.g. dist/rios-1.2.3.tar.gz
+7. Create a checksum of this, e.g.
+       cd dist
        sha256sum rios-1.2.3.tar.gz > rios-1.2.3.tar.gz.sha256
-       sha256sum rios-1.2.3.zip > rios-1.2.3.zip.sha256
 8. Go to the https://github.com/ubarsc/rios/releases page, and create a 
    new release by pressing "Draft a new release". 
    You should fill in the following:
        Tag version: rios-A.B.C
        Release Title: Version A.B.C
-       Upload files: Add the tar.gz and zip files, and their sha256 checksum files. 
+       Description: Add a brief description (a few lines at most) explaining
+                    the key points about this release.
+       Upload files: Add the tar.gz, and its sha256 checksum file.
        Click "Publish release"
        
 
