@@ -19,7 +19,7 @@ default: all
 # grab the current RIOS source tree and make it available to the 
 # docker COPY command
 dist:
-	cd ../..;python3 setup.py sdist --formats=gztar
+	cd ../..;python3 -m build .
 	cp ../../dist/rios-$(RIOS_VER).tar.gz .
 
 # Login to ECR, build package and push to ECR

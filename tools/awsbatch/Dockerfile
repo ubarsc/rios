@@ -32,7 +32,7 @@ COPY rios-$RIOS_VER.tar.gz /tmp
 # install RIOS
 RUN cd /tmp && tar xf rios-$RIOS_VER.tar.gz \
     && cd rios-$RIOS_VER \
-    && pip install . \
+    && DEB_PYTHON_INSTALL_LAYOUT=deb_system pip install . \
     && cd .. && rm -rf rios-$RIOS_VER rios-$RIOS_VER.tar.gz
 
 # Set our subproc script for AWS Batch as the entrypoint.
