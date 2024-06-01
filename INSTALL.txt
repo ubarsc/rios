@@ -4,35 +4,27 @@ Requirements.
 -------------
     Numpy.
     GDAL. This must include its python bindings.
-    cloudpickle. Optional. Only required for parallel jobs.
+    cloudpickle. Optional. Only required for using concurrency across
+        multiple machines.
 
 RIOS Installation steps, for Linux and similar.
 -----------------------------------------------
-    1. tar xfz rios-m.n.tar.gz
-    2. cd rios-m.n
-    3. Install configuration is provided within the setup.py script.
-       The best way to run this is now to use pip to execute it.
-       To install within the default location (perhaps within a virtual
-       env or similar), use
+    1. tar xfz rios-n.n.n.tar.gz
+    2. cd rios-n.n.n
+    3. Install configuration is provided within the pyproject.toml file.
+       This is executed using the pip command.
            pip install .
-       To install in a different location, use the --prefix option on
-       the pip command
-    4. Add to your environment as follows
-            Add <prefix>/bin to $PATH
-            Add <prefix>/lib/pythonA.B/site-packages to $PYTHONPATH
-       where pythonA.B refers to the version of python you are running.
-
-    5. Test the installation by executing the command
-            cd someTempDirectory
-            testrios.py
+    4. Test the installation with the testrios command.
+           cd someTempDirectory
+           testrios
        This will report any test failures.
 
 Environment Variables
 ---------------------
-    All of these environment variables can be left un-set, as they all have sensible
-    default values in the code. These are used to over-ride these defaults globally. 
-    All values can also be over-ridden on a per-application basis, using the 
-    applier controls object.
+    All of these environment variables can be left un-set, as they all have
+    sensible default values in the code. These are used to over-ride these
+    defaults globally. All values can also be over-ridden on a per-application
+    basis, using the applier controls object.
 
     Full details are provied at the RIOS home page
         https://www.rioshome.org/
@@ -41,15 +33,15 @@ Environment Variables
     the environment variables, which are then given to GDAL
          RIOS_DFLT_DRIVER="short name of GDAL driver"
          RIOS_DFLT_CREOPT_<driver>="list of driver options (space-separated)"
-    Variables of the form RIOS_DFLT_CREOPT_* can be used to set default creation
-    options for any number of drivers.
+    Variables of the form RIOS_DFLT_CREOPT_* can be used to set default
+    creation options for any number of drivers.
     
     The deprecated form below will be applied only to the default driver. 
          RIOS_DFLT_DRIVEROPTIONS="list of driver options (space-separated)"
     
-    To change the default behaviour when determining the footprint across multiple 
-    input images
-         RIOS_DFLT_FOOTPRINT=integer. default footprint setting, corresponding
+    To change the default behaviour when determining the footprint across
+    multiple input images
+         RIOS_DFLT_FOOTPRINT=integer. Default footprint setting, corresponding
                 to values defined in imageio.py: INTERSECTION, UNION, BOUNDS_FROM_REFERENCE
     
     To change the default behaviour of RIOS's block-by-block processing. 
