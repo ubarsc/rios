@@ -2,13 +2,12 @@
 # Currently we allow setuptools to "discover" the package directories,
 # but we could specify them if required, with [tool.setuptools]/packages=
 
-# The old setup.py currently has scripts=glob("bin/*.py"). When (or if)
-# we remove setup.py, we should also remove bin/, because the new
-# approach is via projects.scripts, which installs without the .py suffix
-
 # The installation requires pip>=23.0. If not, it will fail in rather
 # cryptic ways (depending exactly what options are used).
-#
+
+# We have chosen not to explicitly list the dependency on GDAL. This is
+# because GDAL itself cannot be installed with pip, and so must already be
+# installed on the system by some other means.
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

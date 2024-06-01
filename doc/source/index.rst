@@ -1,6 +1,6 @@
 .. _contents:
 
-Raster I/O Simplification
+Raster I/O Simplification (RIOS)
 ========================================================
 
 Introduction
@@ -53,15 +53,28 @@ See :doc:`applierexamples` for more information.
 
 Downloads
 ---------
-From `GitHub <https://github.com/ubarsc/rios/releases>`_. 
+Source code is available from
+`GitHub <https://github.com/ubarsc/rios/releases>`_. Installation from source
+is described in the INSTALL.txt file.
+
 Release notes by version can be viewed in :doc:`releasenotes`.
 
-`Conda <http://conda.pydata.org/miniconda.html#miniconda>`_ packages are available under the 'conda-forge' channel.
-Once you have installed `Conda <http://conda.pydata.org/miniconda.html#miniconda>`_, run the following commands on the command line to install rios: ::
+Conda packages are available under the ``conda-forge`` channel. Once you
+have installed
+`Conda's installer <http://conda.pydata.org/miniconda.html#miniconda>`_,
+run the following commands on the command line to install RIOS::
 
     conda config --add channels conda-forge 
     conda create -n myenv rios
     conda activate myenv
+
+RIOS is *not* available from the PyPI repository. This is because it depends
+on the GDAL library, which is also not available there, and must be installed
+by some other means, such as conda. If one is using conda for GDAL, one
+may as well use it for RIOS, too. While it is technically possible to bundle
+the GDAL binaries into a PyPI distribution, this carries grave risks of version
+conflicts if any other package does the same thing, and is best avoided.
+
 
 High level functions
 ---------------------
