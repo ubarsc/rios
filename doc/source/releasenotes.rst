@@ -1,8 +1,18 @@
 Release Notes
 =============
 
+Version 2.0.1 (2024-06-12)
+--------------------------
+
+Bug Fixes
+  * Updated one incompatibility with numpy-2
+  * Test suite guards more gracefully against unavailable tests
+
+Improvements
+  * Setup is now fully controlled by pyproject.toml, with no setup.py
+
 Version 2.0.0 (2024-05-23)
-----------------------------
+--------------------------
 
 New Features
   * New options for concurrency, strongly supported by a new internal 
