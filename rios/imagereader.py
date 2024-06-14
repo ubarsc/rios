@@ -918,11 +918,6 @@ class ImageReader(object):
 
                 # add this block to our list
                 blockList.append(block)
-            
-                # set the relationship between numpy array
-                # and dataset in case the user needs the dataset object
-                # and/or the original filename
-                #info.setBlockDataset(block, ds, image)
                 
                 i += 1
                 
