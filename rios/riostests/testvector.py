@@ -47,6 +47,10 @@ def run():
     meanVal_rios = calcMeanWithRiosApplier(imgfile, vecfile)
     
     ok = True
+    # Since numpy-2, these have different precisions. The numpy-calculated
+    # value is numpy.float64, while the rios-calculated one is numpy.float32.
+    # So, cast the longer one to match the shorter. Sigh.....
+    meanVal_numpy = numpy.asarray(meanVal_numpy, dtype=meanVal_rios.dtype)
     if meanVal_numpy == meanVal_rios:
         riostestutils.report(TESTNAME, "Passed")
     else:
