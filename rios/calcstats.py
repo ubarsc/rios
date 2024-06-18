@@ -294,7 +294,7 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             modebin = numpy.argmax(hist)
             modeval = modebin * histstep + histmin
             if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
-                tmpmeta["STATISTICS_MODE"] = repr(modeval)
+                tmpmeta["STATISTICS_MODE"] = repr(float(modeval))
             else:
                 tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
 
@@ -315,11 +315,11 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             else:
                 # Use GDAL's original metadata interface, for drivers which
                 # don't support the more modern approach
-                tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(repr, hist)) + '|'
+                tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(str, hist)) + '|'
 
                 tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
                 tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
-                tmpmeta["STATISTICS_HISTONUMBINS"] = repr(histnbins)
+                tmpmeta["STATISTICS_HISTONUMBINS"] = int(histnbins)
 
             # estimate the median - bin with the middle number
             middlenum = hist.sum() / 2
@@ -327,7 +327,7 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             medianbin = gtmiddle.nonzero()[0][0]
             medianval = medianbin * histstep + histmin
             if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
-                tmpmeta["STATISTICS_MEDIAN"] = repr(medianval)
+                tmpmeta["STATISTICS_MEDIAN"] = repr(float(medianval))
             else:
                 tmpmeta["STATISTICS_MEDIAN"] = repr(int(round(medianval)))
     
