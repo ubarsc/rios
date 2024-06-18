@@ -1,6 +1,15 @@
 Release Notes
 =============
 
+Version 2.0.2 (2024-06-19)
+--------------------------
+
+Bug Fixes
+  * Cope with numpy-2.0 changes in scalar handling (https://github.com/ubarsc/rios/pull/90).
+  * Fix the now-deprecated ImageReader class so it does not depend on the
+    now-deprecated ReaderInfo.setBlockDataset (https://github.com/ubarsc/rios/pull/89).
+    The ImageReader class should be avoided in future.
+
 Version 2.0.1 (2024-06-12)
 --------------------------
 
