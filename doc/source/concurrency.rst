@@ -58,6 +58,8 @@ contains a more detailed explanation of how the various style parameters
 interact, and how to choose a good concurrency style for a particular 
 problem and hardware configuration. The `Compute Worker Kinds`_ section
 below has deeper discussion on appropriate use of each compute worker kind.
+The :doc:`concurrencydiagrams` page shows graphical representations of the
+concurrency model in different concurrency styles.
 
 It is strongly recommended that a new program be largely debugged with
 no concurrency, and that developers only switch on the concurrency after 
