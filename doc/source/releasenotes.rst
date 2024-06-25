@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Version 2.0.3 (2024-06-25)
+--------------------------
+Bug Fixes
+  * Fix problems with vector inputs in different projection to working grid,
+    introduced in 2.0.0. (https://github.com/ubarsc/rios/pull/94)
+
 Version 2.0.2 (2024-06-19)
 --------------------------
 
