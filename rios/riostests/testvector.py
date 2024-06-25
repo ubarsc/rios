@@ -161,5 +161,5 @@ def nearlyEqual(a, b, tol=0.0001):
         relDiff = abs(a - b) / s
     else:
         # Not a "relative" difference, but I don't care.....
-        relDif = abs(a - b)
+        relDiff = abs(a - b)
     return (relDiff < tol)
