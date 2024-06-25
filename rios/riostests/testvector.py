@@ -23,6 +23,7 @@ area. Does the same thing with straight numpy, and checks the results.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy
 
+from osgeo import gdal, osr
 from rios import applier
 
 from . import riostestutils
@@ -45,22 +46,52 @@ def run():
     meanVal_numpy = calcMeanWithNumpy()
     
     meanVal_rios = calcMeanWithRiosApplier(imgfile, vecfile)
+
+    errors = []
     
     ok = True
     # Since numpy-2, these have different precisions. The numpy-calculated
     # value is numpy.float64, while the rios-calculated one is numpy.float32.
     # So, cast the longer one to match the shorter. Sigh.....
     meanVal_numpy = numpy.asarray(meanVal_numpy, dtype=meanVal_rios.dtype)
-    if meanVal_numpy == meanVal_rios:
+    if meanVal_numpy != meanVal_rios:
+        msg = "Failed. Mean values unequal ({} != {})".format(
+            meanVal_numpy, meanVal_rios)
+        errors.append(msg)
+        ok = False
+
+    # Now test with vector reprojection
+    vecfile_ll = 'square_ll.shp'
+    srs_ll = osr.SpatialReference()
+    srs_ll.ImportFromEPSG(4326)
+    gdal.VectorTranslate(vecfile_ll, vecfile, dstSRS=srs_ll, reproject=True)
+    meanVal_rios_ll = calcMeanWithRiosApplier(imgfile, vecfile_ll)
+    if not nearlyEqual(meanVal_rios_ll, meanVal_numpy, tol=0.02):
+        msg = "Failed with reproj. Mean values unequal ({} != {})".format(
+            meanVal_numpy, meanVal_rios_ll)
+        errors.append(msg)
+        ok = False
+
+    # Test case of no intersection
+    vecfile_shifted = 'square_shifted.shp'
+    xShift = 2 * riostestutils.DEFAULT_COLS * riostestutils.DEFAULT_PIXSIZE
+    riostestutils.genVectorSquare(vecfile_shifted, xShift=xShift)
+    meanVal_rios_shifted = calcMeanWithRiosApplier(imgfile, vecfile_shifted)
+    if meanVal_rios_shifted is not None:
+        msg = "Failed with shift. Mean value = {}".format(meanVal_rios_shifted)
+        errors.append(msg)
+        ok = False
+
+    if ok:
         riostestutils.report(TESTNAME, "Passed")
     else:
-        riostestutils.report(TESTNAME,
-            "Failed. Mean values unequal (%s != %s)"%(meanVal_numpy, meanVal_rios))
-        ok = False
+        for msg in errors:
+            riostestutils.report(TESTNAME, msg)
     
     # Cleanup
     riostestutils.removeRasterFile(imgfile)
-    riostestutils.removeVectorFile(vecfile)
+    for fn in [vecfile, vecfile_ll, vecfile_shifted]:
+        riostestutils.removeVectorFile(fn)
     
     return ok
 
@@ -83,7 +114,10 @@ def calcMeanWithRiosApplier(imgfile, vecfile):
     
     applier.apply(meanWithinVec, infiles, outfiles, otherargs, controls=controls)
 
-    mean = otherargs.total / otherargs.count
+    if otherargs.count > 0:
+        mean = otherargs.total / otherargs.count
+    else:
+        mean = None
     return mean
     
 
@@ -116,3 +150,16 @@ def calcMeanWithNumpy():
     subArr = rampArr[minRow:maxRow + 1, minCol:maxCol + 1]
     meanVal = subArr.mean()
     return meanVal
+
+
+def nearlyEqual(a, b, tol=0.0001):
+    """
+    Return True if the two values are equal to within the given tolerance
+    """
+    s = (abs(a) + abs(b))
+    if s != 0:
+        relDiff = abs(a - b) / s
+    else:
+        # Not a "relative" difference, but I don't care.....
+        relDiff = abs(a - b)
+    return (relDiff < tol)
