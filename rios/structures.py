@@ -3,6 +3,7 @@ Many of the major data structures to support the new applier parallel
 architecture.
 
 """
+import sys
 import os
 import socket
 from multiprocessing.managers import BaseManager
@@ -1055,6 +1056,15 @@ class TempfileManager:
         # Now remove the temp subdir itself
         try:
             os.rmdir(self.tempsubdir)
+        except OSError as e:
+            # This error has been reported on one Linux system, but as yet
+            # unable to trace why. This will catch the exception, but
+            # still print a warning. It should not be happening at all.
+            if "Directory not empty" in str(e):
+                print("Warning: Failed to remove temp directory {}".format(
+                    self.tempsubdir), file=sys.stderr)
+            else:
+                print(e, file=sys.stderr)
         except FileNotFoundError:
             pass
 
