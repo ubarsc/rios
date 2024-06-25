@@ -28,7 +28,7 @@ import queue
 import threading
 
 import numpy
-from osgeo import gdal, gdal_array
+from osgeo import gdal, gdal_array, osr
 
 from . import imageio
 from . import inputcollection
@@ -219,20 +219,38 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         projection = vecLyrInfo.spatialRef.ExportToWkt()
         wgXmin = workinggrid.xMin
         wgYmin = workinggrid.yMin
-        xMin = PixelGridDefn.snapToGrid(vecLyrInfo.xMin, wgXmin, xRes) - xRes
-        xMax = PixelGridDefn.snapToGrid(vecLyrInfo.xMax, wgXmin, xRes) + xRes
-        yMin = PixelGridDefn.snapToGrid(vecLyrInfo.yMin, wgYmin, yRes) - yRes
-        yMax = PixelGridDefn.snapToGrid(vecLyrInfo.yMax, wgYmin, yRes) + yRes
+
+        # Work out a resolution for the rasterized vector. Try to keep it
+        # the same (or similar) to the working grid resolution
+        wgSpatialRef = osr.SpatialReference()
+        wgSpatialRef.ImportFromWkt(workinggrid.projection)
+        (nrows, ncols) = workinggrid.getDimensions()
+        wgCtrX = wgXmin + xRes * (ncols // 2)   # Rough centre of grid
+        wgCtrY = wgYmin + yRes * (nrows // 2)
+        (xRes_vec, yRes_vec) = reprojResolution(xRes, yRes,
+            wgCtrX, wgCtrY, wgSpatialRef, vecLyrInfo.spatialRef)
+
+        xMin = PixelGridDefn.snapToGrid(vecLyrInfo.xMin, wgXmin, xRes_vec) - xRes_vec
+        xMax = PixelGridDefn.snapToGrid(vecLyrInfo.xMax, wgXmin, xRes_vec) + xRes_vec
+        yMin = PixelGridDefn.snapToGrid(vecLyrInfo.yMin, wgYmin, yRes_vec) - yRes_vec
+        yMax = PixelGridDefn.snapToGrid(vecLyrInfo.yMax, wgYmin, yRes_vec) + yRes_vec
         vectorPixgrid = PixelGridDefn(projection=projection,
-            xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, xRes=xRes, yRes=yRes)
+            xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax,
+            xRes=xRes_vec, yRes=yRes_vec)
         gridList = [workinggrid, vectorPixgrid]
-        commonRegion = findCommonRegion(gridList, vectorPixgrid,
-            combine=imageio.INTERSECTION)
+        try:
+            commonRegion = findCommonRegion(gridList, vectorPixgrid,
+                combine=imageio.INTERSECTION)
+        except rioserrors.IntersectionError:
+            commonRegion = None
         dtype = controls.getOptionForImagename('vectordatatype', symbolicName)
         gdalDtype = gdal_array.NumericTypeCodeToGDALTypeCode(dtype)
         gtiffOptions = ['TILED=YES', 'COMPRESS=DEFLATE', 'BIGTIFF=IF_SAFER']
-        outBounds = (commonRegion.xMin, commonRegion.yMin,
-            commonRegion.xMax, commonRegion.yMax)
+        if commonRegion is not None:
+            outBounds = (commonRegion.xMin, commonRegion.yMin,
+                commonRegion.xMax, commonRegion.yMax)
+        else:
+            outBounds = (wgCtrX, wgCtrY, wgCtrX + xRes_vec, wgCtrY + yRes_vec)
         vecNull = controls.getOptionForImagename('vectornull', symbolicName)
         burnattribute = controls.getOptionForImagename('burnattribute',
                 symbolicName)
@@ -245,7 +263,7 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         filtersql = controls.getOptionForImagename('filtersql', symbolicName)
         rasterizeOptions = gdal.RasterizeOptions(format='GTiff',
             outputType=gdalDtype, creationOptions=gtiffOptions,
-            outputBounds=outBounds, xRes=xRes, yRes=yRes, noData=vecNull,
+            outputBounds=outBounds, xRes=xRes_vec, yRes=yRes_vec, noData=vecNull,
             initValues=vecNull, burnValues=burnvalue, attribute=burnattribute,
             allTouched=alltouched, SQLStatement=filtersql, layers=vecName)
 
@@ -387,6 +405,26 @@ def specialProjFixes(projwkt):
     newWkt = newWkt.replace('GDA94-ICSM', 'GDA94')
 
     return newWkt
+
+
+def reprojResolution(xRes, yRes, x, y, srcSRS, tgtSRS):
+    """
+    Return a reprojected version of the given resolution. The (xRes yRes)
+    values are given in the srcSRS project, and are translated to something
+    as similar as possible in the tgtSRS projection. The rough location
+    is given by (x, y) (in the src projection), so the transformation is
+    at its best around that point, and would be progressively worse the
+    further one gets from there (due to the increased distortion from the
+    different projections).
+
+    """
+    t = osr.CoordinateTransformation(srcSRS, tgtSRS)
+    (tl_x, tl_y, z) = t.TransformPoint(x, y)
+    (tr_x, tr_y, z) = t.TransformPoint(x + xRes, y)
+    (bl_x, bl_y, z) = t.TransformPoint(x, y - yRes)
+    tgtXres = tr_x - tl_x
+    tgtYres = tl_y - bl_y
+    return (tgtXres, tgtYres)
 
 
 class ReadWorkerMgr:
