@@ -217,7 +217,7 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls):
         # This is doing everything I can to ensure the file gets fully closed
         # at this point.
         ds.FlushCache()
-        ds = None
+        gdalOutObjCache.pop((symbolicName, seqNum))
         del ds
 
         # Check whether we will need to add an auto color table
