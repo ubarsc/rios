@@ -866,6 +866,11 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     finally:
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
+        if gdalObjCache is not None:
+            keys = list(gdalObjCache.keys())
+            for k in keys:
+                gdalObjCache[k][0].FlushCache()
+                gdalObjCache.pop(k)
 
     # Set up returns object
     rtn = ApplierReturn()
