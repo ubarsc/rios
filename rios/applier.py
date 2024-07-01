@@ -827,27 +827,33 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                         blockDefn, allInfo, gdalObjCache, controls,
                         tmpfileMgr, rasterizeMgr)
             else:
-                with timings.interval('pop_readbuffer'):
-                    (blockDefn, inputs) = inBlockBuffer.popNextBlock()
+                try:
+                    with timings.interval('pop_readbuffer'):
+                        (blockDefn, inputs) = inBlockBuffer.popNextBlock()
+                except Exception as e:
+                    workerErr = WorkerErrorRecord(e, 'main')
+                    exceptionQue.put(workerErr)
+                    blockDefn = inputs = None
 
-            readerInfo = makeReaderInfo(workinggrid, blockDefn, controls,
-                infiles, inputs, allInfo)
+            if inputs is not None:
+                readerInfo = makeReaderInfo(workinggrid, blockDefn, controls,
+                    infiles, inputs, allInfo)
 
-            outputs = BlockAssociations()
-            userArgs = (readerInfo, inputs, outputs)
-            if otherArgs is not None:
-                userArgs += (otherArgs,)
+                outputs = BlockAssociations()
+                userArgs = (readerInfo, inputs, outputs)
+                if otherArgs is not None:
+                    userArgs += (otherArgs,)
 
-            with timings.interval('userfunction'):
-                userFunction(*userArgs)
+                with timings.interval('userfunction'):
+                    userFunction(*userArgs)
 
-            if outBlockBuffer is None:
-                with timings.interval('writing'):
-                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
-                        controls, workinggrid)
-            else:
-                with timings.interval('insert_computebuffer'):
-                    outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
+                if outBlockBuffer is None:
+                    with timings.interval('writing'):
+                        writeBlock(gdalOutObjCache, blockDefn, outfiles,
+                            outputs, controls, workinggrid)
+                else:
+                    with timings.interval('insert_computebuffer'):
+                        outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
 
             blockNdx += 1
 
