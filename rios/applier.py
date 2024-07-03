@@ -187,6 +187,22 @@ class ApplierControls(object):
             if imagename in self.optionsByImage[option]:
                 value = self.optionsByImage[option][imagename]
         return value
+
+    def _checks(self, infiles, outfiles):
+        """
+        Run a few simple checks on settings on the controls object.
+        Raise an exception if an error is found.
+        """
+        # Check that the imagename arguments given are all found as symbolic
+        # names on either infiles or outfiles
+        for option in self.optionsByImage:
+            for imagename in self.optionsByImage[option]:
+                found = ((imagename in infiles) or (imagename in outfiles))
+                if not found:
+                    msg = ("For controls option '{}', symbolic name '{}' " +
+                           "not found on infiles or outfiles")
+                    msg = msg.format(option, imagename)
+                    raise ValueError(msg)
         
     def setLoggingStream(self, loggingstream):
         """
@@ -740,6 +756,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     if controls is None:
         controls = ApplierControls()
     controls.emulateOldJobManager()
+    controls._checks(infiles, outfiles)
 
     # Includes ImageInfo and VectorFileInfo, keyed by (logicalname, seqNum)
     allInfo = readAllImgInfo(infiles)
