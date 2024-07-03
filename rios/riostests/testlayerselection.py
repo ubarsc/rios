@@ -47,7 +47,7 @@ def run():
     controls = applier.ApplierControls()
     
     infiles.img = tstfile
-    controls.selectInputImageLayers(layerList)
+    controls.selectInputImageLayers(layerList, imagename='img')
     otherargs.total = 0
     # We will use this to check the number of layers being read
     otherargs.numLayers = len(layerList)
