@@ -148,8 +148,12 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
     
     For thematic layers, the histogram is calculated with as many bins 
     as required, for athematic integer and float types, a maximum
-    of 256 bins is used. 
-    
+    of 256 bins is used.
+
+    Note that this routine will use the given ignore value to set the
+    no-data value (i.e. null value) on the dataset, using the same value
+    for every band.
+
     """
     progress.setLabelText("Computing Statistics...")
     progress.setProgress(0)
