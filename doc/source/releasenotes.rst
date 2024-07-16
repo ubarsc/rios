@@ -1,6 +1,15 @@
 Release Notes
 =============
 
+Version 2.0.4 (2024-07-16)
+--------------------------
+Bug Fixes
+  * Ensure all GDAL files are closed before exit, to avoid Panasas disk array
+    file deletion problems.
+  * Exceptions from read workers in single compute worker case must also
+    go into the exception queue.
+  * Check consistency of per-image calls to methods of ApplierControls
+
 Version 2.0.3 (2024-06-25)
 --------------------------
 Bug Fixes
