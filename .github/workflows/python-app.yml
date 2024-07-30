@@ -45,8 +45,7 @@ jobs:
       shell: bash -l {0}
       run: |
         sudo apt-get install -y --no-install-recommends \
-          python3-numpy python3-gdal python3-cloudpickle python3-scipy \
-          python3-pip
+          python3-gdal python3-cloudpickle python3-scipy python3-pip
         pip install --upgrade pip
     - name: Test with testrios
       shell: bash -l {0}
