@@ -48,13 +48,12 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y --no-install-recommends \
           python3-gdal python3-cloudpickle python3-scipy python3-pip
-#        pip install --upgrade pip
+        pip install --upgrade pip
     - name: Test with testrios
       shell: bash -l {0}
       run: |
-        python3 -c "import numpy; print(numpy.__file__)"
-#        pip install .
-#        testrios
+        pip install .
+        testrios
 
 #  tests-windows:
 #    runs-on: windows-latest
