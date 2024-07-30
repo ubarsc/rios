@@ -164,28 +164,12 @@ def deprecationWarning(msg, stacklevel=2):
     (or -W is used). This function at least seems to work consistently.
 
     """
-    # Get stack information, so we can report the file and line number
-    # where the deprecated function was used. I copied the bulk of this
-    # section from warnings.warn().
-    skip_file_prefixes = ()     # Not skipping anything
+    frame = inspect.currentframe()
+    for i in range(stacklevel):
+        if frame is not None:
+            frame = frame.f_back
 
-    # Some time between Python 3.10 and Python 2.12, they changed the
-    # signature of their warnings._next_external_frame function. So, we
-    # need to work out which one we have.
-    nextFrameArgs = inspect.getfullargspec(warnings._next_external_frame)
-    nextFrame2args = (len(nextFrameArgs.args) == 2)
-
-    try:
-        frame = sys._getframe(1)
-        # Look for one frame less since the above line starts us off.
-        for x in range(stacklevel - 1):
-            if nextFrame2args:
-                frame = warnings._next_external_frame(frame, skip_file_prefixes)
-            else:
-                frame = warnings._next_external_frame(frame)
-            if frame is None:
-                raise ValueError
-    except ValueError:
+    if frame is None:
         filename = "sys"
         lineno = 1
     else:
