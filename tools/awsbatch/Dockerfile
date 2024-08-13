@@ -35,6 +35,9 @@ RUN cd /tmp && tar xf rios-$RIOS_VER.tar.gz \
     && DEB_PYTHON_INSTALL_LAYOUT=deb_system pip install --prefix /usr/local . \
     && cd .. && rm -rf rios-$RIOS_VER rios-$RIOS_VER.tar.gz
 
+# So we can find rios installed in /usr/local
+ENV PYTHONPATH=/usr/local/lib/python3/dist-packages
+
 # Set our subproc script for AWS Batch as the entrypoint.
 ENTRYPOINT ["/usr/bin/python3", "/usr/local/bin/rios_computeworker"]
 
