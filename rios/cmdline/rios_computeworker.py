@@ -3,6 +3,7 @@
 Main script for a compute worker running in a separate process.
 """
 import argparse
+import resource
 
 from osgeo import gdal
 
@@ -101,6 +102,9 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
         # Send a printable version of the exception back to main thread
         workerErr = WorkerErrorRecord(e, 'compute', workerID)
         dataChan.exceptionQue.put(workerErr)
+
+    maxMem = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    print("Maximum memory use of compute worker: {}Kb".format(maxMem))
 
 
 if __name__ == "__main__":
