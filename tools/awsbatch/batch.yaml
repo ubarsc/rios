@@ -27,6 +27,9 @@ Parameters:
   InstanceType:
     Type: String
     Default: optimal  # for x86. Use m7g etc for Gravitron
+  MainVolumeSize:
+    Type: Number
+    Default: 32  # increase if you run out of space with 'main' jobs
   
 Resources:
   # Create our own vpc for resources so we are separate
@@ -301,18 +304,29 @@ Resources:
     Properties:
       Strategy: cluster
 
-  # Our queue
-  BatchProcessingJobQueue:
+  # Our queues - a different one for 'main' jobs
+  # as they usually need a different compute environment
+  # with more storage.
+  BatchProcessingJobQueueWorker:
     Type: AWS::Batch::JobQueue
     Properties:
-      JobQueueName: !Sub '${ServiceName}JobQueue'
+      JobQueueName: !Sub '${ServiceName}JobQueueWorker'
       Priority: 1
       ComputeEnvironmentOrder:
       - Order: 1
         ComputeEnvironment:
-          Ref: ComputeEnvironment
+          Ref: ComputeEnvironmentWorker
+  BatchProcessingJobQueueMain:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: !Sub '${ServiceName}JobQueueMain'
+      Priority: 1
+      ComputeEnvironmentOrder:
+      - Order: 1
+        ComputeEnvironment:
+          Ref: ComputeEnvironmentMain
   # Compute Environment - set subnets and security group etc.
-  ComputeEnvironment:
+  ComputeEnvironmentWorker:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
       Type: MANAGED
@@ -333,6 +347,45 @@ Resources:
         PlacementGroup: !Ref BatchPlacementGroup
       ServiceRole:
         Ref: BatchServiceRole
+  # Same as ComputeEnvironmentWorker but has a potentially larger
+  # storage for saving large outputs - see the launch template
+  ComputeEnvironmentMain:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      Type: MANAGED
+      ComputeResources:
+        Type: EC2
+        MinvCpus: 0
+        MaxvCpus: !Ref MaxVCPUS
+        InstanceTypes:
+        - !Ref InstanceType
+        Subnets:
+        - !Ref BatchSubnet1
+        - !Ref BatchSubnet2
+        - !Ref BatchSubnet3
+        SecurityGroupIds:
+        - !Ref BatchSecurityGroup
+        InstanceRole:
+          Ref: IamInstanceProfile
+        PlacementGroup: !Ref BatchPlacementGroup
+        LaunchTemplate:
+          LaunchTemplateId: !Ref LaunchTemplate
+          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      ServiceRole:
+        Ref: BatchServiceRole
+  # Launch template - increase default storage available
+  # https://repost.aws/knowledge-center/batch-job-failure-disk-space
+  # https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+         BlockDeviceMappings:
+           - DeviceName: /dev/xvda
+             Ebs:
+               VolumeType: gp2
+               VolumeSize: !Ref MainVolumeSize
+               DeleteOnTermination: true
      
 # Outputs that the main script can queury to find
 # the names and paths of things.
@@ -342,12 +395,20 @@ Outputs:
       Ref: BatchVPC
   ComputeEnvironmentArn:
     Value:
-      Ref: ComputeEnvironment
+      Ref: ComputeEnvironmentWorker
+  ComputeEnvironmentMainArn:
+    Value:
+      Ref: ComputeEnvironmentMain
   BatchProcessingJobQueueArn:
     Value:
-      Ref: BatchProcessingJobQueue
+      Ref: BatchProcessingJobQueueWorker
+  BatchProcessingJobQueueMainArn:
+    Value:
+      Ref: BatchProcessingJobQueueMain
   BatchProcessingJobQueueName:
-    Value: !Sub '${ServiceName}JobQueue'
+    Value: !Sub '${ServiceName}JobQueueWorker'
+  BatchProcessingJobQueueNameMain:
+    Value: !Sub '${ServiceName}JobQueueMain'
   BatchProcessingJobDefinitionArn:
     Value:
       Ref: BatchProcessingJobDefinition
