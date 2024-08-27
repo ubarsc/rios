@@ -54,6 +54,7 @@ class ComputeWorkerManager(ABC):
     computeWorkerKind = CW_NONE
     outObjList = None
     outqueue = None
+    jobName = None
 
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
@@ -135,6 +136,24 @@ class ComputeWorkerManager(ABC):
                 self.outObjList.append(outObj)
             except queue.Empty:
                 done = True
+
+    def setJobName(self, jobName):
+        """
+        Sets the job name string, which is made available to worker
+        processes. Defaults to None, and has only cosmetic effects.
+        """
+        self.jobName = jobName
+
+    def getWorkerName(self, workerID):
+        """
+        Return a string which uniquely identifies each work, including
+        the jobName, if given.
+        """
+        if self.jobName is not None:
+            workerName = "RIOS_{}_{}".format(self.jobName, workerID)
+        else:
+            workerName = "RIOS_{}".format(workerID)
+        return workerName
 
 
 class ThreadsComputeWorkerMgr(ComputeWorkerManager):
@@ -274,7 +293,7 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
             workerCmdArgs = ['-i', str(workerID), '--channaddr', channAddr]
             containerOverrides = {"command": workerCmdArgs}
             jobRtn = self.batchClient.submit_job(
-                jobName='RIOS_{}'.format(workerID),
+                jobName=self.getWorkerName(workerID),
                 jobQueue=jobQueue,
                 jobDefinition=jobDefinition,
                 containerOverrides=containerOverrides)
@@ -402,7 +421,7 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         self.scriptfileList.append(scriptfile)
         self.logfileList.append(logfile)
 
-        scriptCmdList = self.beginScript(logfile)
+        scriptCmdList = self.beginScript(logfile, workerID)
 
         computeWorkerCmd = ["rios_computeworker", "-i", str(workerID)]
         if self.addressFile is not None:
@@ -513,15 +532,17 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
                 ndx = i
         return ndx
 
-    def beginScript(self, logfile):
+    def beginScript(self, logfile, workerID):
         """
         Return list of initial script commands, depending on
         whether we are PBS or SLURM
         """
+        workerName = self.getWorkerName(workerID)
         if self.computeWorkerKind == CW_PBS:
             scriptCmdList = [
                 "#!/bin/bash",
-                "#PBS -j oe -o %s" % logfile
+                "#PBS -j oe -o {}".format(logfile),
+                "#PBS -N {}".format(workerName)
             ]
             qsubOptions = os.getenv('RIOS_PBSJOBMGR_QSUBOPTIONS')
             if qsubOptions is not None:
@@ -534,7 +555,8 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
             scriptCmdList = [
                 "#!/bin/bash",
                 "#SBATCH -o %s" % logfile,
-                "#SBATCH -e %s" % logfile
+                "#SBATCH -e %s" % logfile,
+                "#SBATCH -J {}".format(workerName)
             ]
             sbatchOptions = os.getenv('RIOS_SLURMJOBMGR_SBATCHOPTIONS')
             if sbatchOptions is not None:

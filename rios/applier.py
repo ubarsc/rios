@@ -101,6 +101,7 @@ class ApplierControls(object):
         * **allowOverviewsGdalwarp** Allow use of overviews in input resample (dangerous, do not use)
         * **approxStats**       Allow approx stats (much faster)
         * **layerselection**  List of selected layer numbers for input
+        * **jobName**         String name for this job, for cosmetic use only
     
     Options relating to vector input files
         * **burnvalue**       Value to burn into raster from vector
@@ -141,6 +142,7 @@ class ApplierControls(object):
         self.allowOverviewsGdalwarp = False
         self.approxStats = False
         self.layerselection = None
+        self.jobName = None
 
         # Vector fields
         self.burnvalue = 1
@@ -606,6 +608,23 @@ class ApplierControls(object):
 
         """
         self.concurrency = concurrencyStyle
+
+    def setJobName(self, jobName):
+        """
+        Set a job name string. This is entirely optional, and has only cosmetic
+        effect.
+
+        A job name string is set on the controls object, and is made available
+        to things like other compute workers. This can assist in identifying
+        workers and relating them to the originating job, in situations where
+        there are multiple main jobs running simultaneously.
+
+        It defaults to None, and is then unused.
+
+        New in version 2.0.5
+
+        """
+        self.jobName = jobName
     
     def setAutoColorTableType(self, autoColorTableType, imagename=None):
         """
@@ -913,6 +932,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     tmpfileMgr = TempfileManager(controls.tempdir)
     rasterizeMgr = RasterizationMgr()
     computeMgr = getComputeWorkerManager(concurrency.computeWorkerKind)
+    computeMgr.setJobName(controls.jobName)
     timings = Timers()
 
     numComputeWorkers = concurrency.numComputeWorkers
