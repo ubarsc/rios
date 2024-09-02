@@ -68,13 +68,17 @@ run the following commands on the command line to install RIOS::
     conda create -n myenv rios
     conda activate myenv
 
+RIOS is also available with the 
+`Spack package manager <https://spack.readthedocs.io/en/latest/>`_::
+
+    spack install py-rios
+
 RIOS is *not* available from the PyPI repository. This is because it depends
 on the GDAL library, which is also not available there, and must be installed
 by some other means, such as conda. If one is using conda for GDAL, one
 may as well use it for RIOS, too. While it is technically possible to bundle
 the GDAL binaries into a PyPI distribution, this carries grave risks of version
 conflicts if any other package does the same thing, and is best avoided.
-
 
 High level functions
 ---------------------
