@@ -292,13 +292,6 @@ Resources:
           - Name: "RIOS_AWSBATCH_REGION"
             Value: !Ref "AWS::Region"
 
-  # Because all the jobs are communicating together (when computeWorkers > 0)
-  # place them all in the same availability zone
-  BatchPlacementGroup:
-    Type: AWS::EC2::PlacementGroup
-    Properties:
-      Strategy: cluster
-
   # Our queues - a different one for 'main' jobs
   # as they usually need a different compute environment
   # with more storage.
@@ -339,7 +332,6 @@ Resources:
         - !Ref BatchSecurityGroup
         InstanceRole:
           Ref: IamInstanceProfile
-        PlacementGroup: !Ref BatchPlacementGroup
       ServiceRole:
         Ref: BatchServiceRole
   # Same as ComputeEnvironmentWorker but has a potentially larger
@@ -362,7 +354,6 @@ Resources:
         - !Ref BatchSecurityGroup
         InstanceRole:
           Ref: IamInstanceProfile
-        PlacementGroup: !Ref BatchPlacementGroup
         LaunchTemplate:
           LaunchTemplateId: !Ref LaunchTemplate
           Version: !GetAtt LaunchTemplate.LatestVersionNumber
