@@ -227,24 +227,6 @@ Resources:
             - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-queue/*'
             - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/*'
       
-  # Needed by AWS Batch.
-  BatchServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: batch.amazonaws.com
-          Action: sts:AssumeRole
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
-  IamInstanceProfile:
-    Type: AWS::IAM::InstanceProfile
-    Properties:
-      Roles:
-      - Ref: EcsInstanceRole
   # This is the user that the batch workers run as.
   # Ensure we attach all the permissions it will need.
   EcsInstanceRole:
@@ -332,8 +314,6 @@ Resources:
         - !Ref BatchSecurityGroup
         InstanceRole:
           Ref: IamInstanceProfile
-      ServiceRole:
-        Ref: BatchServiceRole
   # Same as ComputeEnvironmentWorker but has a potentially larger
   # storage for saving large outputs - see the launch template
   ComputeEnvironmentMain:
@@ -357,8 +337,6 @@ Resources:
         LaunchTemplate:
           LaunchTemplateId: !Ref LaunchTemplate
           Version: !GetAtt LaunchTemplate.LatestVersionNumber
-      ServiceRole:
-        Ref: BatchServiceRole
   # Launch template - increase default storage available
   # https://repost.aws/knowledge-center/batch-job-failure-disk-space
   # https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html
