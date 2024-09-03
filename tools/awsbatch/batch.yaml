@@ -1,8 +1,8 @@
 ---
 # Create all the infrastructure for AWS Batch with RIOS
 # This includes its own VPC, subnets and security group.
-# These subnets are spread accross the first 3 availibality zones
-# For the Region.
+# These subnets are spread accross the first 3 availability zones
+# for the Region.
 # Private and public subnets are created with a NAT in the first
 # public subnet so the private subnets have internet access 
 # which is a requirement for Batch.

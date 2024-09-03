@@ -81,7 +81,7 @@ The above is a simple way to get started with the AWS Batch support in RIOS. How
 that most users will need to run RIOS inside their own VPC. Doing so should be straightforward as long as the 
 following steps are followed:
 
-#. To resduce confusion, create separate ECR repositories for the 'main' and worker jobs
+#. To reduce confusion, create separate ECR repositories for the 'main' and worker jobs
 #. Ensure that your jobs have internet access - this is needed for Batch jobs to start. It is recommended
 to have your jobs running in a private subnet as shown in the example stack. You will need a NAT for internet
 access in this situation.
