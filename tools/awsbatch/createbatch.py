@@ -41,6 +41,8 @@ def getCmdArgs():
     p.add_argument('--instancetype', 
         help="Override the instance type for the jobs. This " +
             "needs to be the same architecture as the Docker images")
+    p.add_argument('--mainvolumesize', type=int, 
+        help="Override the main job volume size in GB")
     p.add_argument('--wait', action="store_true",
         help="Wait until CloudFormation is complete before exiting")
     p.add_argument('--modify', action="store_true",
@@ -61,7 +63,8 @@ def main():
     
     stackId, status = createBatch(cmdargs.stackname, cmdargs.region,
         cmdargs.ecrname, cmdargs.vcpus, cmdargs.mem, cmdargs.maxvcpus, 
-        cmdargs.instancetype, cmdargs.modify, cmdargs.wait, cmdargs.tag)
+        cmdargs.instancetype, cmdargs.mainvolumesize, cmdargs.modify, 
+        cmdargs.wait, cmdargs.tag)
             
     print('stackId: {}'.format(stackId))
     if status is not None:
@@ -78,7 +81,7 @@ def addParam(params, key, value):
 
     
 def createBatch(stackname, region, ecrName, vCPUs, maxMem, maxvCPUs, 
-        instanceType, modify, wait, tag):
+        instanceType, mainVolumeSize, modify, wait, tag):
     """
     Do the work of creating the CloudFormation Stack
     """        
@@ -100,6 +103,9 @@ def createBatch(stackname, region, ecrName, vCPUs, maxMem, maxvCPUs,
 
     if instanceType is not None:
         addParam(params, 'InstanceType', instanceType)
+
+    if mainVolumeSize is not None:
+        addParam(params, 'MainVolumeSize', str(mainVolumeSize))
         
     body = open('batch.yaml').read()
         

@@ -72,3 +72,26 @@ to the CloudFormation, the ``jobQueue`` will be ``riosJobQueue`` and the ``jobDe
 
 This main script should then spawn other AWS Batch jobs that will stay running until the processing is
 finished.
+
+
+Adapting to your own needs
+--------------------------
+
+The above is a simple way to get started with the AWS Batch support in RIOS. However it is likely
+that most users will need to run RIOS inside their own VPC. Doing so should be straightforward as long as the 
+following steps are followed:
+
+#. To reduce confusion, create separate ECR repositories for the 'main' and worker jobs
+#. Ensure that your jobs have internet access - this is needed for Batch jobs to start. It is recommended
+to have your jobs running in a private subnet as shown in the example stack. You will need a NAT for internet
+access in this situation.
+#. Create an S3 endpoint so that S3 access is free for your jobs.
+#. Ensure that your stack has the following outputs: BatchProcessingJobQueueName, BatchProcessingJobDefinitionName,
+BatchVCPUS and BatchMaxVCPUS. These should refer to the queue and job definition for the workers.
+#. Ensure the `RIOS_AWSBATCH_STACK` and `RIOS_AWSBATCH_REGION` environment variables are set
+in the main script so that RIOS can start the worker jobs using the above stack outputs. 
+#. Ensure that the security group that your jobs run as (both worker and main) allows TCP traffic
+in the port range 30000-50000 from itself. Note this is not enabled in AWS by default.
+#. Ensure your main jobs have enough storage attached if writing large output files.
+#. Make sure you experiment with different EC2 instance types for your job. Performance and 
+price will differ between these types.

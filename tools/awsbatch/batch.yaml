@@ -1,8 +1,13 @@
 ---
 # Create all the infrastructure for AWS Batch with RIOS
 # This includes its own VPC, subnets and security group.
-# These subnets are spread accross the first 3 availibility zones
-# For the Region.
+# These subnets are spread accross the first 3 availability zones
+# for the Region.
+# Private and public subnets are created with a NAT in the first
+# public subnet so the private subnets have internet access 
+# which is a requirement for Batch.
+# An endpoint is created for S3 so S3 file access does not go
+# through the NAT.
 # Also created is an ECR for saving the docker image that is used for processing,
 #
 # Use the script createbatch.py for stack creation and modification.
@@ -27,6 +32,9 @@ Parameters:
   InstanceType:
     Type: String
     Default: optimal  # for x86. Use m7g etc for Gravitron
+  MainVolumeSize:
+    Type: Number
+    Default: 32  # increase if you run out of space with 'main' jobs
   
 Resources:
   # Create our own vpc for resources so we are separate
@@ -40,44 +48,63 @@ Resources:
       # Below needed for Batch it seems
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
-      # make all instances launch on dedicated hardware
-      # when this is 'default' instances are shared
-      # making compute intensive job performance quite 
-      # unpredictible
-      InstanceTenancy: 'dedicated'
-  # Create a subnet for each availability zone
-  BatchSubnet1:
+  # Create a public subnet for each availability zone
+  BatchPublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
+      CidrBlock: 10.0.0.0/24
       VpcId:
         Ref: BatchVPC
-      # yes we do need public ips or NAT
-      # See https://repost.aws/knowledge-center/batch-job-stuck-runnable-status
-      MapPublicIpOnLaunch: true
-      CidrBlock: 10.0.0.0/24
       AvailabilityZone: !Select 
         - 0
         - Fn::GetAZs: !Ref 'AWS::Region'
-  BatchSubnet2:
+  BatchPublicSubnet2:
     Type: AWS::EC2::Subnet
     Properties:
+      CidrBlock: 10.0.1.0/24
       VpcId:
         Ref: BatchVPC
-      MapPublicIpOnLaunch: true
-      CidrBlock: 10.0.1.0/24
       AvailabilityZone: !Select 
         - 1
         - Fn::GetAZs: !Ref 'AWS::Region'
-  BatchSubnet3:
+  BatchPublicSubnet3:
     Type: AWS::EC2::Subnet
     Properties:
+      CidrBlock: 10.0.2.0/24
       VpcId:
         Ref: BatchVPC
-      MapPublicIpOnLaunch: true
-      CidrBlock: 10.0.2.0/24
       AvailabilityZone: !Select 
         - 2
         - Fn::GetAZs: !Ref 'AWS::Region'
+  # Create a private subnet for each availability zone
+  BatchPrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.10.0/24
+      VpcId:
+        Ref: BatchVPC
+      AvailabilityZone: !Select 
+        - 0
+        - Fn::GetAZs: !Ref 'AWS::Region'
+  BatchPrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.11.0/24
+      VpcId:
+        Ref: BatchVPC
+      AvailabilityZone: !Select 
+        - 1
+        - Fn::GetAZs: !Ref 'AWS::Region'
+  BatchPrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      CidrBlock: 10.0.12.0/24
+      VpcId:
+        Ref: BatchVPC
+      AvailabilityZone: !Select 
+        - 2
+        - Fn::GetAZs: !Ref 'AWS::Region'
+
   # A security group for everything to run as
   BatchSecurityGroup:
     Type: AWS::EC2::SecurityGroup
@@ -101,7 +128,15 @@ Resources:
   # They need to talk to ECS/CloudWatch. 
   # Create an endpoint for S3 so traffic doesn't need to go through 
   # the internet gateway (and cost)
-  RouteTable:
+  PublicRouteTable1:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref BatchVPC
+  PublicRouteTable2:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref BatchVPC
+  PublicRouteTable3:
     Type: "AWS::EC2::RouteTable"
     Properties:
       VpcId: !Ref BatchVPC
@@ -112,12 +147,111 @@ Resources:
     Properties:
       VpcId: !Ref BatchVPC
       InternetGatewayId: !Ref InternetGateway
-  InternetRoute:
-    Type: "AWS::EC2::Route"
-    Properties:
-      DestinationCidrBlock: "0.0.0.0/0"
+
+  RoutePublicGateway1:
+   DependsOn: InternetGateway
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref PublicRouteTable1
+      DestinationCidrBlock: '0.0.0.0/0'
       GatewayId: !Ref InternetGateway
-      RouteTableId: !Ref RouteTable
+  RoutePublicGateway2:
+   DependsOn: InternetGateway
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref PublicRouteTable2
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+  RoutePublicGateway3:
+   DependsOn: InternetGateway
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref PublicRouteTable3
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId: !Ref InternetGateway
+
+  # Associate the public route table with each subnet
+  PublicSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable1
+      SubnetId: !Ref BatchPublicSubnet1
+  PublicSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable2
+      SubnetId: !Ref BatchPublicSubnet2
+  PublicSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PublicRouteTable3
+      SubnetId: !Ref BatchPublicSubnet3
+
+  # NAT each private subnet
+  PrivateRouteTable1:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref BatchVPC
+  PrivateRouteTable2:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref BatchVPC
+  PrivateRouteTable3:
+    Type: "AWS::EC2::RouteTable"
+    Properties:
+      VpcId: !Ref BatchVPC
+
+  # NAT gateway in first AZ      
+  NATGatewayEIP1:
+   DependsOn: BatchVPC
+   Type: AWS::EC2::EIP
+   Properties:
+      Domain: vpc
+  NATGateway1:
+   Type: AWS::EC2::NatGateway
+   Properties:
+      AllocationId: !GetAtt NATGatewayEIP1.AllocationId
+      SubnetId: !Ref BatchPublicSubnet1
+
+  RouteNATGateway1:
+   DependsOn: NATGateway1
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGateway1
+  RouteNATGateway2:
+   DependsOn: NATGateway1
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGateway1
+  RouteNATGateway3:
+   DependsOn: NATGateway1
+   Type: AWS::EC2::Route
+   Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      DestinationCidrBlock: '0.0.0.0/0'
+      NatGatewayId: !Ref NATGateway1
+
+  # Associate the private route table with each subnet
+  PrivateSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref BatchPrivateSubnet1
+  PrivateSubnet2RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref BatchPrivateSubnet2
+  PrivateSubnet3RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      SubnetId: !Ref BatchPrivateSubnet3
+
 
   # Allow S3 traffic to go through an internet gateway
   S3GatewayEndpoint:
@@ -138,24 +272,9 @@ Resources:
                - 'arn:aws:s3:::*/*'
                - 'arn:aws:s3:::*'
       RouteTableIds:
-        - !Ref RouteTable
-
-  # Associate the route table with each subnet
-  Subnet1RouteTableAssociation:
-    Type: "AWS::EC2::SubnetRouteTableAssociation"
-    Properties:
-      RouteTableId: !Ref RouteTable
-      SubnetId: !Ref BatchSubnet1
-  Subnet2RouteTableAssociation:
-    Type: "AWS::EC2::SubnetRouteTableAssociation"
-    Properties:
-      RouteTableId: !Ref RouteTable
-      SubnetId: !Ref BatchSubnet2
-  Subnet3RouteTableAssociation:
-    Type: "AWS::EC2::SubnetRouteTableAssociation"
-    Properties:
-      RouteTableId: !Ref RouteTable
-      SubnetId: !Ref BatchSubnet3
+        - !Ref PrivateRouteTable1
+        - !Ref PrivateRouteTable2
+        - !Ref PrivateRouteTable3
 
   # Create an ECR to hold the image that contains RIOS
   # (and any other packages the function needs)
@@ -229,19 +348,6 @@ Resources:
             - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-queue/*'
             - !Sub 'arn:aws:batch:${AWS::Region}:${AWS::AccountId}:job-definition/*'
       
-  # Needed by AWS Batch.
-  BatchServiceRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: batch.amazonaws.com
-          Action: sts:AssumeRole
-      ManagedPolicyArns:
-      - arn:aws:iam::aws:policy/service-role/AWSBatchServiceRole
   IamInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -294,25 +400,29 @@ Resources:
           - Name: "RIOS_AWSBATCH_REGION"
             Value: !Ref "AWS::Region"
 
-  # Because all the jobs are communicating together (when computeWorkers > 0)
-  # place them all in the same availability zone
-  BatchPlacementGroup:
-    Type: AWS::EC2::PlacementGroup
-    Properties:
-      Strategy: cluster
-
-  # Our queue
-  BatchProcessingJobQueue:
+  # Our queues - a different one for 'main' jobs
+  # as they usually need a different compute environment
+  # with more storage.
+  BatchProcessingJobQueueWorker:
     Type: AWS::Batch::JobQueue
     Properties:
-      JobQueueName: !Sub '${ServiceName}JobQueue'
+      JobQueueName: !Sub '${ServiceName}JobQueueWorker'
       Priority: 1
       ComputeEnvironmentOrder:
       - Order: 1
         ComputeEnvironment:
-          Ref: ComputeEnvironment
+          Ref: ComputeEnvironmentWorker
+  BatchProcessingJobQueueMain:
+    Type: AWS::Batch::JobQueue
+    Properties:
+      JobQueueName: !Sub '${ServiceName}JobQueueMain'
+      Priority: 1
+      ComputeEnvironmentOrder:
+      - Order: 1
+        ComputeEnvironment:
+          Ref: ComputeEnvironmentMain
   # Compute Environment - set subnets and security group etc.
-  ComputeEnvironment:
+  ComputeEnvironmentWorker:
     Type: AWS::Batch::ComputeEnvironment
     Properties:
       Type: MANAGED
@@ -323,16 +433,49 @@ Resources:
         InstanceTypes:
         - !Ref InstanceType
         Subnets:
-        - !Ref BatchSubnet1
-        - !Ref BatchSubnet2
-        - !Ref BatchSubnet3
+        - !Ref BatchPrivateSubnet1
+        - !Ref BatchPrivateSubnet2
+        - !Ref BatchPrivateSubnet3
         SecurityGroupIds:
         - !Ref BatchSecurityGroup
         InstanceRole:
           Ref: IamInstanceProfile
-        PlacementGroup: !Ref BatchPlacementGroup
-      ServiceRole:
-        Ref: BatchServiceRole
+  # Same as ComputeEnvironmentWorker but has a potentially larger
+  # storage for saving large outputs - see the launch template
+  ComputeEnvironmentMain:
+    Type: AWS::Batch::ComputeEnvironment
+    Properties:
+      Type: MANAGED
+      ComputeResources:
+        Type: EC2
+        MinvCpus: 0
+        MaxvCpus: !Ref MaxVCPUS
+        InstanceTypes:
+        - !Ref InstanceType
+        Subnets:
+        - !Ref BatchPrivateSubnet1
+        - !Ref BatchPrivateSubnet2
+        - !Ref BatchPrivateSubnet3
+        SecurityGroupIds:
+        - !Ref BatchSecurityGroup
+        InstanceRole:
+          Ref: IamInstanceProfile
+        LaunchTemplate:
+          LaunchTemplateId: !Ref LaunchTemplate
+          Version: !GetAtt LaunchTemplate.LatestVersionNumber
+  # Launch template - increase default storage available
+  # https://repost.aws/knowledge-center/batch-job-failure-disk-space
+  # https://docs.aws.amazon.com/batch/latest/userguide/launch-templates.html
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+         BlockDeviceMappings:
+           - DeviceName: /dev/xvda
+             Ebs:
+               VolumeType: gp2
+               VolumeSize: !Ref MainVolumeSize
+               DeleteOnTermination: true
      
 # Outputs that the main script can queury to find
 # the names and paths of things.
@@ -342,12 +485,20 @@ Outputs:
       Ref: BatchVPC
   ComputeEnvironmentArn:
     Value:
-      Ref: ComputeEnvironment
+      Ref: ComputeEnvironmentWorker
+  ComputeEnvironmentMainArn:
+    Value:
+      Ref: ComputeEnvironmentMain
   BatchProcessingJobQueueArn:
     Value:
-      Ref: BatchProcessingJobQueue
+      Ref: BatchProcessingJobQueueWorker
+  BatchProcessingJobQueueMainArn:
+    Value:
+      Ref: BatchProcessingJobQueueMain
   BatchProcessingJobQueueName:
-    Value: !Sub '${ServiceName}JobQueue'
+    Value: !Sub '${ServiceName}JobQueueWorker'
+  BatchProcessingJobQueueNameMain:
+    Value: !Sub '${ServiceName}JobQueueMain'
   BatchProcessingJobDefinitionArn:
     Value:
       Ref: BatchProcessingJobDefinition
