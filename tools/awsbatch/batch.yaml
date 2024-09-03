@@ -43,11 +43,6 @@ Resources:
       # Below needed for Batch it seems
       EnableDnsSupport: 'true'
       EnableDnsHostnames: 'true'
-      # make all instances launch on dedicated hardware
-      # when this is 'default' instances are shared
-      # making compute intensive job performance quite 
-      # unpredictible
-      InstanceTenancy: 'dedicated'
   # Create a subnet for each availability zone
   BatchSubnet1:
     Type: AWS::EC2::Subnet
