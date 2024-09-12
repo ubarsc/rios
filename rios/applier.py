@@ -87,11 +87,16 @@ class ApplierControls(object):
         * **progress**        progress object
         * **statsIgnore**     global stats ignore value for output (i.e. null value)
         * **inputnodata**     Over-ride of null value for input file, in reprojecting
-        * **calcStats**       True/False to signal calculate statistics and pyramids
-        * **omitPyramids**    True/False to omit pyramids when doing stats
+        * **calcStats**       Obsolete. See setCalcStats() docstring
+        * **omitPyramids**    Boolean to omit pyramid layers in outputs
+        * **omitBasicStats**  Boolean to omit basic statistics in outputs
+        * **omitHistogram**   Boolean to omit histogram in outputs
         * **overviewLevels**  List of level factors used when calculating output image overviews
         * **overviewMinDim**  Minimum dimension of highest overview level
         * **overviewAggType** Aggregation type for calculating overviews
+        * **singlePassPyramids**    Boolean to do pyramids on outputs in a single pass
+        * **singlePassBasicStats**  Boolean to do basic stats on outputs in a single pass
+        * **singlePassHistogram**   Boolean to do histogram on outputs in a single pass
         * **tempdir**         Name of directory for temp files (resampling, etc.)
         * **resampleMethod**  String for resample method, when required (as per GDAL)
         * **numThreads**      Deprecated. Number of parallel threads used for processing each image block
@@ -128,6 +133,8 @@ class ApplierControls(object):
         self.inputnodata = None
         self.calcStats = True
         self.omitPyramids = False
+        self.omitBasicStats = False
+        self.omitHistogram = False
         self.overviewLevels = DEFAULT_OVERVIEWLEVELS
         self.overviewMinDim = DEFAULT_MINOVERVIEWDIM
         self.overviewAggType = None
@@ -268,7 +275,10 @@ class ApplierControls(object):
         """
         Sets the X and Y size of the blocks used in one call.
         Images are processed in blocks (windows) of 'windowxsize' 
-        columns, and 'windowysize' rows. 
+        columns, and 'windowysize' rows.
+
+        New in version 1.4.17.
+
         """
         self.windowxsize = windowxsize
         self.windowysize = windowysize
@@ -397,46 +407,92 @@ class ApplierControls(object):
         If the ``imagename`` parameter is used, then the setting will apply
         only to that input, otherwise it will be applied to all inputs.
 
+        New in version 2.0.0
+
         """
         self.setOptionForImagename('inputnodata', imagename, nodataValue)
         
     def setCalcStats(self, calcStats, imagename=None):
         """
-        Set True to calc stats, False otherwise. If True, then statistics and 
-        pyramid layers are calculated (if supported by the driver).
+        From version 2.0.5, this is now obsolete.
 
-        Default is True.
+        The default behaviour is to calculate pyramid layers, basic statistics,
+        and histogram on all outputs. To omit any of these, call the
+        associated controls method (setOmitPyramids, setOmitBasicStats,
+        or setOmitHistogram).
+
+        In earlier versions, these were all controlled with a call to this
+        method. It is now preferred that these omit methods be called
+        individually. The setCalcStats method now emulates the old behaviour,
+        but will probably be deprecated in some future version, and
+        eventually removed.
 
         """
-        self.setOptionForImagename('calcStats', imagename, calcStats)
-        
+        self.setOmitPyramids((not calcStats), imagename=imagename)
+        self.setOmitBasicStats((not calcStats), imagename=imagename)
+        self.setOmitHistogram((not calcStats), imagename=imagename)
+
     def setOmitPyramids(self, omitPyramids, imagename=None):
         """
-        Set True to omit pyramid layers (i.e. overviews), False otherwise.
-        If True, then when statistics are being calculated, pyramid layers
-        will be omitted, otherwise they will be created at the same time.
+        The default behaviour is to calculate pyramid layers (i.e. overviews)
+        on all output images. To omit these, call setOmitPyramids(True). 
 
-        Default is False, meaning that pyramid layers will be calculated
-        on all output files.
+        If imagename is given, it should be a symbolic name as used on
+        the outfiles object, and this setting will apply only to that
+        image.
+
+        New in version 1.1.2.
 
         """
         self.setOptionForImagename('omitPyramids', imagename, omitPyramids)
+    
+    def setOmitBasicStats(self, omitBasicStats, imagename=None):
+        """
+        The default behaviour is to calculate basic statistics
+        on all output images. To omit these, call setOmitBasicStats(True).
+
+        If imagename is given, it should be a symbolic name as used on
+        the outfiles object, and this setting will apply only to that
+        image.
+
+        New in version 2.0.5.
+
+        """
+        self.setOptionForImagename('omitBasicStats', imagename, omitBasicStats)
+
+    def setOmitHistogram(self, omitHistogram, imagename=None):
+        """
+        The default behaviour is to calculate image histograms
+        on all output images. To omit these, call setOmitHistogram(True).
+
+        If imagename is given, it should be a symbolic name as used on
+        the outfiles object, and this setting will apply only to that
+        image.
+
+        New in version 2.0.5.
+
+        """
+        self.setOptionForImagename('omitHistogram', imagename, omitHistogram)
     
     def setOverviewLevels(self, overviewLevels, imagename=None):
         """
         Set the overview levels to be used on output images (i.e. pyramid layers). 
         Levels are specified as a list of integer factors, with the same meanings 
         as given to the gdaladdo command. 
-        
+
+        New in version 1.4.1
+
         """
         self.setOptionForImagename('overviewLevels', imagename, overviewLevels)
-    
+
     def setOverviewMinDim(self, overviewMinDim, imagename=None):
         """
         Set minimum dimension allowed for output overview. Overview levels (i.e. pyramid
         layers) will be calculated as per the overviewLevels list of factors, but 
         only until the minimum dimension falls below the value of overviewMinDim
-        
+
+        New in version 1.4.1
+
         """
         self.setOptionForImagename('overviewMinDim', imagename, overviewMinDim)
     
@@ -452,10 +508,74 @@ class ApplierControls(object):
         This method should usually be used to set when writing an output to a format
         which does not support LAYER_TYPE, and which is not appropriate for the
         setting given by the environment default. 
-        
+
+        New in version 1.4.1
+
         """
         self.setOptionForImagename('overviewAggType', imagename, overviewAggType)
-        
+
+    def setSinglePassPyramids(self, singlePassPyramids, imagename=None):
+        """
+        The default behaviour is to attempt to compute pyramid layers (i.e.
+        overviews) for output files as each block is computed. This avoids
+        an extra pass through the data afterwards.
+
+        If singlePassPyramids is given here as False, then this will not be
+        attempted, and instead GDAL's BuildOverviews() function will be called
+        after the output is completed (i.e. a whole extra pass through the
+        data).
+
+        New in version 2.0.5.
+
+        """
+        self.setOptionForImagename('singlePassPyramids', imagename,
+            singlePassPyramids)
+
+    def setSinglePassBasicStats(self, singlePassBasicStats, imagename=None):
+        """
+        The default behaviour is to attempt to compute basic statistics
+        (i.e. min/max/mean/stddev) for all output files as each block is
+        computed. This avoids an extra pass through the data afterwards.
+
+        If singlePassBasicStats is given here as False, then this will not be
+        attempted, and instead GDAL's ComputeStatistics() function will be
+        called after the output is completed (i.e. a whole extra pass through
+        the data).
+
+        New in version 2.0.5.
+
+        See also setApproxStats() for an alternative way of speeding up
+        basic statistics.
+
+        """
+        self.setOptionForImagename('singlePassBasicStats', imagename,
+            singlePassBasicStats)
+
+    def setSinglePassHistogram(self, singlePassHistogram, imagename=None):
+        """
+        The default behaviour is to attempt to compute a histogram
+        (on each band) for all output files as each block is computed.
+        This avoids an extra pass through the data afterwards.
+
+        If singlePassHistogram is given here as False, then this will not be
+        attempted, and instead GDAL's GetHistogram() function will be
+        called after the output is completed (i.e. a whole extra pass through
+        the data).
+
+        Only certain datatypes are supported for single-pass histograms, and
+        if the datatype is not supported, then the default will be to use
+        GDAL's GetHistogram(). If singlePassHistogram is True for an
+        unsupported datatype, an exception is raised.
+
+        New in version 2.0.5.
+
+        See also setApproxStats() for an alternative way of speeding up
+        histogram calculation.
+
+        """
+        self.setOptionForImagename('singlePassHistogram', imagename,
+            singlePassHistogram)
+
     def setThematic(self, thematicFlag, imagename=None):
         """
         Boolean flag to indicate whether the output file is thematic. A value
@@ -472,6 +592,8 @@ class ApplierControls(object):
         Set list of layernames to be given to the output file(s). This is not
         really well supported by most format drivers, and should probably
         be avoided. It seemed like a good idea at the time.
+
+        New in version 1.1.5
 
         """
         self.setOptionForImagename('layernames', imagename, layerNames)
@@ -567,13 +689,17 @@ class ApplierControls(object):
         of layer numbers. Layer numbers follow GDAL conventions, i.e. 
         a layer number of 1 refers to the first layer in the file. 
         Can  be much more efficient when only using a small subset of 
-        layers from the inputs. 
+        layers from the inputs.
+
+        New in version 1.4.0
+
         """
         self.setOptionForImagename('layerselection', imagename, layerselection)
     
     def setNumThreads(self, numThreads):
         """
-        This is now deprecated. Please see setConcurrencyStyle instead.
+        This is now deprecated (version 2.0.0).
+        Please see setConcurrencyStyle instead.
 
         Set the number of 'threads' to be used when processing each block 
         of imagery. Note that these are not threads in the technical sense, 
@@ -589,7 +715,8 @@ class ApplierControls(object):
     
     def setJobManagerType(self, jobMgrType):
         """
-        This is now deprecated. Please see setConcurrencyStyle instead.
+        This is now deprecated (version 2.0.0).
+        Please see setConcurrencyStyle instead.
 
         Set which type of JobManager is to be used for parallel processing.
         See :mod:`rios.parallel.jobmanager` for details. Default is taken from
@@ -645,7 +772,9 @@ class ApplierControls(object):
         will only be applied to that raster. 
         
         None of this has any impact on athematic outputs. 
-        
+
+        New in version 1.4.3
+
         """
         self.setOptionForImagename('autoColorTableType', imagename, autoColorTableType)
     
@@ -668,7 +797,9 @@ class ApplierControls(object):
         to True, otherwise it defaults to False. 
         
         We strongly recommend against allowing gdalwarp to use overviews. 
-        
+
+        New in version 1.4.8
+
         """
         self.allowOverviewsGdalwarp = allowOverviewsGdalwarp
     
@@ -678,16 +809,20 @@ class ApplierControls(object):
         calcStats by forcing it to use the pyramid layers during stats generation
         (much faster but only provides approximate values, not recommended for
         thematic rasters)
+
+        New in version 1.4.9
+
         """
         self.approxStats = approxStats
 
     def emulateOldJobManager(self):
         """
-        Uses the new ConcurrencyStyle model to emulate the old JobManager
-        concurrency. The new stuff is much better, but this allows old
-        programs to use it without modification. Prints a deprecation
-        warning. This routine is called automatically if the old JobManager
-        settings have been invoked.
+        Uses the new ConcurrencyStyle model (version 2.0.0) to emulate the
+        old JobManager concurrency. The new stuff is much better, but this
+        allows old programs to use it without modification. Prints a
+        deprecation warning. This routine is called automatically if the
+        old JobManager settings have been invoked, and should not be used
+        otherwise.
         """
         if self.numThreads != 1 and self.jobManagerType is not None:
             msg = ("setNumThreads and setJobManagerType are now " +

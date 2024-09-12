@@ -111,21 +111,34 @@ def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
     """
     Write the given block to the files given in outfiles
     """
+    SINGLEPASSINFO = calcstats.SINGLEPASSINFO
+    if SINGLEPASSINFO not in gdalOutObjCache:
+        gdalOutObjCache[SINGLEPASSINFO] = calcstats.SinglePassInfo(
+            outfiles, controls, workinggrid)
+    singlePassInfo = gdalOutObjCache[SINGLEPASSINFO]
+
     for (symbolicName, seqNum, filename) in outfiles:
         arr = outputs[symbolicName, seqNum]
+        # Trim the margin
+        m = controls.getOptionForImagename('overlap', symbolicName)
+        if m > 0:
+            arr = arr[:, m:-m, m:-m]
+
         key = (symbolicName, seqNum)
         if key not in gdalOutObjCache:
             ds = openOutfile(symbolicName, filename, controls, arr,
                     workinggrid)
             gdalOutObjCache[symbolicName, seqNum] = ds
+            singlePassInfo.initFor(ds, symbolicName, seqNum, arr)
 
         ds = gdalOutObjCache[symbolicName, seqNum]
 
-        # Trim the margin
-        m = controls.getOptionForImagename('overlap', symbolicName)
-        if m > 0:
-            arr = arr[:, m:-m, m:-m]
+        # Write the base raster data
         ds.WriteArray(arr, blockDefn.left, blockDefn.top)
+
+        # If appropriate, do single-pass actions for this block
+        calcstats.handleSinglePassActions(ds, arr, singlePassInfo,
+            symbolicName, seqNum, blockDefn.left, blockDefn.top)
 
 
 def openOutfile(symbolicName, filename, controls, arr, workinggrid):
@@ -185,11 +198,13 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls):
     """
     # getOpt is just a little local shortcut
     getOpt = controls.getOptionForImagename
+    singlePassInfo = gdalOutObjCache.get(calcstats.SINGLEPASSINFO, default=None)
 
     for (symbolicName, seqNum, filename) in outfiles:
-        doStats = getOpt('calcStats', symbolicName)
         statsIgnore = getOpt('statsIgnore', symbolicName)
         omitPyramids = getOpt('omitPyramids', symbolicName)
+        omitBasicStats = getOpt('omitBasicStats', symbolicName)
+        omitHistogram = getOpt('omitHistogram', symbolicName)
         overviewLevels = getOpt('overviewLevels', symbolicName)
         overviewMinDim = getOpt('overviewMinDim', symbolicName)
         overviewAggType = getOpt('overviewAggType', symbolicName)
@@ -201,18 +216,27 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls):
             progress = SilentProgress()
 
         ds = gdalOutObjCache[symbolicName, seqNum]
-        if doStats:
-            if not omitPyramids:
-                calcstats.addPyramid(ds, progress, levels=overviewLevels,
-                    minoverviewdim=overviewMinDim,
-                    aggregationType=overviewAggType)
 
+        if (not singlePassInfo.doSinglePassPyramids(symbolicName) and
+                not omitPyramids):
+            # Pyramids have not been done single-pass, and are not being
+            # omitted, so do them on closing
+            calcstats.addPyramid(ds, progress, levels=overviewLevels,
+                minoverviewdim=overviewMinDim,
+                aggregationType=overviewAggType)
+
+        if singlePassInfo.doSinglePassStatistics(symbolicName):
+            calcstats.finishSinglePassStats(ds, singlePassInfo)
+        elif not (omitBasicStats and omitHistogram):
             # Note that statsIgnore is passed in here. This is a historical
             # anomaly, from when calcStats was the only time that the null
             # value was set. In the current version, it is set when the file
             # is created.
             calcstats.addStatistics(ds, progress, statsIgnore,
                 approx_ok=approxStats)
+
+        if singlePassInfo.doSinglePassHistogram(symbolicName):
+            calcstats.finishSinglePassHistogram(ds, )
 
         # This is doing everything I can to ensure the file gets fully closed
         # at this point.

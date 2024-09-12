@@ -148,6 +148,10 @@ class WorkerExceptionError(RiosError):
     "A worker thread or process has raised an exception"
 
 
+class SinglePassActionsError(RiosError):
+    "An error in processing single-pass actions"
+
+
 deprecationAlreadyWarned = set()
 
 

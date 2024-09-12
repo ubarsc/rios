@@ -24,8 +24,14 @@ import os
 import warnings
 import numpy
 from osgeo import gdal
+try:
+    from numba import njit
+    haveNumba = True
+except ImportError:
+    njit = None
+    haveNumba = False
 from . import cuiprogress
-from .rioserrors import ProcessCancelledError
+from .rioserrors import ProcessCancelledError, SinglePassActionsError
 
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
@@ -379,3 +385,307 @@ def setNullValue(ds, nullValue):
     for i in range(ds.RasterCount):
         band = ds.GetRasterBand(i + 1)
         band.SetNoDataValue(nullValue)
+
+
+SINGLEPASSINFO = "SINGLEPASSINFO"
+
+
+class SinglePassInfo:
+    """
+    The required info for dealing with single-pass pyramids/statistics/histogram.
+    There is some complexity here, because the decisions about what to do are
+    a result of a number of different factors. We attempt to make these decisions
+    as early as possible, and store the decisions on this object, so they can
+    just be checked later.
+    """
+    def __init__(self, outfiles, controls, workinggrid):
+        """
+        Check whether single-pass is appropriate and/or supported for
+        all output files.
+        """
+        self.PYRAMIDS = 0
+        self.STATISTICS = 1
+        self.HISTOGRAM = 2
+        self.histSupportedDtypes = (numpy.uint8, numpy.int16, numpy.uint16)
+        self.supportedAggtypes = ("NEAREST", )
+
+        self.omit = {}
+        self.singlePassRequested = {}
+        self.approxOK = {}
+        self.overviewLevels = {}
+        self.oviewAggtype = {}
+        self.arrDtype = {}
+        self.accumulators = {}
+
+        (nrows, ncols) = workinggrid.getDimensions()
+        mindim = min(nrows, ncols)
+
+        for (symbolicName, seqNum, filename) in outfiles:
+            # Store all the relevant settings from the controls object,
+            # in a form which is a bit easier to query
+            self.omit[symbolicName, self.PYRAMIDS] = (
+                controls.getOptionForImagename('omitPyramids', symbolicName))
+            self.singlePassRequested[symbolicName, self.PYRAMIDS] = (
+                controls.getOptionForImagename('singlePassPyramids', symbolicName))
+            self.omit[symbolicName, self.STATISTICS] = (
+                controls.getOptionForImagename('omitBasicStats', symbolicName))
+            self.singlePassRequested[symbolicName, self.STATISTICS] = (
+                controls.getOptionForImagename('singlePassBasicStats', symbolicName))
+            self.omit[symbolicName, self.HISTOGRAM] = (
+                controls.getOptionForImagename('omitHistogram', symbolicName))
+            self.singlePassRequested[symbolicName, self.HISTOGRAM] = (
+                controls.getOptionForImagename('singlePassHistogram', symbolicName))
+
+            self.approxOK[symbolicName] = controls.getOptionForImagename(
+                'approxStats', symbolicName)
+            oviewLvls = controls.getOptionForImagename('overviewLevels',
+                symbolicName)
+            self.oviewAggtype[symbolicName] = controls.getOptionForImagename(
+                'overviewAggType', symbolicName)
+            minOverviewDim = controls.getOptionForImagename(
+                'overviewMinDim', symbolicName)
+            if symbolicName not in self.overviewLevels:
+                nOverviews = 0
+                for lvl in oviewLvls:
+                    if (mindim // lvl) > minOverviewDim:
+                        nOverviews += 1
+                self.overviewLevels[symbolicName] = oviewLvls[:nOverviews]
+
+        def initFor(self, ds, symbolicName, seqNum, arr):
+            """
+            Initialise for the given output file
+            """
+            includeStats = self.doSinglePassStatistics(symbolicName)
+            self.arrDtype[symbolicName] = arr.dtype
+            includeHist = self.doSinglePassHistogram(symbolicName)
+            if includeStats or includeHist:
+                nullval = ds.GetRasterBand(1).GetNoDataValue()
+                for i in range(arr.shape[0]):
+                    key = (symbolicName, seqNum, i)
+                    self.accumulators[key] = SinglePassAccumulator(
+                        includeStats, includeHist, arr.dtype, nullval)
+            if self.doSinglePassPyramids(symbolicName):
+                aggType = self.oviewAggtype[symbolicName]
+                ds.BuildOverviews(aggType, self.overviewLevels[symbolicName])
+
+        def doSinglePassPyramids(self, symbolicName):
+            """
+            Return True if we should do single-pass pyramids layers, False
+            otherwise. Decision depends on choices for omitPyramids,
+            singlePassPyramids, and overviewAggType.
+
+            """
+            key = (symbolicName, self.PYRAMIDS)
+            omit = self.omit[key]
+            spReq = self.singlePassRequested[key]
+            aggType = self.oviewAggtype[symbolicName]
+            if spReq is True and aggType not in self.supportedAggtypes:
+                msg = ("Single-pass pyramids explicitly requested, but " +
+                   "not supported for aggregationType '{}'").format(
+                       aggType)
+                raise SinglePassActionsError(msg)
+
+            spPyr = ((spReq is True or spReq is None) and (not omit) and
+                (aggType in self.supportedAggtypes))
+            return spPyr
+
+        def doSinglePassStatistics(self, symbolicName):
+            """
+            Return True if we should do single-pass basic statistics, False
+            otherwise.
+            """
+            key = (symbolicName, self.STATISTICS)
+            omit = self.omit[key]
+            spReq = self.singlePassRequested[key]
+            approxOK = self.approxOK[symbolicName]
+            spStats = ((spReq is True or spReq is None) and
+                    not (omit or approxOK))
+            return spStats
+
+        def doSinglePassHistogram(self, symbolicName):
+            """
+            Return True if we should do single-pass histogram, False
+            otherwise, based on what has been requested, the datatype of
+            the raster, and the availability of numba.
+            """
+            key = (symbolicName, self.HISTOGRAM)
+            omit = self.omit[key]
+            spReq = self.singlePassRequested[key]
+            approxOK = self.approxOK[symbolicName]
+            if symbolicName not in self.arrDtype:
+                msg = ("doSinglePassHistogram({name}) has been called " +
+                       "before initFor({name}, ...)").format(name=symbolicName)
+                raise SinglePassActionsError(msg)
+            dtype = self.arrDtype[symbolicName]
+            dtypeSupported = (dtype in self.histSupportedDtypes)
+
+            # Here we distinguish between spReq being True or None. If it
+            # is None, then we will settle on some suitable default behaviour,
+            # depending on other conditions, but if it is explicitly True,
+            # then we must have the required conditions, or raise an
+            # exception to explain why it will not be done.
+            if spReq is True and not dtypeSupported:
+                msg = ("Explicitly requested single-pass histogram, but " +
+                       "this is not supported for datatype {}".format(dtype))
+                raise SinglePassActionsError(msg)
+            if spReq is True and not haveNumba:
+                msg = ("Explicitly requested single-pass histogram, but " +
+                       "the numba package is not available")
+                raise SinglePassActionsError(msg)
+
+            spHist = ((spReq is True or spReq is None) and
+                      dtypeSupported and haveNumba and
+                      not (omit or approxOK))
+            return spHist
+
+
+class SinglePassAccumulator:
+    """
+    Accumulator for statistics and histogram for a single band. Used when
+    doing single-pass stats and/or histogram.
+    """
+    def __init__(self, includeStats, includeHist, dtype, nullval):
+        self.nullval = nullval
+        self.histNullval = nullval
+        if nullval is None and includeHist:
+            # We can't use None in the njit-ed histogram code, so make a
+            # value that would be impossible, given the supported datatypes
+            self.histNullval = numpy.uint32(2**32 - 1)
+        self.includeStats = includeStats
+        self.includeHist = includeHist
+        if includeStats:
+            self.minval = None
+            self.maxval = None
+            self.sum = 0
+            self.ssq = 0
+            self.count = 0
+        if includeHist:
+            if dtype == numpy.uint8:
+                self.histmin = 0
+                self.nbins = 256
+            elif dtype in (numpy.int16, numpy.uint16):
+                if dtype == numpy.uint16:
+                    self.histmin = 0
+                else:
+                    self.histmin = -(2**15)
+                self.nbins = 2**16
+            self.hist = numpy.zeros(self.nbins, dtype=numpy.uint64)
+
+    def doStatsAccum(self, arr):
+        """
+        Accumulate basic stats for the given array
+        """
+        if self.nullval is None:
+            values = arr.flatten()
+        else:
+            values = arr[arr != self.nullval]
+        if len(values) > 0:
+            self.sum += values.sum()
+            self.ssq += (values.astype(numpy.float32)**2).sum()
+            self.count += values.size
+            minval = values.min()
+            if self.minval is None or minval < self.minval:
+                self.minval = minval
+            maxval = values.max()
+            if self.maxval is None or maxval < self.maxval:
+                self.maxval = maxval
+
+    def finalStats(self):
+        """
+        Return the final values of the four basic statistics
+        (minval, maxval, mean, stddev)
+        """
+        meanval = None
+        stddev = None
+        if self.count > 0:
+            meanval = self.sum / self.count
+            stddev = self.ssq / self.count - meanval ** 2
+
+        return (self.minval, self.maxval, meanval, stddev)
+
+    def histLimits(self):
+        """
+        Return the values which describe the limits of the histogram, 
+        i.e. the lowest and highest values with non-zero counts
+        """
+        nonzeroNdx = numpy.where(self.hist > 0)[0]
+        if len(nonzeroNdx) > 0:
+            first = nonzeroNdx[0]
+            last = nonzeroNdx[-1]
+            minval = self.histmin + first
+            maxval = self.histmin + last
+            nbins = last - first + 1
+        return (minval, maxval, first, last, nbins)
+
+
+def handleSinglePassActions(ds, arr, singlePassInfo, symbolicName, seqNum,
+        xOff, yOff):
+    """
+    Called from writeBlock, to handle the single-pass actions which may
+    or may not be required.
+    """
+    numBands = arr.shape[0]
+    if singlePassInfo.doSinglePassPyramids(symbolicName):
+        writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff)
+    if singlePassInfo.doSinglePassStatistics(symbolicName):
+        for i in range(numBands):
+            accum = singlePassInfo.accumulators[symbolicName, seqNum, i]
+            accum.doStatsAccum(arr[i])
+    if singlePassInfo.doSinglePassHistogram(symbolicName):
+        for i in range(numBands):
+            accum = singlePassInfo.accumulators[symbolicName, seqNum, i]
+            singlePassHistAccum(arr[i], accum.hist, accum.histNullval,
+                accum.histmin, accum.nbins)
+
+
+def writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff):
+    """
+    Calculate and write out the pyramid layers for all bands of the block
+    given as arr. Called when doing single-pass pyramid layers.
+
+    """
+    overviewLevels = singlePassInfo.overviewLevels[symbolicName]
+    nOverviews = len(overviewLevels)
+
+    numBands = arr.shape[0]
+    for i in range(numBands):
+        band = ds.GetRasterBand(i + 1)
+        for j in range(nOverviews):
+            band_ov = band.GetOverview(i)
+            lvl = overviewLevels[i]
+            # Offset from top-left edge
+            o = lvl // 2
+            # Sub-sample by taking every lvl-th pixel in each direction
+            arr_sub = arr[o::lvl, o::lvl]
+            # The xOff/yOff of the block within the sub-sampled raster
+            xOff_sub = xOff // lvl
+            yOff_sub = yOff // lvl
+            # The actual number of rows and cols to write, ensuring we
+            # do not go off the edges
+            nc = band_ov.XSize - xOff_sub
+            nr = band_ov.YSize - yOff_sub
+            arr_sub = arr_sub[:nr, :nc]
+            band_ov.WriteArray(arr_sub, xOff_sub, yOff_sub)
+            # This FlushCache should happen anyway. However, in earlier
+            # versions of the KEA driver, it did not, so do it explicitly
+            band_ov.FlushCache()
+
+
+@njit
+def singlePassHistAccum(arr, histCounts, nullval, minval, nbins):
+    """
+    When doing single-pass histogram, accumulate counts for the
+    given arr. This function is compiled using numba.njit, so should
+    not be passed any unexpected Python objects, just scalars and
+    numpy arrays.
+
+    In principle, this would be neater as a method on the
+    SinglePassAccumulator class, but with numba involved, it is more
+    straightforward to use a separate function.
+
+    """
+    for val in arr.flatten():
+        if val != nullval:
+            ndx = val - minval
+            if ndx >= 0 and ndx < nbins:
+                histCounts[ndx] += 1
