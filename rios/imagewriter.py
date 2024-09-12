@@ -214,14 +214,19 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls):
         if (not singlePassInfo.doSinglePassPyramids(symbolicName) and
                 not omitPyramids):
             # Pyramids have not been done single-pass, and are not being
-            # omitted, so do them on closing
+            # omitted, so do them on closing (i.e. the old way)
             calcstats.addPyramid(ds, progress, levels=overviewLevels,
                 minoverviewdim=overviewMinDim,
                 aggregationType=overviewAggType)
 
         if singlePassInfo.doSinglePassStatistics(symbolicName):
-            calcstats.finishSinglePassStats(ds, singlePassInfo)
+            calcstats.finishSinglePassStats(ds, singlePassInfo,
+                symbolicName, seqNum)
         elif not (omitBasicStats and omitHistogram):
+            # We are not omitting either basicStats or Histogram,
+            # nor have we been doing them single-pass, so do them entirely
+            # at the end, i.e. the old way.
+
             # Note that statsIgnore is passed in here. This is a historical
             # anomaly, from when calcStats was the only time that the null
             # value was set. In the current version, it is set when the file

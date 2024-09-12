@@ -458,10 +458,12 @@ class SinglePassInfo:
             includeHist = self.doSinglePassHistogram(symbolicName)
             if includeStats or includeHist:
                 nullval = ds.GetRasterBand(1).GetNoDataValue()
-                for i in range(arr.shape[0]):
-                    key = (symbolicName, seqNum, i)
-                    self.accumulators[key] = SinglePassAccumulator(
-                        includeStats, includeHist, arr.dtype, nullval)
+                key = (symbolicName, seqNum)
+                numBands = arr.shape[0]
+                for i in range(numBands):
+                    self.accumulators[key].append(
+                        SinglePassAccumulator(includeStats, includeHist,
+                            arr.dtype, nullval))
             if self.doSinglePassPyramids(symbolicName):
                 aggType = self.oviewAggtype[symbolicName]
                 ds.BuildOverviews(aggType, self.overviewLevels[symbolicName])
@@ -558,6 +560,10 @@ class SinglePassAccumulator:
             self.ssq = 0
             self.count = 0
         if includeHist:
+            # We only do single-pass histograms if we are also
+            # doing direct binning histograms.
+            self.binFunc = "direct"
+
             if dtype == numpy.uint8:
                 self.histmin = 0
                 self.nbins = 256
@@ -626,12 +632,13 @@ def handleSinglePassActions(ds, arr, singlePassInfo, symbolicName, seqNum,
     if singlePassInfo.doSinglePassPyramids(symbolicName):
         writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff)
     if singlePassInfo.doSinglePassStatistics(symbolicName):
+        accumList = singlePassInfo.accumulators[symbolicName, seqNum]
         for i in range(numBands):
-            accum = singlePassInfo.accumulators[symbolicName, seqNum, i]
-            accum.doStatsAccum(arr[i])
+            accumList[i].doStatsAccum(arr[i])
     if singlePassInfo.doSinglePassHistogram(symbolicName):
+        accumList = singlePassInfo.accumulators[symbolicName, seqNum]
         for i in range(numBands):
-            accum = singlePassInfo.accumulators[symbolicName, seqNum, i]
+            accum = accumList[i]
             singlePassHistAccum(arr[i], accum.hist, accum.histNullval,
                 accum.histmin, accum.nbins)
 
@@ -687,3 +694,48 @@ def singlePassHistAccum(arr, histCounts, nullval, minval, nbins):
             ndx = val - minval
             if ndx >= 0 and ndx < nbins:
                 histCounts[ndx] += 1
+
+
+def finishSinglePassStats(ds, singlePassInfo, symbolicName, seqNum):
+    """
+    Finish the single-pass basic statistics for all bands of the given
+    file, and write them into the file.
+    """
+    accumList = singlePassInfo.accumulators[symbolicName, seqNum]
+    numBands = len(accumList)
+    for i in range(numBands):
+        (minval, maxval, meanval, stddev) = accumList[i].finalStats()
+        band = ds.GetRasterBand(i + 1)
+        # In the old way, we used to write these using the named metadata
+        # items, but that now seems to be obsolete.
+        band.SetStatistics(minval, maxval, meanval, stddev)
+
+
+def finishSinglePassHistogram(ds, singlePassInfo, symbolicName, seqNum):
+    """
+    Finish the histogram
+    """
+    accumList = singlePassInfo.accumulators[symbolicName, seqNum]
+    numBands = len(accumList)
+    for i in range(numBands):
+        accum = accumList[i]
+        (minval, maxval, first, last, nbins) = accum.histLimits()
+        band = ds.GetRasterBand(i + 1)
+        hist = accum.hist[first:last + 1]
+        writeHistogram(band, hist, minval, maxval, nbins, accum.binFunc)
+        # Do mode and median.....
+
+
+def writeHistogram(outBand, hist, histmin, histmax, histnbins, histBinFunc):
+    """
+    Write the given values into the band object
+    """
+    # Should be deciding whether to use RFC40, or old metadata API.
+
+    outBand.SetMetadataItem("STATISTICS_HISTOBINVALUES",
+                            '|'.join(map(str, hist)) + '|')
+
+    outBand.SetMetadataItem("STATISTICS_HISTOMIN", repr(histmin))
+    outBand.SetMetadataItem("STATISTICS_HISTOMAX", repr(histmax))
+    outBand.SetMetadataItem("STATISTICS_HISTONUMBINS", repr(int(histnbins)))
+    outBand.SetMetadataItem("STATISTICS_HISTOBINFUNCTION", histBinFunc)
