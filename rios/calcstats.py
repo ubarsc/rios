@@ -449,94 +449,95 @@ class SinglePassInfo:
                     nOverviews += 1
             self.overviewLevels[symbolicName] = oviewLvls[:nOverviews]
 
-        def initFor(self, ds, symbolicName, seqNum, arr):
-            """
-            Initialise for the given output file
-            """
-            includeStats = self.doSinglePassStatistics(symbolicName)
-            self.arrDtype[symbolicName] = arr.dtype
-            includeHist = self.doSinglePassHistogram(symbolicName)
-            if includeStats or includeHist:
-                nullval = ds.GetRasterBand(1).GetNoDataValue()
-                key = (symbolicName, seqNum)
-                numBands = arr.shape[0]
-                for i in range(numBands):
-                    self.accumulators[key].append(
-                        SinglePassAccumulator(includeStats, includeHist,
-                            arr.dtype, nullval))
-            if self.doSinglePassPyramids(symbolicName):
-                aggType = self.oviewAggtype[symbolicName]
-                ds.BuildOverviews(aggType, self.overviewLevels[symbolicName])
-
-        def doSinglePassPyramids(self, symbolicName):
-            """
-            Return True if we should do single-pass pyramids layers, False
-            otherwise. Decision depends on choices for omitPyramids,
-            singlePassPyramids, and overviewAggType.
-
-            """
-            key = (symbolicName, self.PYRAMIDS)
-            omit = self.omit[key]
-            spReq = self.singlePassRequested[key]
+    def initFor(self, ds, symbolicName, seqNum, arr):
+        """
+        Initialise for the given output file
+        """
+        includeStats = self.doSinglePassStatistics(symbolicName)
+        self.arrDtype[symbolicName] = arr.dtype
+        includeHist = self.doSinglePassHistogram(symbolicName)
+        if includeStats or includeHist:
+            nullval = ds.GetRasterBand(1).GetNoDataValue()
+            key = (symbolicName, seqNum)
+            numBands = arr.shape[0]
+            self.accumulators[key] = [
+                SinglePassAccumulator(includeStats, includeHist,
+                        arr.dtype, nullval)
+                for i in range(numBands)
+            ]
+        if self.doSinglePassPyramids(symbolicName):
             aggType = self.oviewAggtype[symbolicName]
-            if spReq is True and aggType not in self.supportedAggtypes:
-                msg = ("Single-pass pyramids explicitly requested, but " +
-                   "not supported for aggregationType '{}'").format(
-                       aggType)
-                raise SinglePassActionsError(msg)
+            ds.BuildOverviews(aggType, self.overviewLevels[symbolicName])
 
-            spPyr = ((spReq is True or spReq is None) and (not omit) and
-                (aggType in self.supportedAggtypes))
-            return spPyr
+    def doSinglePassPyramids(self, symbolicName):
+        """
+        Return True if we should do single-pass pyramids layers, False
+        otherwise. Decision depends on choices for omitPyramids,
+        singlePassPyramids, and overviewAggType.
 
-        def doSinglePassStatistics(self, symbolicName):
-            """
-            Return True if we should do single-pass basic statistics, False
-            otherwise.
-            """
-            key = (symbolicName, self.STATISTICS)
-            omit = self.omit[key]
-            spReq = self.singlePassRequested[key]
-            approxOK = self.approxOK[symbolicName]
-            spStats = ((spReq is True or spReq is None) and
-                    not (omit or approxOK))
-            return spStats
+        """
+        key = (symbolicName, self.PYRAMIDS)
+        omit = self.omit[key]
+        spReq = self.singlePassRequested[key]
+        aggType = self.oviewAggtype[symbolicName]
+        if spReq is True and aggType not in self.supportedAggtypes:
+            msg = ("Single-pass pyramids explicitly requested, but " +
+               "not supported for aggregationType '{}'").format(
+                   aggType)
+            raise SinglePassActionsError(msg)
 
-        def doSinglePassHistogram(self, symbolicName):
-            """
-            Return True if we should do single-pass histogram, False
-            otherwise, based on what has been requested, the datatype of
-            the raster, and the availability of numba.
-            """
-            key = (symbolicName, self.HISTOGRAM)
-            omit = self.omit[key]
-            spReq = self.singlePassRequested[key]
-            approxOK = self.approxOK[symbolicName]
-            if symbolicName not in self.arrDtype:
-                msg = ("doSinglePassHistogram({name}) has been called " +
-                       "before initFor({name}, ...)").format(name=symbolicName)
-                raise SinglePassActionsError(msg)
-            dtype = self.arrDtype[symbolicName]
-            dtypeSupported = (dtype in self.histSupportedDtypes)
+        spPyr = ((spReq is True or spReq is None) and (not omit) and
+            (aggType in self.supportedAggtypes))
+        return spPyr
 
-            # Here we distinguish between spReq being True or None. If it
-            # is None, then we will settle on some suitable default behaviour,
-            # depending on other conditions, but if it is explicitly True,
-            # then we must have the required conditions, or raise an
-            # exception to explain why it will not be done.
-            if spReq is True and not dtypeSupported:
-                msg = ("Explicitly requested single-pass histogram, but " +
-                       "this is not supported for datatype {}".format(dtype))
-                raise SinglePassActionsError(msg)
-            if spReq is True and not haveNumba:
-                msg = ("Explicitly requested single-pass histogram, but " +
-                       "the numba package is not available")
-                raise SinglePassActionsError(msg)
+    def doSinglePassStatistics(self, symbolicName):
+        """
+        Return True if we should do single-pass basic statistics, False
+        otherwise.
+        """
+        key = (symbolicName, self.STATISTICS)
+        omit = self.omit[key]
+        spReq = self.singlePassRequested[key]
+        approxOK = self.approxOK[symbolicName]
+        spStats = ((spReq is True or spReq is None) and
+                not (omit or approxOK))
+        return spStats
 
-            spHist = ((spReq is True or spReq is None) and
-                      dtypeSupported and haveNumba and
-                      not (omit or approxOK))
-            return spHist
+    def doSinglePassHistogram(self, symbolicName):
+        """
+        Return True if we should do single-pass histogram, False
+        otherwise, based on what has been requested, the datatype of
+        the raster, and the availability of numba.
+        """
+        key = (symbolicName, self.HISTOGRAM)
+        omit = self.omit[key]
+        spReq = self.singlePassRequested[key]
+        approxOK = self.approxOK[symbolicName]
+        if symbolicName not in self.arrDtype:
+            msg = ("doSinglePassHistogram({name}) has been called " +
+                   "before initFor({name}, ...)").format(name=symbolicName)
+            raise SinglePassActionsError(msg)
+        dtype = self.arrDtype[symbolicName]
+        dtypeSupported = (dtype in self.histSupportedDtypes)
+
+        # Here we distinguish between spReq being True or None. If it
+        # is None, then we will settle on some suitable default behaviour,
+        # depending on other conditions, but if it is explicitly True,
+        # then we must have the required conditions, or raise an
+        # exception to explain why it will not be done.
+        if spReq is True and not dtypeSupported:
+            msg = ("Explicitly requested single-pass histogram, but " +
+                   "this is not supported for datatype {}".format(dtype))
+            raise SinglePassActionsError(msg)
+        if spReq is True and not haveNumba:
+            msg = ("Explicitly requested single-pass histogram, but " +
+                   "the numba package is not available")
+            raise SinglePassActionsError(msg)
+
+        spHist = ((spReq is True or spReq is None) and
+                  dtypeSupported and haveNumba and
+                  not (omit or approxOK))
+        return spHist
 
 
 class SinglePassAccumulator:
@@ -603,7 +604,11 @@ class SinglePassAccumulator:
         stddev = None
         if self.count > 0:
             meanval = self.sum / self.count
-            stddev = self.ssq / self.count - meanval ** 2
+            variance = self.ssq / self.count - meanval ** 2
+            stddev = 0.0
+            # In case some rounding error made variance negative
+            if variance >= 0:
+                stddev = numpy.sqrt(variance)
 
         return (self.minval, self.maxval, meanval, stddev)
 
@@ -708,7 +713,7 @@ def finishSinglePassStats(ds, singlePassInfo, symbolicName, seqNum):
         band = ds.GetRasterBand(i + 1)
         # In the old way, we used to write these using the named metadata
         # items, but that now seems to be obsolete.
-        band.SetStatistics(minval, maxval, meanval, stddev)
+        band.SetStatistics(float(minval), float(maxval), meanval, stddev)
 
 
 def finishSinglePassHistogram(ds, singlePassInfo, symbolicName, seqNum):

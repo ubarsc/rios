@@ -139,6 +139,9 @@ class ApplierControls(object):
         self.overviewLevels = DEFAULT_OVERVIEWLEVELS
         self.overviewMinDim = DEFAULT_MINOVERVIEWDIM
         self.overviewAggType = None
+        self.singlePassPyramids = None
+        self.singlePassBasicStats = None
+        self.singlePassHistogram = None
         self.thematic = False
         self.layernames = None
         self.tempdir = '.'
@@ -1041,7 +1044,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
             prog.update(blockNdx)
         if outBlockBuffer is None:
             with timings.interval('closing'):
-                closeOutfiles(gdalOutObjCache, outfiles, controls)
+                closeOutfiles(gdalOutObjCache, outfiles, controls,
+                    singlePassInfo)
     finally:
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
@@ -1135,7 +1139,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
                 raise rioserrors.WorkerExceptionError(msg)
 
         with timings.interval('closing'):
-            closeOutfiles(gdalOutObjCache, outfiles, controls)
+            closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo)
         prog.update(blockNdx)
     finally:
         # It is important that the computeMgr always be shut down, as it

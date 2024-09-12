@@ -186,13 +186,12 @@ def openOutfile(symbolicName, filename, controls, arr, workinggrid):
     return ds
 
 
-def closeOutfiles(gdalOutObjCache, outfiles, controls):
+def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo):
     """
     Close all the output files
     """
     # getOpt is just a little local shortcut
     getOpt = controls.getOptionForImagename
-    singlePassInfo = gdalOutObjCache.get(calcstats.SINGLEPASSINFO, default=None)
 
     for (symbolicName, seqNum, filename) in outfiles:
         statsIgnore = getOpt('statsIgnore', symbolicName)
@@ -235,7 +234,8 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls):
                 approx_ok=approxStats)
 
         if singlePassInfo.doSinglePassHistogram(symbolicName):
-            calcstats.finishSinglePassHistogram(ds, )
+            calcstats.finishSinglePassHistogram(ds, singlePassInfo,
+                symbolicName, seqNum)
 
         # This is doing everything I can to ensure the file gets fully closed
         # at this point.
