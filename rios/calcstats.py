@@ -387,9 +387,6 @@ def setNullValue(ds, nullValue):
         band.SetNoDataValue(nullValue)
 
 
-SINGLEPASSINFO = "SINGLEPASSINFO"
-
-
 class SinglePassInfo:
     """
     The required info for dealing with single-pass pyramids/statistics/histogram.
@@ -422,7 +419,9 @@ class SinglePassInfo:
 
         for (symbolicName, seqNum, filename) in outfiles:
             # Store all the relevant settings from the controls object,
-            # in a form which is a bit easier to query
+            # in a form which is a bit easier to query.
+            # (These are all the same for all seqNum values, and unnecessarily
+            # reset each time for the same symbolicName. Sorry.)
             self.omit[symbolicName, self.PYRAMIDS] = (
                 controls.getOptionForImagename('omitPyramids', symbolicName))
             self.singlePassRequested[symbolicName, self.PYRAMIDS] = (
@@ -444,12 +443,11 @@ class SinglePassInfo:
                 'overviewAggType', symbolicName)
             minOverviewDim = controls.getOptionForImagename(
                 'overviewMinDim', symbolicName)
-            if symbolicName not in self.overviewLevels:
-                nOverviews = 0
-                for lvl in oviewLvls:
-                    if (mindim // lvl) > minOverviewDim:
-                        nOverviews += 1
-                self.overviewLevels[symbolicName] = oviewLvls[:nOverviews]
+            nOverviews = 0
+            for lvl in oviewLvls:
+                if (mindim // lvl) > minOverviewDim:
+                    nOverviews += 1
+            self.overviewLevels[symbolicName] = oviewLvls[:nOverviews]
 
         def initFor(self, ds, symbolicName, seqNum, arr):
             """

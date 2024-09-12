@@ -107,16 +107,10 @@ setDefaultDriver()
 
 
 def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
-        workinggrid):
+        workinggrid, singlePassInfo):
     """
     Write the given block to the files given in outfiles
     """
-    SINGLEPASSINFO = calcstats.SINGLEPASSINFO
-    if SINGLEPASSINFO not in gdalOutObjCache:
-        gdalOutObjCache[SINGLEPASSINFO] = calcstats.SinglePassInfo(
-            outfiles, controls, workinggrid)
-    singlePassInfo = gdalOutObjCache[SINGLEPASSINFO]
-
     for (symbolicName, seqNum, filename) in outfiles:
         arr = outputs[symbolicName, seqNum]
         # Trim the margin
