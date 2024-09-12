@@ -592,7 +592,7 @@ class SinglePassAccumulator:
             if self.minval is None or minval < self.minval:
                 self.minval = minval
             maxval = values.max()
-            if self.maxval is None or maxval < self.maxval:
+            if self.maxval is None or maxval > self.maxval:
                 self.maxval = maxval
 
     def finalStats(self):
