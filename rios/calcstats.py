@@ -442,12 +442,7 @@ class SinglePassInfo:
             aggType = controls.getOptionForImagename(
                 'overviewAggType', symbolicName)
             if aggType is None:
-                thematic = controls.getOptionForImagename(
-                    'thematic', symbolicName)
-                if thematic:
-                    aggType = "NEAREST"
-                else:
-                    aggType = "AVERAGE"
+                aggType = "NEAREST"
             self.oviewAggtype[symbolicName] = aggType
             minOverviewDim = controls.getOptionForImagename(
                 'overviewMinDim', symbolicName)
@@ -686,7 +681,7 @@ def writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff):
             band_ov.WriteArray(arr_sub, xOff_sub, yOff_sub)
             # This FlushCache should happen anyway. However, in earlier
             # versions of the KEA driver, it did not, so do it explicitly
-            band_ov.FlushCache()
+            #band_ov.FlushCache()
 
 
 @njit
