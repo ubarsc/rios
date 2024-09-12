@@ -439,8 +439,16 @@ class SinglePassInfo:
                 'approxStats', symbolicName)
             oviewLvls = controls.getOptionForImagename('overviewLevels',
                 symbolicName)
-            self.oviewAggtype[symbolicName] = controls.getOptionForImagename(
+            aggType = controls.getOptionForImagename(
                 'overviewAggType', symbolicName)
+            if aggType is None:
+                thematic = controls.getOptionForImagename(
+                    'thematic', symbolicName)
+                if thematic:
+                    aggType = "NEAREST"
+                else:
+                    aggType = "AVERAGE"
+            self.oviewAggtype[symbolicName] = aggType
             minOverviewDim = controls.getOptionForImagename(
                 'overviewMinDim', symbolicName)
             nOverviews = 0
@@ -666,7 +674,7 @@ def writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff):
             # Offset from top-left edge
             o = lvl // 2
             # Sub-sample by taking every lvl-th pixel in each direction
-            arr_sub = arr[o::lvl, o::lvl]
+            arr_sub = arr[i, o::lvl, o::lvl]
             # The xOff/yOff of the block within the sub-sampled raster
             xOff_sub = xOff // lvl
             yOff_sub = yOff // lvl
