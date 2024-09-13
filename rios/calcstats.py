@@ -397,7 +397,7 @@ class SinglePassManager:
     as early as possible, and store the decisions on this object, so they can
     just be checked later.
     """
-    def __init__(self, outfiles, controls, workinggrid):
+    def __init__(self, outfiles, controls, workinggrid, tmpfileMgr):
         """
         Check whether single-pass is appropriate and/or supported for
         all output files.
@@ -415,9 +415,12 @@ class SinglePassManager:
         self.oviewAggtype = {}
         self.arrDtype = {}
         self.accumulators = {}
+        self.pyramidsSupported = {}
 
         (nrows, ncols) = workinggrid.getDimensions()
         mindim = min(nrows, ncols)
+        driverSupportsPyramids = self.checkDriverPyramidSupport(outfiles,
+            controls, tmpfileMgr)
 
         for (symbolicName, seqNum, filename) in outfiles:
             # Store all the relevant settings from the controls object,
@@ -437,6 +440,10 @@ class SinglePassManager:
             self.singlePassRequested[symbolicName, self.HISTOGRAM] = (
                 controls.getOptionForImagename('singlePassHistogram', symbolicName))
 
+            driverName = controls.getOptionForImagename('drivername',
+                symbolicName)
+            self.pyramidsSupported[symbolicName] = driverSupportsPyramids[driverName]
+
             self.approxOK[symbolicName] = controls.getOptionForImagename(
                 'approxStats', symbolicName)
             oviewLvls = controls.getOptionForImagename('overviewLevels',
@@ -453,6 +460,49 @@ class SinglePassManager:
                 if (mindim // lvl) > minOverviewDim:
                     nOverviews += 1
             self.overviewLevels[symbolicName] = oviewLvls[:nOverviews]
+
+    def checkDriverPyramidSupport(self, outfiles, controls, tmpfileMgr):
+        """
+        For all the format drivers being used for output, check whether they
+        support direct writing of pyramid layers. Return a dictionary keyed
+        by driver name, with boolean values.
+        """
+        driverSupportsPyramids = {}
+        nrows = ncols = 64
+        fillVal = 20
+        for (symbolicName, seqNum, filename) in outfiles:
+            driverName = controls.getOptionForImagename(
+                'drivername', symbolicName)
+            if driverName not in driverSupportsPyramids:
+                drvr = gdal.GetDriverByName(driverName)
+                suffix = ".{}".format(drvr.GetMetadataItem('DMD_EXTENSION'))
+
+                # Create a small test image with a single overview level,
+                # written directly.
+                imgfile = tmpfileMgr.mktempfile(prefix='pyrcheck_',
+                    suffix=suffix)
+                arr = numpy.full((nrows, ncols), fillVal, dtype=numpy.uint8)
+                ds = drvr.Create(imgfile, ncols, nrows, 1, gdal.GDT_Byte)
+                band = ds.GetRasterBand(1)
+                ds.BuildOverviews(overviewlist=[2])
+                band.WriteArray(arr)
+                band_ov = band.GetOverview(0)
+                arr_ov = arr[::2, ::2]
+                band_ov.WriteArray(arr_ov)
+                del band_ov, band, ds
+
+                # Now read back the overview array
+                ds = gdal.Open(imgfile)
+                band = ds.GetRasterBand(1)
+                band_ov = band.GetOverview(0)
+                arr_sub2 = band_ov.ReadAsArray()
+                del band_ov, band, ds
+                drvr.Delete(imgfile)
+
+                # If the overview array is full of the fill value, then it works
+                supported = (arr_sub2 == fillVal).all()
+                driverSupportsPyramids[driverName] = supported
+        return driverSupportsPyramids
 
     def initFor(self, ds, symbolicName, seqNum, arr):
         """
@@ -483,6 +533,7 @@ class SinglePassManager:
         """
         key = (symbolicName, self.PYRAMIDS)
         omit = self.omit[key]
+        supported = self.pyramidsSupported[symbolicName]
         spReq = self.singlePassRequested[key]
         aggType = self.oviewAggtype[symbolicName]
         if spReq is True and aggType not in self.supportedAggtypes:
@@ -492,7 +543,7 @@ class SinglePassManager:
             raise SinglePassActionsError(msg)
 
         spPyr = ((spReq is True or spReq is None) and (not omit) and
-            (aggType in self.supportedAggtypes))
+            supported and (aggType in self.supportedAggtypes))
         return spPyr
 
     def doSinglePassStatistics(self, symbolicName):

@@ -970,7 +970,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     if outBlockBuffer is None:
         # This must be the main thread, so do certain extra things
         gdalOutObjCache = {}
-        singlePassMgr = SinglePassManager(outfiles, controls, workinggrid)
+        singlePassMgr = SinglePassManager(outfiles, controls, workinggrid,
+            tmpfileMgr)
         prog = ApplierProgress(controls, numBlocks)
         exceptionQue = queue.Queue()
     gdalObjCache = None
@@ -1081,7 +1082,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         concurrency.computeBufferInsertTimeout,
         concurrency.computeBufferPopTimeout, 'compute')
     gdalOutObjCache = {}
-    singlePassMgr = SinglePassManager(outfiles, controls, workinggrid)
+    singlePassMgr = SinglePassManager(outfiles, controls, workinggrid,
+        tmpfileMgr)
     exceptionQue = queue.Queue()
 
     inBlockBuffer = None
