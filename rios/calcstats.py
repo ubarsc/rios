@@ -29,15 +29,8 @@ try:
     haveNumba = True
 except ImportError:
     # Define a dummy njit decorator
-    # https://stackoverflow.com/questions/57774497/how-do-i-make-a-dummy-do-nothing-jit-decorator
-    def njit(f=None, *args, **kwargs):
-        def decorator(func):
-            return func
-
-        if callable(f):
-            return f
-        else:
-            return decorator
+    def njit(func, *args, **kwargs):
+        return func
     haveNumba = False
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError, SinglePassActionsError
