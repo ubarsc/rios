@@ -39,7 +39,7 @@ from .imagewriter import writeBlock, closeOutfiles, dfltDriverOptions  # noqa: F
 from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F401
 from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
 from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
-from .calcstats import SinglePassInfo
+from .calcstats import SinglePassManager
 from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockBuffer, Timers, TempfileManager, ApplierReturn
@@ -970,7 +970,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     if outBlockBuffer is None:
         # This must be the main thread, so do certain extra things
         gdalOutObjCache = {}
-        singlePassInfo = SinglePassInfo(outfiles, controls, workinggrid)
+        singlePassMgr = SinglePassManager(outfiles, controls, workinggrid)
         prog = ApplierProgress(controls, numBlocks)
         exceptionQue = queue.Queue()
     gdalObjCache = None
@@ -1026,7 +1026,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                 if outBlockBuffer is None:
                     with timings.interval('writing'):
                         writeBlock(gdalOutObjCache, blockDefn, outfiles,
-                            outputs, controls, workinggrid, singlePassInfo)
+                            outputs, controls, workinggrid, singlePassMgr)
                 else:
                     with timings.interval('insert_computebuffer'):
                         outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
@@ -1045,7 +1045,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         if outBlockBuffer is None:
             with timings.interval('closing'):
                 closeOutfiles(gdalOutObjCache, outfiles, controls,
-                    singlePassInfo)
+                    singlePassMgr)
     finally:
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
@@ -1081,7 +1081,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         concurrency.computeBufferInsertTimeout,
         concurrency.computeBufferPopTimeout, 'compute')
     gdalOutObjCache = {}
-    singlePassInfo = SinglePassInfo(outfiles, controls, workinggrid)
+    singlePassMgr = SinglePassManager(outfiles, controls, workinggrid)
     exceptionQue = queue.Queue()
 
     inBlockBuffer = None
@@ -1124,7 +1124,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
 
                 with timings.interval('writing'):
                     writeBlock(gdalOutObjCache, blockDefn, outfiles,
-                        outputs, controls, workinggrid, singlePassInfo)
+                        outputs, controls, workinggrid, singlePassMgr)
             except Exception as e:
                 workerErr = WorkerErrorRecord(e, 'main')
                 exceptionQue.put(workerErr)
@@ -1139,7 +1139,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
                 raise rioserrors.WorkerExceptionError(msg)
 
         with timings.interval('closing'):
-            closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo)
+            closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr)
         prog.update(blockNdx)
     finally:
         # It is important that the computeMgr always be shut down, as it

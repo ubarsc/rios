@@ -389,7 +389,7 @@ def setNullValue(ds, nullValue):
         band.SetNoDataValue(nullValue)
 
 
-class SinglePassInfo:
+class SinglePassManager:
     """
     The required info for dealing with single-pass pyramids/statistics/histogram.
     There is some complexity here, because the decisions about what to do are
@@ -632,34 +632,34 @@ class SinglePassAccumulator:
         return (minval, maxval, first, last, nbins)
 
 
-def handleSinglePassActions(ds, arr, singlePassInfo, symbolicName, seqNum,
+def handleSinglePassActions(ds, arr, singlePassMgr, symbolicName, seqNum,
         xOff, yOff):
     """
     Called from writeBlock, to handle the single-pass actions which may
     or may not be required.
     """
     numBands = arr.shape[0]
-    if singlePassInfo.doSinglePassPyramids(symbolicName):
-        writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff)
-    if singlePassInfo.doSinglePassStatistics(symbolicName):
-        accumList = singlePassInfo.accumulators[symbolicName, seqNum]
+    if singlePassMgr.doSinglePassPyramids(symbolicName):
+        writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff)
+    if singlePassMgr.doSinglePassStatistics(symbolicName):
+        accumList = singlePassMgr.accumulators[symbolicName, seqNum]
         for i in range(numBands):
             accumList[i].doStatsAccum(arr[i])
-    if singlePassInfo.doSinglePassHistogram(symbolicName):
-        accumList = singlePassInfo.accumulators[symbolicName, seqNum]
+    if singlePassMgr.doSinglePassHistogram(symbolicName):
+        accumList = singlePassMgr.accumulators[symbolicName, seqNum]
         for i in range(numBands):
             accum = accumList[i]
             singlePassHistAccum(arr[i], accum.hist, accum.histNullval,
                 accum.histmin, accum.nbins)
 
 
-def writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff):
+def writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff):
     """
     Calculate and write out the pyramid layers for all bands of the block
     given as arr. Called when doing single-pass pyramid layers.
 
     """
-    overviewLevels = singlePassInfo.overviewLevels[symbolicName]
+    overviewLevels = singlePassMgr.overviewLevels[symbolicName]
     nOverviews = len(overviewLevels)
 
     numBands = arr.shape[0]
@@ -703,12 +703,12 @@ def singlePassHistAccum(arr, histCounts, nullval, minval, nbins):
                 histCounts[ndx] += 1
 
 
-def finishSinglePassStats(ds, singlePassInfo, symbolicName, seqNum):
+def finishSinglePassStats(ds, singlePassMgr, symbolicName, seqNum):
     """
     Finish the single-pass basic statistics for all bands of the given
     file, and write them into the file.
     """
-    accumList = singlePassInfo.accumulators[symbolicName, seqNum]
+    accumList = singlePassMgr.accumulators[symbolicName, seqNum]
     numBands = len(accumList)
     for i in range(numBands):
         (minval, maxval, meanval, stddev) = accumList[i].finalStats()
@@ -718,11 +718,11 @@ def finishSinglePassStats(ds, singlePassInfo, symbolicName, seqNum):
         band.SetStatistics(float(minval), float(maxval), meanval, stddev)
 
 
-def finishSinglePassHistogram(ds, singlePassInfo, symbolicName, seqNum):
+def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
     """
     Finish the histogram
     """
-    accumList = singlePassInfo.accumulators[symbolicName, seqNum]
+    accumList = singlePassMgr.accumulators[symbolicName, seqNum]
     numBands = len(accumList)
     for i in range(numBands):
         accum = accumList[i]
