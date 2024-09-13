@@ -28,7 +28,16 @@ try:
     from numba import njit
     haveNumba = True
 except ImportError:
-    njit = None
+    # Define a dummy njit decorator
+    # https://stackoverflow.com/questions/57774497/how-do-i-make-a-dummy-do-nothing-jit-decorator
+    def njit(f=None, *args, **kwargs):
+        def decorator(func):
+            return func
+
+        if callable(f):
+            return f
+        else:
+            return decorator
     haveNumba = False
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError, SinglePassActionsError
@@ -679,9 +688,6 @@ def writeBlockPyramids(ds, arr, singlePassInfo, symbolicName, xOff, yOff):
             nr = band_ov.YSize - yOff_sub
             arr_sub = arr_sub[:nr, :nc]
             band_ov.WriteArray(arr_sub, xOff_sub, yOff_sub)
-            # This FlushCache should happen anyway. However, in earlier
-            # versions of the KEA driver, it did not, so do it explicitly
-            #band_ov.FlushCache()
 
 
 @njit
