@@ -666,16 +666,7 @@ class SinglePassAccumulator:
             if variance >= 0:
                 stddev = numpy.sqrt(variance)
 
-        (minval, maxval) = (self.minval, self.maxval)
-        if minval is None:
-            minval = self.nullval
-        if maxval is None:
-            maxval = self.nullval
-        if meanval is None:
-            meanval = self.nullval
-        if stddev is None:
-            stddev = self.nullval
-        return (minval, maxval, meanval, stddev)
+        return (self.minval, self.maxval, meanval, stddev)
 
     def histLimits(self):
         """
@@ -777,10 +768,11 @@ def finishSinglePassStats(ds, singlePassMgr, symbolicName, seqNum):
     numBands = len(accumList)
     for i in range(numBands):
         (minval, maxval, meanval, stddev) = accumList[i].finalStats()
-        band = ds.GetRasterBand(i + 1)
-        # In the old way, we used to write these using the named metadata
-        # items, but that now seems to be obsolete.
-        band.SetStatistics(float(minval), float(maxval), meanval, stddev)
+        if None not in (minval, maxval, meanval, stddev):
+            band = ds.GetRasterBand(i + 1)
+            # In the old way, we used to write these using the named metadata
+            # items, but that now seems to be obsolete.
+            band.SetStatistics(float(minval), float(maxval), meanval, stddev)
 
 
 def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
