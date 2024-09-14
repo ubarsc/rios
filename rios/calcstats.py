@@ -684,24 +684,27 @@ class SinglePassAccumulator:
 
 
 def handleSinglePassActions(ds, arr, singlePassMgr, symbolicName, seqNum,
-        xOff, yOff):
+        xOff, yOff, timings):
     """
     Called from writeBlock, to handle the single-pass actions which may
     or may not be required.
     """
     numBands = arr.shape[0]
     if singlePassMgr.doSinglePassPyramids(symbolicName):
-        writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff)
+        with timings.interval('pyramids'):
+            writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff)
     if singlePassMgr.doSinglePassStatistics(symbolicName):
-        accumList = singlePassMgr.accumulators[symbolicName, seqNum]
-        for i in range(numBands):
-            accumList[i].doStatsAccum(arr[i])
+        with timings.interval('basicstats'):
+            accumList = singlePassMgr.accumulators[symbolicName, seqNum]
+            for i in range(numBands):
+                accumList[i].doStatsAccum(arr[i])
     if singlePassMgr.doSinglePassHistogram(symbolicName):
-        accumList = singlePassMgr.accumulators[symbolicName, seqNum]
-        for i in range(numBands):
-            accum = accumList[i]
-            singlePassHistAccum(arr[i], accum.hist, accum.histNullval,
-                accum.histmin, accum.nbins)
+        with timings.interval('histogram'):
+            accumList = singlePassMgr.accumulators[symbolicName, seqNum]
+            for i in range(numBands):
+                accum = accumList[i]
+                singlePassHistAccum(arr[i], accum.hist, accum.histNullval,
+                    accum.histmin, accum.nbins)
 
 
 def writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff):

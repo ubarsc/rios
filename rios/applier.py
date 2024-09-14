@@ -1025,9 +1025,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
                     userFunction(*userArgs)
 
                 if outBlockBuffer is None:
-                    with timings.interval('writing'):
-                        writeBlock(gdalOutObjCache, blockDefn, outfiles,
-                            outputs, controls, workinggrid, singlePassMgr)
+                    writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                        controls, workinggrid, singlePassMgr, timings)
                 else:
                     with timings.interval('insert_computebuffer'):
                         outBlockBuffer.insertCompleteBlock(blockDefn, outputs)
@@ -1044,9 +1043,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         if prog is not None:
             prog.update(blockNdx)
         if outBlockBuffer is None:
-            with timings.interval('closing'):
-                closeOutfiles(gdalOutObjCache, outfiles, controls,
-                    singlePassMgr)
+            closeOutfiles(gdalOutObjCache, outfiles, controls,
+                singlePassMgr, timings)
     finally:
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
@@ -1124,9 +1122,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
                 with timings.interval('pop_computebuffer'):
                     (blockDefn, outputs) = outBlockBuffer.popNextBlock()
 
-                with timings.interval('writing'):
-                    writeBlock(gdalOutObjCache, blockDefn, outfiles,
-                        outputs, controls, workinggrid, singlePassMgr)
+                writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs,
+                    controls, workinggrid, singlePassMgr, timings)
             except Exception as e:
                 workerErr = WorkerErrorRecord(e, 'main')
                 exceptionQue.put(workerErr)
@@ -1140,8 +1137,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
                 msg = "The preceding exception was raised in a worker"
                 raise rioserrors.WorkerExceptionError(msg)
 
-        with timings.interval('closing'):
-            closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr)
+        closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr,
+            timings)
         prog.update(blockNdx)
     finally:
         # It is important that the computeMgr always be shut down, as it

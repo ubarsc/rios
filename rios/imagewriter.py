@@ -107,7 +107,7 @@ setDefaultDriver()
 
 
 def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
-        workinggrid, singlePassInfo):
+        workinggrid, singlePassInfo, timings):
     """
     Write the given block to the files given in outfiles
     """
@@ -127,12 +127,13 @@ def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
 
         ds = gdalOutObjCache[symbolicName, seqNum]
 
-        # Write the base raster data
-        ds.WriteArray(arr, blockDefn.left, blockDefn.top)
+        with timings.interval('writing'):
+            # Write the base raster data
+            ds.WriteArray(arr, blockDefn.left, blockDefn.top)
 
         # If appropriate, do single-pass actions for this block
         calcstats.handleSinglePassActions(ds, arr, singlePassInfo,
-            symbolicName, seqNum, blockDefn.left, blockDefn.top)
+            symbolicName, seqNum, blockDefn.left, blockDefn.top, timings)
 
 
 def openOutfile(symbolicName, filename, controls, arr, workinggrid):
@@ -186,7 +187,7 @@ def openOutfile(symbolicName, filename, controls, arr, workinggrid):
     return ds
 
 
-def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo):
+def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
     """
     Close all the output files
     """
@@ -214,13 +215,15 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo):
                 not omitPyramids):
             # Pyramids have not been done single-pass, and are not being
             # omitted, so do them on closing (i.e. the old way)
-            calcstats.addPyramid(ds, progress, levels=overviewLevels,
-                minoverviewdim=overviewMinDim,
-                aggregationType=overviewAggType)
+            with timings.interval('pyramids'):
+                calcstats.addPyramid(ds, progress, levels=overviewLevels,
+                    minoverviewdim=overviewMinDim,
+                    aggregationType=overviewAggType)
 
         if singlePassInfo.doSinglePassStatistics(symbolicName):
-            calcstats.finishSinglePassStats(ds, singlePassInfo,
-                symbolicName, seqNum)
+            with timings.interval('basicstats'):
+                calcstats.finishSinglePassStats(ds, singlePassInfo,
+                    symbolicName, seqNum)
         elif not (omitBasicStats and omitHistogram):
             # We are not omitting either basicStats or Histogram,
             # nor have we been doing them single-pass, so do them entirely
@@ -230,18 +233,21 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo):
             # anomaly, from when calcStats was the only time that the null
             # value was set. In the current version, it is set when the file
             # is created.
-            calcstats.addStatistics(ds, progress, statsIgnore,
-                approx_ok=approxStats)
+            with timings.interval('stats+histogram'):
+                calcstats.addStatistics(ds, progress, statsIgnore,
+                    approx_ok=approxStats)
 
         if singlePassInfo.doSinglePassHistogram(symbolicName):
-            calcstats.finishSinglePassHistogram(ds, singlePassInfo,
-                symbolicName, seqNum)
+            with timings.interval('histogram'):
+                calcstats.finishSinglePassHistogram(ds, singlePassInfo,
+                    symbolicName, seqNum)
 
         # This is doing everything I can to ensure the file gets fully closed
         # at this point.
-        ds.FlushCache()
-        gdalOutObjCache.pop((symbolicName, seqNum))
-        del ds
+        with timings.interval('closing'):
+            ds.FlushCache()
+            gdalOutObjCache.pop((symbolicName, seqNum))
+            del ds
 
         # Check whether we will need to add an auto color table
         if autoColorTableType is not None:
