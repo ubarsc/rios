@@ -666,7 +666,16 @@ class SinglePassAccumulator:
             if variance >= 0:
                 stddev = numpy.sqrt(variance)
 
-        return (self.minval, self.maxval, meanval, stddev)
+        (minval, maxval) = (self.minval, self.maxval)
+        if minval is None:
+            minval = self.nullval
+        if maxval is None:
+            maxval = self.nullval
+        if meanval is None:
+            meanval = self.nullval
+        if stddev is None:
+            stddev = self.nullval
+        return (minval, maxval, meanval, stddev)
 
     def histLimits(self):
         """
@@ -680,6 +689,8 @@ class SinglePassAccumulator:
             minval = self.histmin + first
             maxval = self.histmin + last
             nbins = last - first + 1
+        else:
+            minval = maxval = first = last = nbins = None
         return (minval, maxval, first, last, nbins)
 
 
@@ -781,10 +792,11 @@ def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
     for i in range(numBands):
         accum = accumList[i]
         (minval, maxval, first, last, nbins) = accum.histLimits()
-        band = ds.GetRasterBand(i + 1)
-        hist = accum.hist[first:last + 1]
-        writeHistogram(band, hist, minval, maxval, nbins, accum.binFunc)
-        # Do mode and median.....
+        if minval is not None:
+            band = ds.GetRasterBand(i + 1)
+            hist = accum.hist[first:last + 1]
+            writeHistogram(band, hist, minval, maxval, nbins, accum.binFunc)
+            # Do mode and median.....
 
 
 def writeHistogram(outBand, hist, histmin, histmax, histnbins, histBinFunc):
