@@ -396,6 +396,11 @@ class SinglePassManager:
     a result of a number of different factors. We attempt to make these decisions
     as early as possible, and store the decisions on this object, so they can
     just be checked later.
+
+    The general intention is that wherever possible, the pyramids, basic
+    statistics, and histogram, will all be done with the single-pass methods.
+    When this is not possible, or has been explicitly disabled, then it will
+    fall back to using GDAL's methods, after the whole raster has been written.
     """
     def __init__(self, outfiles, controls, workinggrid, tmpfileMgr):
         """
