@@ -143,7 +143,10 @@ gdalFloatTypes = set([gdal.GDT_Float32, gdal.GDT_Float64])
 
 def addStatistics(ds, progress, ignore=None, approx_ok=False):
     """
-    Calculates statistics and adds them to the image
+    Calculates statistics and adds them to the image. As of version
+    2.0.5, this function is no longer used directly with RIOS, and
+    is maintained purely for backward compatibility with programs
+    which call it directly.
     
     Uses gdal.Band.ComputeStatistics() for mean, stddev, min and max,
     and gdal.Band.GetHistogram() to do histogram calculation. 
@@ -158,15 +161,26 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
     no-data value (i.e. null value) on the dataset, using the same value
     for every band.
 
+    Obsolete from version 2.0.5.
+    See addBasicStatsGDAL() and addHistogramsGDAL() for replacements.
+
     """
+    # Set the null value, as that is what this routine used to do, historically.
+    for i in range(ds.RasterCount):
+        band = ds.GetRasterBand(i + 1)
+        band.SetNoDataValue(ignore)
+
+    # Add basic statistics and histogram, using GDAL.
     minMaxList = addBasicStatsGDAL(ds, approx_ok)
     addHistogramsGDAL(ds, minMaxList, approx_ok)
 
 
 def addBasicStatsGDAL(ds, approx_ok):
     """
-    Add basic statistics to all bands of the given Dataset, using
-    GDAL's function. Passes approx_ok through to that.
+    Add basic statistics (min, max, mean, stddev) to all bands of the
+    given Dataset, using GDAL's function. If approx_ok is True, then
+    much faster approximate statistics will be calculated (in particular,
+    the min and max will only be approximate).
 
     Return a list of the minimum and maximum values for each band, in case
     this is required later for the histogram.
@@ -186,8 +200,11 @@ def addBasicStatsGDAL(ds, approx_ok):
 def addHistogramsGDAL(ds, minMaxList, approx_ok):
     """
     Add histograms to all bands of the given Dataset, using GDAL's own
-    function. Passes approx_ok through to that. The minMaxList is as returned
-    by addBasicStatsGDAL.
+    function. If approx_ok is True, then much faster approximate histograms
+    will be calculated (i.e. the pixel counts will be in proportion, but
+    not exactly accurate).
+
+    The minMaxList is as returned by addBasicStatsGDAL.
 
     """
     for bandndx in range(ds.RasterCount):
@@ -335,8 +352,14 @@ def calcStats(ds, progress=None, ignore=None,
         levels=DEFAULT_OVERVIEWLEVELS,
         aggregationType=None, approx_ok=False):
     """
-    Does both the stats and pyramid layers. Calls addPyramid()
-    and addStatistics() functions. See their docstrings for details. 
+    This function is no longer used internally, and is maintained
+    purely for backward compatibility for programs which called it
+    directly.
+
+    Calls the addPyramid and addStatistics functions, to add pyramid
+    layers (i.e. overviews), and basic statistics and histogram,
+    to the given open Dataset ``ds``. See the docstrings for those
+    functions for details.
     
     """
     if progress is None:
