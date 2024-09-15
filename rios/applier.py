@@ -216,7 +216,20 @@ class ApplierControls(object):
                            "not found on infiles or outfiles")
                     msg = msg.format(option, imagename)
                     raise ValueError(msg)
-        
+
+        # Warn against use of approx stats with thematic output images
+        outImageList = [symbName for (symbName, seqNum, filename) in
+            outfiles]
+        outImageList = list(set(outImageList))
+        for imagename in outImageList:
+            thematic = self.getOptionForImagename('thematic', imagename)
+            approxStats = self.getOptionForImagename('approxStats', imagename)
+            if thematic and approxStats:
+                msg = ("Warning: Output image {} is thematic, and also " +
+                       "uses approximate statistics. This is not " +
+                       "recommended").format(imagename)
+                print(msg, file=sys.stderr)
+
     def setLoggingStream(self, loggingstream):
         """
         Set the rios logging stream to the given file-like object.
@@ -236,7 +249,7 @@ class ApplierControls(object):
         Overlap is a number of pixels, and is somewhat mis-named. It refers
         to the amount of margin added to each block of input, so that the
         blocks will overlap, hence the actual amount of overlap is really
-        more like double this value (allowing for odd and even numbers, etc).
+        double this value.
 
         The margin can result in pixels which are outside the extent of
         the given input images. These pixels will be filled with the null
@@ -558,18 +571,22 @@ class ApplierControls(object):
     def setSinglePassHistogram(self, singlePassHistogram, imagename=None):
         """
         The default behaviour is to attempt to compute a histogram
-        (on each band) for all output files as each block is computed.
-        This avoids an extra pass through the data afterwards.
+        (on each band) for all output files. If possible, this will be done
+        incrementally, as each block of output is written, but if that is
+        not possible, it will be done at the end of processing, which will
+        require an extra pass through each output file.
 
-        If singlePassHistogram is given here as False, then this will not be
-        attempted, and instead GDAL's GetHistogram() function will be
-        called after the output is completed (i.e. a whole extra pass through
-        the data).
+        The single-pass histogram requires the ``numba`` package, and is
+        only supported for 8 and 16 bit integer datatypes. The default
+        behaviour is to do single-pass histograms if both these conditions
+        are satisfied, and if not, to fall back computing histograms using
+        GDAL's GetHistogram() function, after the output files have been
+        written.
 
-        Only certain datatypes are supported for single-pass histograms, and
-        if the datatype is not supported, then the default will be to use
-        GDAL's GetHistogram(). If singlePassHistogram is True for an
-        unsupported datatype, an exception is raised.
+        If singlePassHistogram is given here as False, then GDAL's function
+        will always be used. If singlePassHistogram is given here as True,
+        and the required conditions are not satisfied, then an exception
+        will be raised, explaining why this cannot be done.
 
         New in version 2.0.5.
 
@@ -807,17 +824,27 @@ class ApplierControls(object):
         """
         self.allowOverviewsGdalwarp = allowOverviewsGdalwarp
     
-    def setApproxStats(self, approxStats):
+    def setApproxStats(self, approxStats, imagename=None):
         """
-        Set boolean value of approxStats attribute. This modifies the behaviour of
-        calcStats by forcing it to use the pyramid layers during stats generation
-        (much faster but only provides approximate values, not recommended for
-        thematic rasters)
+        Set boolean value of approxStats attribute. This modifies the
+        computation of both basic statistics and histograms on output
+        files, allowing the use of lower resolution pyramid layers
+        (i.e. overviews), instead of the full resolution data. This
+        dramatically speeds up both calculations.
+
+        This has no effect when using single-pass calculation for basic
+        statistics and histograms (new in 2.0.5), and so setting this to
+        be True will have the effect of disabling single-pass for both
+        basic statistics and histograms. It is independent of single-pass
+        pyramids layers.
+
+        If imagename is given, then the setting will apply only to
+        the given image.
 
         New in version 1.4.9
 
         """
-        self.approxStats = approxStats
+        self.setOptionForImagename('approxStats', imagename, approxStats)
 
     def emulateOldJobManager(self):
         """
