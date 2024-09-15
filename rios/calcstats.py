@@ -159,47 +159,51 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
     for every band.
 
     """
-    progress.setLabelText("Computing Statistics...")
-    progress.setProgress(0)
-    percent = 0
-    percentstep = 100.0 / (ds.RasterCount * 2)  # 2 steps for each layer
+    minMaxList = addBasicStatsGDAL(ds, approx_ok)
+    addHistogramsGDAL(ds, minMaxList, approx_ok)
 
-    # flush the cache. The ensures that any unwritten data is 
-    # written to file so we get the right stats. It also 
-    # makes sure any metdata is written on HFA. This means
-    # the LAYER_TYPE setting will be picked up by rat.SetLinearBinning()
-    ds.FlushCache()
 
-    for bandnum in range(ds.RasterCount):
-        band = ds.GetRasterBand(bandnum + 1)
-    
-        if ignore is not None:
-            # tell QGIS that the ignore value was ignored
-            band.SetNoDataValue(ignore)
+def addBasicStatsGDAL(ds, approx_ok):
+    """
+    Add basic statistics to all bands of the given Dataset, using
+    GDAL's function. Passes approx_ok through to that.
+
+    Return a list of the minimum and maximum values for each band, in case
+    this is required later for the histogram.
+
+    """
+    minMaxList = []
+    for bandndx in range(ds.RasterCount):
+        band = ds.GetRasterBand(bandndx + 1)
 
         (minval, maxval, meanval, stddev) = computeStatsGDAL(band, approx_ok)
         if None not in (minval, maxval, meanval, stddev):
             writeBasicStats(band, minval, maxval, meanval, stddev, approx_ok)
+        minMaxList.append((minval, maxval))
+    return minMaxList
 
-        percent = percent + percentstep
-        progress.setProgress(percent)
 
+def addHistogramsGDAL(ds, minMaxList, approx_ok):
+    """
+    Add histograms to all bands of the given Dataset, using GDAL's own
+    function. Passes approx_ok through to that. The minMaxList is as returned
+    by addBasicStatsGDAL.
+
+    """
+    for bandndx in range(ds.RasterCount):
+        band = ds.GetRasterBand(bandndx + 1)
+        (minval, maxval) = minMaxList[bandndx]
         histParams = HistogramParams(band, minval, maxval)
-      
-        userdata = ProgressUserData()
-        userdata.progress = progress
-        userdata.nbands = ds.RasterCount * 2
-        userdata.curroffset = percent
-      
+
         # Get histogram and force GDAL to recalculate it. Note that we use include_out_of_range=True,
         # which is safe because we have calculated the histCalcMin/Max from the data. 
         includeOutOfRange = True
         hist = band.GetHistogram(histParams.histCalcMin,
                     histParams.histCalcMax, histParams.histnbins,
-                    includeOutOfRange, approx_ok, progressFunc, userdata)
+                    includeOutOfRange, approx_ok)
         # comes back as a list for some reason
         hist = numpy.array(hist)
-        
+
         # Check if GDAL's histogram code overflowed. This is not a fool-proof
         # test, as some overflows will not result in negative counts. Since
         # GDAL 3.x, it is no longer required, as counts are int64.
@@ -208,18 +212,11 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
         if not histogramOverflow:
             writeHistogram(ds, band, hist, histParams)
 
-        percent = percent + percentstep
-        progress.setProgress(percent)
-
-        if progress.wasCancelled():
-            raise ProcessCancelledError()
-    
-    progress.setProgress(100)
-
 
 def computeStatsGDAL(band, approx_ok):
     """
     Compute basic statistics of a single band, using GDAL's function.
+    Returns the values as a tuple (does NOT write anything into the file).
 
     If there are no non-null pixels, then all stats are returned as None.
 
@@ -792,7 +789,8 @@ def writeHistogram(ds, band, hist, histParams):
         ratObj.SetRowCount(histParams.histnbins)
         ratObj.WriteArray(hist, histIndx)
 
-        ratObj.SetLinearBinning(histParams.histmin, (histParams.histCalcMax - histParams.histCalcMin) / histParams.histnbins)
+        ratObj.SetLinearBinning(histParams.histmin,
+            (histParams.histCalcMax - histParams.histCalcMin) / histParams.histnbins)
     else:
         # Use GDAL's original metadata interface, for drivers which
         # don't support the more modern approach

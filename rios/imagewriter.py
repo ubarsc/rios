@@ -107,7 +107,7 @@ setDefaultDriver()
 
 
 def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
-        workinggrid, singlePassInfo, timings):
+        workinggrid, singlePassMgr, timings):
     """
     Write the given block to the files given in outfiles
     """
@@ -123,7 +123,7 @@ def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
             ds = openOutfile(symbolicName, filename, controls, arr,
                     workinggrid)
             gdalOutObjCache[symbolicName, seqNum] = ds
-            singlePassInfo.initFor(ds, symbolicName, seqNum, arr)
+            singlePassMgr.initFor(ds, symbolicName, seqNum, arr)
 
         ds = gdalOutObjCache[symbolicName, seqNum]
 
@@ -132,7 +132,7 @@ def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
             ds.WriteArray(arr, blockDefn.left, blockDefn.top)
 
         # If appropriate, do single-pass actions for this block
-        calcstats.handleSinglePassActions(ds, arr, singlePassInfo,
+        calcstats.handleSinglePassActions(ds, arr, singlePassMgr,
             symbolicName, seqNum, blockDefn.left, blockDefn.top, timings)
 
 
@@ -187,7 +187,7 @@ def openOutfile(symbolicName, filename, controls, arr, workinggrid):
     return ds
 
 
-def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
+def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr, timings):
     """
     Close all the output files
     """
@@ -195,7 +195,6 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
     getOpt = controls.getOptionForImagename
 
     for (symbolicName, seqNum, filename) in outfiles:
-        statsIgnore = getOpt('statsIgnore', symbolicName)
         omitPyramids = getOpt('omitPyramids', symbolicName)
         omitBasicStats = getOpt('omitBasicStats', symbolicName)
         omitHistogram = getOpt('omitHistogram', symbolicName)
@@ -213,7 +212,7 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
         # Ensure that all data has been written
         ds.FlushCache()
 
-        if (not singlePassInfo.doSinglePassPyramids(symbolicName) and
+        if (not singlePassMgr.doSinglePassPyramids(symbolicName) and
                 not omitPyramids):
             # Pyramids have not been done single-pass, and are not being
             # omitted, so do them on closing (i.e. the old way)
@@ -222,27 +221,23 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
                     minoverviewdim=overviewMinDim,
                     aggregationType=overviewAggType)
 
-        if singlePassInfo.doSinglePassStatistics(symbolicName):
+        if singlePassMgr.doSinglePassStatistics(symbolicName):
             with timings.interval('basicstats'):
-                calcstats.finishSinglePassStats(ds, singlePassInfo,
+                calcstats.finishSinglePassStats(ds, singlePassMgr,
                     symbolicName, seqNum)
-        elif not (omitBasicStats and omitHistogram):
-            # We are not omitting either basicStats or Histogram,
-            # nor have we been doing them single-pass, so do them entirely
-            # at the end, i.e. the old way.
+            # Make the minMaxList from values already on singlePassMgr
+            minMaxList = makeMinMaxList(singlePassMgr, symbolicName, seqNum)
+        elif not omitBasicStats:
+            with timings.interval('basicstats'):
+                minMaxList = calcstats.addBasicStatsGDAL(ds, approxStats)
 
-            # Note that statsIgnore is passed in here. This is a historical
-            # anomaly, from when calcStats was the only time that the null
-            # value was set. In the current version, it is set when the file
-            # is created.
-            with timings.interval('stats+histogram'):
-                calcstats.addStatistics(ds, progress, statsIgnore,
-                    approx_ok=approxStats)
-
-        if singlePassInfo.doSinglePassHistogram(symbolicName):
+        if singlePassMgr.doSinglePassHistogram(symbolicName):
             with timings.interval('histogram'):
-                calcstats.finishSinglePassHistogram(ds, singlePassInfo,
+                calcstats.finishSinglePassHistogram(ds, singlePassMgr,
                     symbolicName, seqNum)
+        elif not omitHistogram:
+            with timings.interval('histogram'):
+                calcstats.addHistogramsGDAL(ds, minMaxList, approxStats)
 
         # This is doing everything I can to ensure the file gets fully closed
         # at this point.
@@ -254,6 +249,23 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
         if autoColorTableType is not None:
             # Does nothing if layers are not thematic
             addAutoColorTable(filename, autoColorTableType)
+
+
+def makeMinMaxList(singlePassMgr, symbolicName, seqNum):
+    """
+    Make a list of min/max values per band, for the nominated output file,
+    from values already present on singlePassMgr.
+    Mimicing the list returned by addBasicStatsGDAL, for use with
+    addHistogramsGDAL.
+
+    """
+    accumList = singlePassMgr.accumulators[symbolicName, seqNum]
+    minMaxList = []
+    for i in range(len(accumList)):
+        accum = accumList[i]
+        (minval, maxval) = (accum.minval, accum.maxval)
+        minMaxList.append((minval, maxval))
+    return minMaxList
 
 
 def deleteIfExisting(filename):
