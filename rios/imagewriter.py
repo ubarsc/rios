@@ -209,8 +209,9 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr, timings):
             progress = SilentProgress()
 
         ds = gdalOutObjCache[symbolicName, seqNum]
-        # Ensure that all data has been written
-        ds.FlushCache()
+        with timings.interval('writing'):
+            # Ensure that all data has been written
+            ds.FlushCache()
 
         if (not singlePassMgr.doSinglePassPyramids(symbolicName) and
                 not omitPyramids):
