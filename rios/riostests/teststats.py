@@ -24,7 +24,7 @@ from osgeo.gdal_array import GDALTypeCodeToNumericTypeCode
 
 from rios import calcstats, cuiprogress, VersionObj
 
-from . import riostestutils
+from rios.riostests import riostestutils
 
 TESTNAME = 'TESTSTATS'
 
