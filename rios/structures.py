@@ -800,7 +800,7 @@ class Timers:
             ("-" * 32)
         ]
         fieldOrder = ['reading', 'userfunction', 'writing', 'pyramids',
-            'basicstats', 'stats+histogram', 'histogram', 'closing',
+            'basicstats', 'stats+histogram', 'histogram',
             'insert_readbuffer', 'pop_readbuffer', 'insert_computebuffer',
             'pop_computebuffer']
         for name in fieldOrder:
