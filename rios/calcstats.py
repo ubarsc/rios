@@ -21,7 +21,6 @@ with any other format that supports pyramid layers and statistics
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
-import warnings
 import numpy
 from osgeo import gdal
 try:
@@ -42,7 +41,7 @@ if dfltOverviewLvls is None:
     DEFAULT_OVERVIEWLEVELS = [4, 8, 16, 32, 64, 128, 256, 512]
 else:
     DEFAULT_OVERVIEWLEVELS = [int(i) for i in dfltOverviewLvls.split(',')]
-DEFAULT_MINOVERVIEWDIM = int(os.getenv('RIOS_DFLT_MINOVERLEVELDIM', default=33))
+DEFAULT_MINOVERVIEWDIM = int(os.getenv('RIOS_DFLT_MINOVERLEVELDIM', default=128))
 DEFAULT_OVERVIEWAGGREGRATIONTYPE = os.getenv('RIOS_DFLT_OVERVIEWAGGTYPE', 
     default="NEAREST")
 
@@ -82,10 +81,7 @@ def addPyramid(ds, progress,
     ds.FlushCache()
 
     # first we work out how many overviews to build based on the size
-    if ds.RasterXSize < ds.RasterYSize:
-        mindim = ds.RasterXSize
-    else:
-        mindim = ds.RasterYSize
+    mindim = min(ds.RasterXSize, ds.RasterYSize)
     
     nOverviews = 0
     for i in levels:
@@ -174,105 +170,21 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
     # the LAYER_TYPE setting will be picked up by rat.SetLinearBinning()
     ds.FlushCache()
 
-    # The GDAL HFA driver has a bug in its SetLinearBinning function,
-    # which was introduced as part of the RFC40 changes. Until
-    # this is fixed and widely distributed, we should disable the use
-    # of RFC40-style techniques for HFA files.
-    driverName = ds.GetDriver().ShortName
-    disableRFC40 = (driverName == 'HFA')
-  
     for bandnum in range(ds.RasterCount):
         band = ds.GetRasterBand(bandnum + 1)
-
-        # fill in the metadata
-        tmpmeta = band.GetMetadata()
     
         if ignore is not None:
             # tell QGIS that the ignore value was ignored
             band.SetNoDataValue(ignore)
-            tmpmeta["STATISTICS_EXCLUDEDVALUES"] = repr(ignore)  # doesn't seem to do anything
-      
-        # get GDAL to calculate statistics - force recalculation. Trap errors 
-        usingExceptions = gdal.GetUseExceptions()
-        gdal.UseExceptions()
-        try:
-            if approx_ok and "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == "thematic": 
-                warnings.warn('WARNING: approx_ok specified for stats but image is thematic (this could be a bad idea)')
 
-            (minval, maxval, meanval, stddevval) = band.ComputeStatistics(approx_ok)
-        except RuntimeError as e:
-            if str(e).endswith('Failed to compute statistics, no valid pixels found in sampling.'):
-                minval = ignore
-                maxval = ignore
-                meanval = ignore
-                stddevval = 0
-            else:
-                raise e
-        finally:
-            if not usingExceptions:
-                gdal.DontUseExceptions()
+        (minval, maxval, meanval, stddev) = computeStatsGDAL(band, approx_ok)
+        if None not in (minval, maxval, meanval, stddev):
+            writeBasicStats(band, minval, maxval, meanval, stddev, approx_ok)
 
         percent = percent + percentstep
         progress.setProgress(percent)
-    
-        tmpmeta["STATISTICS_MINIMUM"] = repr(minval)
-        tmpmeta["STATISTICS_MAXIMUM"] = repr(maxval)
-        tmpmeta["STATISTICS_MEAN"] = repr(meanval)
-        tmpmeta["STATISTICS_STDDEV"] = repr(stddevval)
-        # because we did at full res - these are the default anyway
 
-        if approx_ok:
-            tmpmeta["STATISTICS_APPROXIMATE"] = "YES"
-        else:
-            tmpmeta["STATISTICS_SKIPFACTORX"] = "1"
-            tmpmeta["STATISTICS_SKIPFACTORY"] = "1"
-
-        # create a histogram so we can do the mode and median
-        if band.DataType == gdal.GDT_Byte:
-            # if byte data use 256 bins and the whole range
-            histmin = 0
-            histmax = 255
-            histstep = 1.0
-            histCalcMin = -0.5
-            histCalcMax = 255.5
-            histnbins = 256
-            tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
-        elif "LAYER_TYPE" in tmpmeta and tmpmeta["LAYER_TYPE"] == 'thematic':
-            # all other thematic types a bin per value
-            histmin = 0
-            histmax = int(numpy.ceil(maxval))
-            histstep = 1.0
-            histCalcMin = -0.5
-            histCalcMax = maxval + 0.5
-            histnbins = histmax + 1
-            tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
-        elif band.DataType in gdalLargeIntTypes:
-            histrange = int(numpy.ceil(maxval) - numpy.floor(minval)) + 1
-            (histmin, histmax) = (minval, maxval)
-            if histrange <= 256:
-                histnbins = histrange
-                histstep = 1.0
-                tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'direct'
-                histCalcMin = histmin - 0.5
-                histCalcMax = histmax + 0.5
-            else:
-                histnbins = 256
-                tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
-                histCalcMin = histmin
-                histCalcMax = histmax
-                histstep = float(histCalcMax - histCalcMin) / histnbins
-        elif band.DataType in gdalFloatTypes:
-            histnbins = 256
-            (histmin, histmax) = (minval, maxval)
-            tmpmeta["STATISTICS_HISTOBINFUNCTION"] = 'linear'
-            histCalcMin = minval
-            histCalcMax = maxval
-            if histCalcMin == histCalcMax:
-                histCalcMax = histCalcMax + 0.5
-                histnbins = 1
-            histstep = float(histCalcMax - histCalcMin) / histnbins
-        # Note that the complex number data types are not handled, as I am not sure
-        # what a histogram or a median would mean for such types. 
+        histParams = HistogramParams(band, minval, maxval)
       
         userdata = ProgressUserData()
         userdata.progress = progress
@@ -281,74 +193,20 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
       
         # Get histogram and force GDAL to recalculate it. Note that we use include_out_of_range=True,
         # which is safe because we have calculated the histCalcMin/Max from the data. 
-        hist = band.GetHistogram(histCalcMin, histCalcMax, histnbins, True,
-                        approx_ok, progressFunc, userdata)
+        includeOutOfRange = True
+        hist = band.GetHistogram(histParams.histCalcMin,
+                    histParams.histCalcMax, histParams.histnbins,
+                    includeOutOfRange, approx_ok, progressFunc, userdata)
+        # comes back as a list for some reason
+        hist = numpy.array(hist)
         
-        # Check if GDAL's histogram code overflowed. This is not a fool-proof test,
-        # as some overflows will not result in negative counts. 
-        histogramOverflow = (min(hist) < 0)
+        # Check if GDAL's histogram code overflowed. This is not a fool-proof
+        # test, as some overflows will not result in negative counts. Since
+        # GDAL 3.x, it is no longer required, as counts are int64.
+        histogramOverflow = (hist.min() < 0)
         
-        # we may use this ratObj reference for the colours below also
-        # may be None if format does not support RATs
-        ratObj = band.GetDefaultRAT()
-
         if not histogramOverflow:
-            # comes back as a list for some reason
-            hist = numpy.array(hist)
-
-            # Note that we have explicitly set histstep in each datatype case 
-            # above. In principle, this can be calculated, as it is done in the 
-            # float case, but for some of the others we need it to be exactly
-            # equal to 1, so we set it explicitly there, to avoid rounding
-            # error problems. 
-
-            # do the mode - bin with the highest count
-            modebin = numpy.argmax(hist)
-            modeval = modebin * histstep + histmin
-            if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
-                tmpmeta["STATISTICS_MODE"] = repr(float(modeval))
-            else:
-                tmpmeta["STATISTICS_MODE"] = repr(int(round(modeval)))
-
-            if ratObj is not None and not disableRFC40:
-                histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount, 
-                                        "Histogram", gdal.GFT_Real)
-                # write the hist in a single go
-                ratObj.SetRowCount(histnbins)
-                ratObj.WriteArray(hist, histIndx)
-
-                ratObj.SetLinearBinning(histmin, (histCalcMax - histCalcMin) / histnbins)
-
-                # The HFA driver still honours the STATISTICS_HISTOBINVALUES
-                # metadata item. If we are recalculating the histogram the old
-                # values will be copied across with the metadata so clobber it
-                if "STATISTICS_HISTOBINVALUES" in tmpmeta:
-                    del tmpmeta["STATISTICS_HISTOBINVALUES"]
-            else:
-                # Use GDAL's original metadata interface, for drivers which
-                # don't support the more modern approach
-                tmpmeta["STATISTICS_HISTOBINVALUES"] = '|'.join(map(str, hist)) + '|'
-
-                tmpmeta["STATISTICS_HISTOMIN"] = repr(histmin)
-                tmpmeta["STATISTICS_HISTOMAX"] = repr(histmax)
-                tmpmeta["STATISTICS_HISTONUMBINS"] = int(histnbins)
-
-            # estimate the median - bin with the middle number
-            middlenum = hist.sum() / 2
-            gtmiddle = hist.cumsum() >= middlenum
-            medianbin = gtmiddle.nonzero()[0][0]
-            medianval = medianbin * histstep + histmin
-            if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
-                tmpmeta["STATISTICS_MEDIAN"] = repr(float(medianval))
-            else:
-                tmpmeta["STATISTICS_MEDIAN"] = repr(int(round(medianval)))
-    
-        # set the data
-        band.SetMetadata(tmpmeta)
-
-        if ratObj is not None and not ratObj.ChangesAreWrittenToFile():
-            # For drivers that require the in memory thing
-            band.SetDefaultRAT(ratObj)
+            writeHistogram(ds, band, hist, histParams)
 
         percent = percent + percentstep
         progress.setProgress(percent)
@@ -357,8 +215,124 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
             raise ProcessCancelledError()
     
     progress.setProgress(100)
-    
-    
+
+
+def computeStatsGDAL(band, approx_ok):
+    """
+    Compute basic statistics of a single band, using GDAL's function.
+
+    If there are no non-null pixels, then all stats are returned as None.
+
+    Returns (minval, maxval, mean, stddev)
+
+    """
+    # get GDAL to calculate statistics - force recalculation. Trap errors
+    usingExceptions = gdal.GetUseExceptions()
+    gdal.UseExceptions()
+    try:
+        (minval, maxval, meanval, stddev) = band.ComputeStatistics(approx_ok)
+    except RuntimeError as e:
+        if str(e).endswith('Failed to compute statistics, no valid pixels found in sampling.'):
+            minval = maxval = meanval = stddev = None
+        else:
+            raise e
+    finally:
+        if not usingExceptions:
+            gdal.DontUseExceptions()
+
+    return (minval, maxval, meanval, stddev)
+
+
+def writeBasicStats(band, minval, maxval, meanval, stddev, approx_ok):
+    """
+    Write the given basic statistics into the given band.
+
+    It is assumed that by this point, we have set the null value on the band
+    (this is normally done when the file is opened).
+    """
+    band.SetStatistics(float(minval), float(maxval), meanval, stddev)
+
+    nullval = band.GetNoDataValue()
+    if nullval is not None:
+        # Not sure, but I think this is only used by QGIS
+        band.SetMetadataItem("STATISTICS_EXCLUDEDVALUES", repr(nullval))
+
+    # I think that mainly the HFA format makes use of these (not sure).
+    if approx_ok:
+        band.SetMetadataItem("STATISTICS_APPROXIMATE", "YES")
+    else:
+        band.SetMetadataItem("STATISTICS_SKIPFACTORX", "1")
+        band.SetMetadataItem("STATISTICS_SKIPFACTORY", "1")
+
+
+class HistogramParams:
+    """
+    Work out the various parameters needed by GDAL to compute a histogram.
+    The inferences are based on the pixel datatype.
+    """
+    def __init__(self, band, minval, maxval):
+        self.histmin = None
+        self.histmax = None
+        self.histstep = None
+        self.histCalcMin = None
+        self.histCalcMax = None
+        self.histnbins = None
+        self.histBinFunction = None
+
+        layerType = band.GetMetadataItem('LAYER_TYPE')
+        thematic = (layerType == "thematic")
+
+        # Note that we explicitly set histstep in each datatype case.
+        # In principle, this can be calculated, as it is done in the
+        # float and large-int cases, but for some of the others we need
+        # it to be exactly equal to 1, so we set it explicitly here, to
+        # avoid rounding error problems.
+
+        if band.DataType == gdal.GDT_Byte:
+            # if byte data use 256 bins and the whole range
+            self.histmin = 0
+            self.histmax = 255
+            self.histstep = 1.0
+            self.histCalcMin = -0.5
+            self.histCalcMax = 255.5
+            self.histnbins = 256
+            self.histBinFunction = 'direct'
+        elif thematic:
+            # all other thematic types a bin per value
+            self.histmin = int(numpy.floor(minval))
+            self.histmax = int(numpy.ceil(maxval))
+            self.histstep = 1.0
+            self.histCalcMin = -0.5
+            self.histCalcMax = maxval + 0.5
+            self.histnbins = (self.histmax - self.histmin + 1)
+            self.histBinFunction = 'direct'
+        elif band.DataType in gdalLargeIntTypes:
+            histrange = int(numpy.ceil(maxval) - numpy.floor(minval)) + 1
+            (self.histmin, self.histmax) = (minval, maxval)
+            if histrange <= 256:
+                self.histnbins = histrange
+                self.histstep = 1.0
+                self.histBinFunction = 'direct'
+                self.histCalcMin = self.histmin - 0.5
+                self.histCalcMax = self.histmax + 0.5
+            else:
+                self.histnbins = 256
+                self.histBinFunction = 'linear'
+                self.histCalcMin = self.histmin
+                self.histCalcMax = self.histmax
+                self.histstep = float(self.histCalcMax - self.histCalcMin) / self.histnbins
+        elif band.DataType in gdalFloatTypes:
+            self.histnbins = 256
+            (self.histmin, self.histmax) = (minval, maxval)
+            self.histBinFunction = 'linear'
+            self.histCalcMin = minval
+            self.histCalcMax = maxval
+            if self.histCalcMin == self.histCalcMax:
+                self.histCalcMax = self.histCalcMax + 0.5
+                self.histnbins = 1
+            self.histstep = float(self.histCalcMax - self.histCalcMin) / self.histnbins
+
+
 def calcStats(ds, progress=None, ignore=None,
         minoverviewdim=DEFAULT_MINOVERVIEWDIM, 
         levels=DEFAULT_OVERVIEWLEVELS,
@@ -626,6 +600,9 @@ class SinglePassAccumulator:
             # doing direct binning histograms.
             self.binFunc = "direct"
 
+            # Set the outer possible limits of the histogram. These
+            # are used only internally, during accumulation, and are
+            # superceded later by the histLimits() method.
             if dtype == numpy.uint8:
                 self.histmin = 0
                 self.nbins = 256
@@ -775,9 +752,8 @@ def finishSinglePassStats(ds, singlePassMgr, symbolicName, seqNum):
         (minval, maxval, meanval, stddev) = accumList[i].finalStats()
         if None not in (minval, maxval, meanval, stddev):
             band = ds.GetRasterBand(i + 1)
-            # In the old way, we used to write these using the named metadata
-            # items, but that now seems to be obsolete.
-            band.SetStatistics(float(minval), float(maxval), meanval, stddev)
+            approx_ok = singlePassMgr.approxOK[symbolicName]
+            writeBasicStats(band, minval, maxval, meanval, stddev, approx_ok)
 
 
 def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
@@ -791,21 +767,65 @@ def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
         (minval, maxval, first, last, nbins) = accum.histLimits()
         if minval is not None:
             band = ds.GetRasterBand(i + 1)
+            histParams = HistogramParams(band, minval, maxval)
             hist = accum.hist[first:last + 1]
-            writeHistogram(band, hist, minval, maxval, nbins, accum.binFunc)
-            # Do mode and median.....
+            writeHistogram(ds, band, hist, histParams)
 
 
-def writeHistogram(outBand, hist, histmin, histmax, histnbins, histBinFunc):
+def writeHistogram(ds, band, hist, histParams):
     """
-    Write the given values into the band object
+    Write the given histogram into the band object. Also use the histogram
+    to calculate median and mode, and write them as well.
     """
-    # Should be deciding whether to use RFC40, or old metadata API.
+    ratObj = band.GetDefaultRAT()
+    # The GDAL HFA driver has a bug in its SetLinearBinning function,
+    # which was introduced as part of the RFC40 changes. Until
+    # this is fixed and widely distributed, we should disable the use
+    # of RFC40-style techniques for HFA files.
+    driverName = ds.GetDriver().ShortName
+    disableRFC40 = (driverName == 'HFA')
 
-    outBand.SetMetadataItem("STATISTICS_HISTOBINVALUES",
-                            '|'.join(map(str, hist)) + '|')
+    if ratObj is not None and not disableRFC40:
+        histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount,
+                                "Histogram", gdal.GFT_Real)
+        # write the hist in a single go
+        ratObj.SetRowCount(histParams.histnbins)
+        ratObj.WriteArray(hist, histIndx)
 
-    outBand.SetMetadataItem("STATISTICS_HISTOMIN", repr(histmin))
-    outBand.SetMetadataItem("STATISTICS_HISTOMAX", repr(histmax))
-    outBand.SetMetadataItem("STATISTICS_HISTONUMBINS", repr(int(histnbins)))
-    outBand.SetMetadataItem("STATISTICS_HISTOBINFUNCTION", histBinFunc)
+        ratObj.SetLinearBinning(histParams.histmin, (histParams.histCalcMax - histParams.histCalcMin) / histParams.histnbins)
+    else:
+        # Use GDAL's original metadata interface, for drivers which
+        # don't support the more modern approach
+        band.SetMetadataItem("STATISTICS_HISTOBINVALUES",
+            '|'.join(map(str, hist)) + '|')
+
+        band.SetMetadataItem("STATISTICS_HISTOMIN", repr(histParams.histmin))
+        band.SetMetadataItem("STATISTICS_HISTOMAX", repr(histParams.histmax))
+        band.SetMetadataItem("STATISTICS_HISTONUMBINS",
+            repr(int(histParams.histnbins)))
+        band.SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
+            histParams.histBinFunction)
+
+    # estimate the median - bin with the middle number
+    middlenum = hist.sum() / 2
+    gtmiddle = hist.cumsum() >= middlenum
+    medianbin = gtmiddle.nonzero()[0][0]
+    medianval = medianbin * histParams.histstep + histParams.histmin
+    if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
+        band.SetMetadataItem("STATISTICS_MEDIAN",
+            repr(float(medianval)))
+    else:
+        band.SetMetadataItem("STATISTICS_MEDIAN",
+            repr(int(round(medianval))))
+
+    # do the mode - bin with the highest count
+    modebin = numpy.argmax(hist)
+    modeval = modebin * histParams.histstep + histParams.histmin
+    if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
+        band.SetMetadataItem("STATISTICS_MODE", repr(float(modeval)))
+    else:
+        band.SetMetadataItem("STATISTICS_MODE", repr(int(round(modeval))))
+
+    if ratObj is not None and not ratObj.ChangesAreWrittenToFile():
+        # For drivers that require the in memory thing
+        band.SetDefaultRAT(ratObj)

@@ -210,6 +210,8 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
             progress = SilentProgress()
 
         ds = gdalOutObjCache[symbolicName, seqNum]
+        # Ensure that all data has been written
+        ds.FlushCache()
 
         if (not singlePassInfo.doSinglePassPyramids(symbolicName) and
                 not omitPyramids):
@@ -244,10 +246,9 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassInfo, timings):
 
         # This is doing everything I can to ensure the file gets fully closed
         # at this point.
-        with timings.interval('closing'):
-            ds.FlushCache()
-            gdalOutObjCache.pop((symbolicName, seqNum))
-            del ds
+        ds.FlushCache()
+        gdalOutObjCache.pop((symbolicName, seqNum))
+        del ds
 
         # Check whether we will need to add an auto color table
         if autoColorTableType is not None:
