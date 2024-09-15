@@ -198,8 +198,8 @@ def addHistogramsGDAL(ds, minMaxList, approx_ok):
         # Get histogram and force GDAL to recalculate it. Note that we use include_out_of_range=True,
         # which is safe because we have calculated the histCalcMin/Max from the data. 
         includeOutOfRange = True
-        hist = band.GetHistogram(histParams.histCalcMin,
-                    histParams.histCalcMax, histParams.histnbins,
+        hist = band.GetHistogram(histParams.calcMin,
+                    histParams.calcMax, histParams.nbins,
                     includeOutOfRange, approx_ok)
         # comes back as a list for some reason
         hist = numpy.array(hist)
@@ -268,13 +268,13 @@ class HistogramParams:
     The inferences are based on the pixel datatype.
     """
     def __init__(self, band, minval, maxval):
-        self.histmin = None
-        self.histmax = None
-        self.histstep = None
-        self.histCalcMin = None
-        self.histCalcMax = None
-        self.histnbins = None
-        self.histBinFunction = None
+        self.min = None
+        self.max = None
+        self.step = None
+        self.calcMin = None
+        self.calcMax = None
+        self.nbins = None
+        self.binFunction = None
 
         layerType = band.GetMetadataItem('LAYER_TYPE')
         thematic = (layerType == "thematic")
@@ -287,47 +287,47 @@ class HistogramParams:
 
         if band.DataType == gdal.GDT_Byte:
             # if byte data use 256 bins and the whole range
-            self.histmin = 0
-            self.histmax = 255
-            self.histstep = 1.0
-            self.histCalcMin = -0.5
-            self.histCalcMax = 255.5
-            self.histnbins = 256
-            self.histBinFunction = 'direct'
+            self.min = 0
+            self.max = 255
+            self.step = 1.0
+            self.calcMin = -0.5
+            self.calcMax = 255.5
+            self.nbins = 256
+            self.binFunction = 'direct'
         elif thematic:
             # all other thematic types a bin per value
-            self.histmin = int(numpy.floor(minval))
-            self.histmax = int(numpy.ceil(maxval))
-            self.histstep = 1.0
-            self.histCalcMin = -0.5
-            self.histCalcMax = maxval + 0.5
-            self.histnbins = (self.histmax - self.histmin + 1)
-            self.histBinFunction = 'direct'
+            self.min = int(numpy.floor(minval))
+            self.max = int(numpy.ceil(maxval))
+            self.step = 1.0
+            self.calcMin = -0.5
+            self.calcMax = maxval + 0.5
+            self.nbins = (self.max - self.min + 1)
+            self.binFunction = 'direct'
         elif band.DataType in gdalLargeIntTypes:
             histrange = int(numpy.ceil(maxval) - numpy.floor(minval)) + 1
-            (self.histmin, self.histmax) = (minval, maxval)
+            (self.min, self.max) = (minval, maxval)
             if histrange <= 256:
-                self.histnbins = histrange
-                self.histstep = 1.0
-                self.histBinFunction = 'direct'
-                self.histCalcMin = self.histmin - 0.5
-                self.histCalcMax = self.histmax + 0.5
+                self.nbins = histrange
+                self.step = 1.0
+                self.binFunction = 'direct'
+                self.calcMin = self.min - 0.5
+                self.calcMax = self.max + 0.5
             else:
-                self.histnbins = 256
-                self.histBinFunction = 'linear'
-                self.histCalcMin = self.histmin
-                self.histCalcMax = self.histmax
-                self.histstep = float(self.histCalcMax - self.histCalcMin) / self.histnbins
+                self.nbins = 256
+                self.binFunction = 'linear'
+                self.calcMin = self.min
+                self.calcMax = self.max
+                self.step = float(self.calcMax - self.calcMin) / self.nbins
         elif band.DataType in gdalFloatTypes:
-            self.histnbins = 256
-            (self.histmin, self.histmax) = (minval, maxval)
-            self.histBinFunction = 'linear'
-            self.histCalcMin = minval
-            self.histCalcMax = maxval
-            if self.histCalcMin == self.histCalcMax:
-                self.histCalcMax = self.histCalcMax + 0.5
-                self.histnbins = 1
-            self.histstep = float(self.histCalcMax - self.histCalcMin) / self.histnbins
+            self.nbins = 256
+            (self.min, self.max) = (minval, maxval)
+            self.binFunction = 'linear'
+            self.calcMin = minval
+            self.calcMax = maxval
+            if self.calcMin == self.calcMax:
+                self.calcMax = self.calcMax + 0.5
+                self.nbins = 1
+            self.step = float(self.calcMax - self.calcMin) / self.nbins
 
 
 def calcStats(ds, progress=None, ignore=None,
@@ -786,39 +786,37 @@ def writeHistogram(ds, band, hist, histParams):
         histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount,
                                 "Histogram", gdal.GFT_Real)
         # write the hist in a single go
-        ratObj.SetRowCount(histParams.histnbins)
+        ratObj.SetRowCount(histParams.nbins)
         ratObj.WriteArray(hist, histIndx)
 
-        ratObj.SetLinearBinning(histParams.histmin,
-            (histParams.histCalcMax - histParams.histCalcMin) / histParams.histnbins)
+        ratObj.SetLinearBinning(histParams.min,
+            (histParams.calcMax - histParams.calcMin) / histParams.nbins)
     else:
         # Use GDAL's original metadata interface, for drivers which
         # don't support the more modern approach
         band.SetMetadataItem("STATISTICS_HISTOBINVALUES",
             '|'.join(map(str, hist)) + '|')
 
-        band.SetMetadataItem("STATISTICS_HISTOMIN", repr(histParams.histmin))
-        band.SetMetadataItem("STATISTICS_HISTOMAX", repr(histParams.histmax))
+        band.SetMetadataItem("STATISTICS_HISTOMIN", repr(histParams.min))
+        band.SetMetadataItem("STATISTICS_HISTOMAX", repr(histParams.max))
         band.SetMetadataItem("STATISTICS_HISTONUMBINS",
-            repr(int(histParams.histnbins)))
+            repr(int(histParams.nbins)))
         band.SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
-            histParams.histBinFunction)
+            histParams.binFunction)
 
     # estimate the median - bin with the middle number
     middlenum = hist.sum() / 2
     gtmiddle = hist.cumsum() >= middlenum
     medianbin = gtmiddle.nonzero()[0][0]
-    medianval = medianbin * histParams.histstep + histParams.histmin
-    if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
-        band.SetMetadataItem("STATISTICS_MEDIAN",
-            repr(float(medianval)))
+    medianval = medianbin * histParams.step + histParams.min
+    if band.DataType in (gdal.GDT_Float32, gdal.GDT_Float64):
+        band.SetMetadataItem("STATISTICS_MEDIAN", repr(float(medianval)))
     else:
-        band.SetMetadataItem("STATISTICS_MEDIAN",
-            repr(int(round(medianval))))
+        band.SetMetadataItem("STATISTICS_MEDIAN", repr(int(round(medianval))))
 
     # do the mode - bin with the highest count
     modebin = numpy.argmax(hist)
-    modeval = modebin * histParams.histstep + histParams.histmin
+    modeval = modebin * histParams.step + histParams.min
     if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
         band.SetMetadataItem("STATISTICS_MODE", repr(float(modeval)))
     else:
