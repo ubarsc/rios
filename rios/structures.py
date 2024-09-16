@@ -1085,7 +1085,7 @@ class ApplierReturn:
         self.timings = None
         self.otherArgsList = None
         self.workinggrid = None
-        self.singlepassMgr = None
+        self.singlePassMgr = None
 
 
 class WorkerErrorRecord:
