@@ -1084,6 +1084,8 @@ class ApplierReturn:
     def __init__(self):
         self.timings = None
         self.otherArgsList = None
+        self.workinggrid = None
+        self.singlepassMgr = None
 
 
 class WorkerErrorRecord:

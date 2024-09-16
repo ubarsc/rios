@@ -964,6 +964,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
                 otherArgs, controls, allInfo, workinggrid, blockList)
 
     rtn.timings.merge(timings)
+    rtn.workinggrid = workinggrid
 
     if not usingGdalExceptions:
         # Restore the calling program's preference
@@ -991,6 +992,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     tmpfileMgr = TempfileManager(controls.tempdir)
     rasterizeMgr = RasterizationMgr()
     readWorkerMgr = None
+    singlePassMgr = None
     prog = None
     exceptionQue = None
     numBlocks = len(blockList)
@@ -1081,6 +1083,8 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     rtn = ApplierReturn()
     rtn.timings = timings
     rtn.otherArgsList = [otherArgs]
+    if singlePassMgr is not None:
+        rtn.singlePassMgr = singlePassMgr
 
     return rtn
 
@@ -1183,6 +1187,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         rtn.timings.merge(t)
     rtn.otherArgsList = [obj for obj in computeMgr.outObjList
         if isinstance(obj, OtherInputs)]
+    rtn.singlePassMgr = singlePassMgr
 
     return rtn
 
