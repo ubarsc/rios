@@ -316,7 +316,7 @@ class HistogramParams:
             self.min = int(numpy.floor(minval))
             self.max = int(numpy.ceil(maxval))
             self.step = 1.0
-            self.calcMin = -0.5
+            self.calcMin = minval - 0.5
             self.calcMax = maxval + 0.5
             self.nbins = (self.max - self.min + 1)
             self.binFunction = 'direct'
@@ -623,8 +623,7 @@ class SinglePassAccumulator:
             # We only do single-pass histograms if we are also
             # doing direct binning histograms.
             self.binFunc = "direct"
-            # Separate count arrays for positive (including zero) and
-            # negative values
+            # Separate count arrays for (values >= 0) and (values < 0)
             self.hist_pos = None
             self.hist_neg = None
             # Distinguish between signed and unsigned types
@@ -674,13 +673,13 @@ class SinglePassAccumulator:
             counts = numpy.bincount(arr.flatten())
             if self.nullval is not None:
                 counts = self.removeNullFromCounts(counts, self.nullval)
-            self.updateHist(True, counts)
+            self.updateHist(counts, positive=True)
         else:
             # Counts for (arr >= 0)
             counts = numpy.bincount(arr[arr >= 0])
             if self.nullval is not None and self.nullval >= 0:
                 counts = self.removeNullFromCounts(counts, self.nullval)
-            self.updateHist(True, counts)
+            self.updateHist(counts, positive=True)
 
             # Counts for (arr < 0)
             counts = numpy.bincount(-arr[arr < 0])
@@ -689,7 +688,7 @@ class SinglePassAccumulator:
             counts = counts[1:]
             if self.nullval is not None and self.nullval < 0:
                 counts = self.removeNullFromCounts(counts, -self.nullval)
-            self.updateHist(False, counts)
+            self.updateHist(counts, positive=False)
 
     @staticmethod
     def addTwoHistograms(hist1, hist2):
@@ -727,11 +726,12 @@ class SinglePassAccumulator:
             # and trim back to there. We don't need to trim from the start,
             # because of how numpy.bincount works.
             nonzeroNdx = numpy.where(counts[:-1] > 0)[0]
-            last = nonzeroNdx[-1]
-            counts = counts[:last + 1]
+            if len(nonzeroNdx) > 0:
+                last = nonzeroNdx[-1]
+                counts = counts[:last + 1]
         return counts
 
-    def updateHist(self, positive, newCounts):
+    def updateHist(self, newCounts, positive):
         """
         Update the current histogram counts. If positive is True, then
         the counts for positive values are updated, otherwise those for the
