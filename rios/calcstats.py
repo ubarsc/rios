@@ -615,8 +615,6 @@ class SinglePassAccumulator:
             # Separate count arrays for (values >= 0) and (values < 0)
             self.hist_pos = None
             self.hist_neg = None
-            # Distinguish between signed and unsigned types
-            self.signed = (dtype in signedIntTypes)
 
     def doStatsAccum(self, arr):
         """
@@ -658,7 +656,7 @@ class SinglePassAccumulator:
         """
         Accumulate the histogram with counts from the given arr
         """
-        if not self.signed:
+        if (arr.dtype in unsignedIntTypes):
             counts = numpy.bincount(arr.flatten())
             if self.nullval is not None:
                 counts = self.removeNullFromCounts(counts, self.nullval)
@@ -738,20 +736,31 @@ class SinglePassAccumulator:
         Return the final histogram, as (minval, maxval, counts)
         """
         minval = maxval = counts = None
-        if not self.signed:
-            nonzeroNdx = numpy.where(self.hist_pos > 0)[0]
+        havePos = (self.hist_pos is not None)
+        haveNeg = (self.hist_neg is not None)
+        if ((havePos and not haveNeg) or (not havePos and haveNeg)):
+            if havePos:
+                counts = self.hist_pos
+            else:
+                counts = self.hist_neg
+            nonzeroNdx = numpy.where(counts > 0)[0]
             if len(nonzeroNdx) > 0:
                 minval = nonzeroNdx[0]
                 maxval = nonzeroNdx[-1]
-                counts = self.hist_pos[minval:maxval + 1]
-        else:
+            counts = counts[minval:maxval + 1]
+            if haveNeg:
+                # Need to reverse
+                saveMinval = minval
+                minval = -maxval
+                maxval = -saveMinval
+                counts = counts[::-1]
+        elif (havePos and haveNeg):
             nonzeroNdx = numpy.where(self.hist_neg > 0)[0]
-            if len(nonzeroNdx) > 0:
-                minval = -([-1])
+            minval = -(nonzeroNdx[-1])
             nonzeroNdx = numpy.where(self.hist_pos > 0)[0]
-            if len(nonzeroNdx) > 0:
-                maxval = nonzeroNdx[1]
+            maxval = nonzeroNdx[1]
             counts = numpy.concatenate([self.hist_neg[::-1], self.hist_pos])
+
         return (minval, maxval, counts)
 
     def histLimits(self):
@@ -894,7 +903,7 @@ def writeHistogram(ds, band, hist, histParams):
     gtmiddle = hist.cumsum() >= middlenum
     medianbin = gtmiddle.nonzero()[0][0]
     medianval = medianbin * histParams.step + histParams.min
-    if band.DataType in (gdal.GDT_Float32, gdal.GDT_Float64):
+    if band.DataType in gdalFloatTypes:
         band.SetMetadataItem("STATISTICS_MEDIAN", repr(float(medianval)))
     else:
         band.SetMetadataItem("STATISTICS_MEDIAN", repr(int(round(medianval))))
@@ -902,7 +911,7 @@ def writeHistogram(ds, band, hist, histParams):
     # do the mode - bin with the highest count
     modebin = numpy.argmax(hist)
     modeval = modebin * histParams.step + histParams.min
-    if band.DataType == gdal.GDT_Float32 or band.DataType == gdal.GDT_Float64:
+    if band.DataType in gdalFloatTypes:
         band.SetMetadataItem("STATISTICS_MODE", repr(float(modeval)))
     else:
         band.SetMetadataItem("STATISTICS_MODE", repr(int(round(modeval))))
