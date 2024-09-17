@@ -383,6 +383,10 @@ def setNullValue(ds, nullValue):
         band.SetNoDataValue(nullValue)
 
 
+unsignedIntTypes = (numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64)
+signedIntTypes = (numpy.int8, numpy.int16, numpy.int32, numpy.int64)
+
+
 class SinglePassManager:
     """
     The required info for dealing with single-pass pyramids/statistics/histogram.
@@ -404,7 +408,7 @@ class SinglePassManager:
         self.PYRAMIDS = 0
         self.STATISTICS = 1
         self.HISTOGRAM = 2
-        self.histSupportedDtypes = (numpy.uint8, numpy.int16, numpy.uint16)
+        self.histSupportedDtypes = signedIntTypes + unsignedIntTypes
         self.supportedAggtypes = ("NEAREST", )
 
         self.omit = {}
@@ -619,20 +623,12 @@ class SinglePassAccumulator:
             # We only do single-pass histograms if we are also
             # doing direct binning histograms.
             self.binFunc = "direct"
-
-            # Set the outer possible limits of the histogram. These
-            # are used only internally, during accumulation, and are
-            # superceded later by the histLimits() method.
-            if dtype == numpy.uint8:
-                self.histmin = 0
-                self.nbins = 256
-            elif dtype in (numpy.int16, numpy.uint16):
-                if dtype == numpy.uint16:
-                    self.histmin = 0
-                else:
-                    self.histmin = -(2**15)
-                self.nbins = 2**16
-            self.hist = numpy.zeros(self.nbins, dtype=numpy.uint64)
+            # Separate count arrays for positive (including zero) and
+            # negative values
+            self.hist_pos = None
+            self.hist_neg = None
+            # Distinguish between signed and unsigned types
+            self.signed = (dtype in signedIntTypes)
 
     def doStatsAccum(self, arr):
         """
@@ -669,6 +665,105 @@ class SinglePassAccumulator:
                 stddev = numpy.sqrt(variance)
 
         return (self.minval, self.maxval, meanval, stddev)
+
+    def doHistAccum(self, arr):
+        """
+        Accumulate the histogram with counts from the given arr
+        """
+        if not self.signed:
+            counts = numpy.bincount(arr.flatten())
+            if self.nullval is not None:
+                counts = self.removeNullFromCounts(counts, self.nullval)
+            self.updateHist(True, counts)
+        else:
+            # Counts for (arr >= 0)
+            counts = numpy.bincount(arr[arr >= 0])
+            if self.nullval is not None and self.nullval >= 0:
+                counts = self.removeNullFromCounts(counts, self.nullval)
+            self.updateHist(True, counts)
+
+            # Counts for (arr < 0)
+            counts = numpy.bincount(-arr[arr < 0])
+            # bincount() always includes zero, but we already count that in
+            # the positives, so trim it off
+            counts = counts[1:]
+            if self.nullval is not None and self.nullval < 0:
+                counts = self.removeNullFromCounts(counts, -self.nullval)
+            self.updateHist(False, counts)
+
+    @staticmethod
+    def addTwoHistograms(hist1, hist2):
+        """
+        Add the two given histograms together, and return the result.
+
+        If one is longer than the other, the shorter one is added to it.
+
+        """
+        if hist1 is None:
+            result = hist2
+        else:
+            l1 = len(hist1)
+            l2 = len(hist2)
+            if l1 > l2:
+                hist1[:l2] += hist2
+                result = hist1
+            else:
+                hist2[:l1] += hist1
+                result = hist2
+        return result
+
+    @staticmethod
+    def removeNullFromCounts(counts, nullval):
+        """
+        The counts will include a count for the null value. Set this to zero,
+        and if it is at the end of the count array, truncate this back to
+        the next biggest non-zero count.
+        """
+        numCounts = len(counts)
+        if nullval < (numCounts - 1):
+            counts[int(nullval)] = 0
+        else:
+            # The null count is at the end, so find the next non-zero count,
+            # and trim back to there. We don't need to trim from the start,
+            # because of how numpy.bincount works.
+            nonzeroNdx = numpy.where(counts[:-1] > 0)[0]
+            last = nonzeroNdx[-1]
+            counts = counts[:last + 1]
+        return counts
+
+    def updateHist(self, positive, newCounts):
+        """
+        Update the current histogram counts. If positive is True, then
+        the counts for positive values are updated, otherwise those for the
+        negative values are updated.
+
+        """
+        if len(newCounts) > 0:
+            if positive:
+                self.hist_pos = self.addTwoHistograms(self.hist_pos, newCounts)
+            else:
+                self.hist_neg = self.addTwoHistograms(self.hist_neg, newCounts)
+
+    def finalHist(self):
+        """
+        Return the final histogram, as (minval, maxval, counts)
+        """
+        minval = maxval = counts = None
+        if not self.signed:
+            nonzeroNdx = numpy.where(self.hist_pos > 0)[0]
+            if len(nonzeroNdx) > 0:
+                minval = nonzeroNdx[0]
+                maxval = nonzeroNdx[-1]
+                counts = self.hist_pos[minval:maxval + 1]
+        else:
+            nonzeroNdx = numpy.where(self.hist_neg > 0)[0]
+            if len(nonzeroNdx) > 0:
+                minval = -([-1])
+            nonzeroNdx = numpy.where(self.hist_pos > 0)[0]
+            if len(nonzeroNdx) > 0:
+                maxval = nonzeroNdx[1]
+            counts = numpy.concatenate([self.hist_neg[::-1], self.hist_pos])
+        return (minval, maxval, counts)
 
     def histLimits(self):
         """
@@ -707,8 +802,7 @@ def handleSinglePassActions(ds, arr, singlePassMgr, symbolicName, seqNum,
             accumList = singlePassMgr.accumulators[symbolicName, seqNum]
             for i in range(numBands):
                 accum = accumList[i]
-                singlePassHistAccum(arr[i], accum.hist, accum.histNullval,
-                    accum.histmin, accum.nbins)
+                accum.doHistAccum(arr[i])
 
 
 def writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff):
@@ -784,12 +878,11 @@ def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
     numBands = len(accumList)
     for i in range(numBands):
         accum = accumList[i]
-        (minval, maxval, first, last, nbins) = accum.histLimits()
+        (minval, maxval, counts) = accum.finalHist()
         if minval is not None:
             band = ds.GetRasterBand(i + 1)
             histParams = HistogramParams(band, minval, maxval)
-            hist = accum.hist[first:last + 1]
-            writeHistogram(ds, band, hist, histParams)
+            writeHistogram(ds, band, counts, histParams)
 
 
 def writeHistogram(ds, band, hist, histParams):
