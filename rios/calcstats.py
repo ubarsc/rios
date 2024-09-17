@@ -21,16 +21,10 @@ with any other format that supports pyramid layers and statistics
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
+
 import numpy
 from osgeo import gdal
-try:
-    from numba import njit
-    haveNumba = True
-except ImportError:
-    # Define a dummy njit decorator
-    def njit(func, *args, **kwargs):
-        return func
-    haveNumba = False
+
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError, SinglePassActionsError
 
@@ -566,7 +560,7 @@ class SinglePassManager:
         """
         Return True if we should do single-pass histogram, False
         otherwise, based on what has been requested, the datatype of
-        the raster, and the availability of numba.
+        the raster.
         """
         key = (symbolicName, self.HISTOGRAM)
         omit = self.omit[key]
@@ -588,14 +582,9 @@ class SinglePassManager:
             msg = ("Explicitly requested single-pass histogram, but " +
                    "this is not supported for datatype {}".format(dtype))
             raise SinglePassActionsError(msg)
-        if spReq is True and not haveNumba:
-            msg = ("Explicitly requested single-pass histogram, but " +
-                   "the numba package is not available")
-            raise SinglePassActionsError(msg)
 
         spHist = ((spReq is True or spReq is None) and
-                  dtypeSupported and haveNumba and
-                  not (omit or approxOK))
+                  dtypeSupported and not (omit or approxOK))
         return spHist
 
 
@@ -833,26 +822,6 @@ def writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff):
             nr = band_ov.YSize - yOff_sub
             arr_sub = arr_sub[:nr, :nc]
             band_ov.WriteArray(arr_sub, xOff_sub, yOff_sub)
-
-
-@njit
-def singlePassHistAccum(arr, histCounts, nullval, minval, nbins):
-    """
-    When doing single-pass histogram, accumulate counts for the
-    given arr. This function is compiled using numba.njit, so should
-    not be passed any unexpected Python objects, just scalars and
-    numpy arrays.
-
-    In principle, this would be neater as a method on the
-    SinglePassAccumulator class, but with numba involved, it is more
-    straightforward to use a separate function.
-
-    """
-    for val in arr.flatten():
-        if val != nullval:
-            ndx = val - minval
-            if ndx >= 0 and ndx < nbins:
-                histCounts[ndx] += 1
 
 
 def finishSinglePassStats(ds, singlePassMgr, symbolicName, seqNum):
