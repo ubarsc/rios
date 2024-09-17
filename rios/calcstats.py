@@ -756,9 +756,9 @@ class SinglePassAccumulator:
                 counts = counts[::-1]
         elif (havePos and haveNeg):
             nonzeroNdx = numpy.where(self.hist_neg > 0)[0]
-            minval = -(nonzeroNdx[-1])
+            minval = -(nonzeroNdx[-1] + 1)
             nonzeroNdx = numpy.where(self.hist_pos > 0)[0]
-            maxval = nonzeroNdx[1]
+            maxval = nonzeroNdx[-1]
             counts = numpy.concatenate([self.hist_neg[::-1], self.hist_pos])
 
         return (minval, maxval, counts)
