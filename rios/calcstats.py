@@ -133,6 +133,8 @@ if hasattr(gdal, 'GDT_Int64'):
     gdalLargeIntTypes.add(gdal.GDT_UInt64)
 
 gdalFloatTypes = set([gdal.GDT_Float32, gdal.GDT_Float64])
+numpyUnsignedIntTypes = (numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64)
+numpySignedIntTypes = (numpy.int8, numpy.int16, numpy.int32, numpy.int64)
 
 
 def addStatistics(ds, progress, ignore=None, approx_ok=False):
@@ -385,10 +387,6 @@ def setNullValue(ds, nullValue):
         band.SetNoDataValue(nullValue)
 
 
-unsignedIntTypes = (numpy.uint8, numpy.uint16, numpy.uint32, numpy.uint64)
-signedIntTypes = (numpy.int8, numpy.int16, numpy.int32, numpy.int64)
-
-
 class SinglePassManager:
     """
     The required info for dealing with single-pass pyramids/statistics/histogram.
@@ -410,7 +408,7 @@ class SinglePassManager:
         self.PYRAMIDS = 0
         self.STATISTICS = 1
         self.HISTOGRAM = 2
-        self.histSupportedDtypes = signedIntTypes + unsignedIntTypes
+        self.histSupportedDtypes = numpySignedIntTypes + numpyUnsignedIntTypes
         self.supportedAggtypes = ("NEAREST", )
 
         self.omit = {}
@@ -664,7 +662,7 @@ class SinglePassAccumulator:
         """
         Accumulate the histogram with counts from the given arr
         """
-        if (arr.dtype in unsignedIntTypes):
+        if (arr.dtype in numpyUnsignedIntTypes):
             counts = numpy.bincount(arr.flatten())
             if self.nullval is not None:
                 counts = self.removeNullFromCounts(counts, self.nullval)
