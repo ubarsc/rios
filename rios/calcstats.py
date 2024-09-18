@@ -211,9 +211,8 @@ def addHistogramsGDAL(ds, minMaxList, approx_ok):
             # use include_out_of_range=True, which is safe because we have
             # calculated the histParams.calcMin/calcMax from the data.
             includeOutOfRange = True
-            hist = band.GetHistogram(histParams.calcMin,
-                        histParams.calcMax, histParams.nbins,
-                        includeOutOfRange, approx_ok)
+            hist = band.GetHistogram(histParams.calcMin, histParams.calcMax,
+                        histParams.nbins, includeOutOfRange, approx_ok)
             # comes back as a list for some reason
             hist = numpy.array(hist)
 
