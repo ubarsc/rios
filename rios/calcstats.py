@@ -418,7 +418,7 @@ class SinglePassManager:
         self.oviewAggtype = {}
         self.arrDtype = {}
         self.accumulators = {}
-        self.pyramidsSupported = {}
+        self.directPyramidsSupported = {}
 
         (nrows, ncols) = workinggrid.getDimensions()
         mindim = min(nrows, ncols)
@@ -445,7 +445,8 @@ class SinglePassManager:
 
             driverName = controls.getOptionForImagename('drivername',
                 symbolicName)
-            self.pyramidsSupported[symbolicName] = driverSupportsPyramids[driverName]
+            self.directPyramidsSupported[symbolicName] = (
+                driverSupportsPyramids[driverName])
 
             self.approxOK[symbolicName] = controls.getOptionForImagename(
                 'approxStats', symbolicName)
@@ -536,7 +537,7 @@ class SinglePassManager:
         """
         key = (symbolicName, self.PYRAMIDS)
         omit = self.omit[key]
-        supported = self.pyramidsSupported[symbolicName]
+        supported = self.directPyramidsSupported[symbolicName]
         spReq = self.singlePassRequested[key]
         aggType = self.oviewAggtype[symbolicName]
         if spReq is True and aggType not in self.supportedAggtypes:
