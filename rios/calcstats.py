@@ -204,24 +204,27 @@ def addHistogramsGDAL(ds, minMaxList, approx_ok):
     for bandndx in range(ds.RasterCount):
         band = ds.GetRasterBand(bandndx + 1)
         (minval, maxval) = minMaxList[bandndx]
-        histParams = HistogramParams(band, minval, maxval)
+        if minval is not None:
+            histParams = HistogramParams(band, minval, maxval)
 
-        # Get histogram and force GDAL to recalculate it. Note that we use include_out_of_range=True,
-        # which is safe because we have calculated the histCalcMin/Max from the data. 
-        includeOutOfRange = True
-        hist = band.GetHistogram(histParams.calcMin,
-                    histParams.calcMax, histParams.nbins,
-                    includeOutOfRange, approx_ok)
-        # comes back as a list for some reason
-        hist = numpy.array(hist)
+            # Get histogram and force GDAL to recalculate it. Note that we
+            # use include_out_of_range=True, which is safe because we have
+            # calculated the histParams.calcMin/calcMax from the data.
+            includeOutOfRange = True
+            hist = band.GetHistogram(histParams.calcMin,
+                        histParams.calcMax, histParams.nbins,
+                        includeOutOfRange, approx_ok)
+            # comes back as a list for some reason
+            hist = numpy.array(hist)
 
-        # Check if GDAL's histogram code overflowed. This is not a fool-proof
-        # test, as some overflows will not result in negative counts. Since
-        # GDAL 3.x, it is no longer required, as counts are int64.
-        histogramOverflow = (hist.min() < 0)
-        
-        if not histogramOverflow:
-            writeHistogram(ds, band, hist, histParams)
+            # Check if GDAL's histogram code overflowed. This is not a
+            # fool-proof test, as some overflows will not result in negative
+            # counts. Since GDAL 3.x, it is no longer required, as counts
+            # are int64.
+            histogramOverflow = (hist.min() < 0)
+
+            if not histogramOverflow:
+                writeHistogram(ds, band, hist, histParams)
 
 
 def computeStatsGDAL(band, approx_ok):
