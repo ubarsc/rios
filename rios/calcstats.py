@@ -278,21 +278,27 @@ def writeBasicStats(band, minval, maxval, meanval, stddev, approx_ok):
 class HistogramParams:
     """
     Work out the various parameters needed by GDAL to compute a histogram.
-    The inferences are based on the pixel datatype.
+    The inferences are based on the pixel datatype. Some (but not all) of the
+    parameters are also used when doing a single-pass histogram.
     """
     def __init__(self, band, minval, maxval):
         self.min = None
         self.max = None
+        # Step is used when calculating median & mode, and for reducing
+        # a 'direct' histogram to a 'linear' one (single-pass case).
         self.step = None
+        # calcMin/calcMax are used when GetHistogram calculates the bin edges
         self.calcMin = None
         self.calcMax = None
         self.nbins = None
         self.binFunction = None
+        # The maximum number of bins for 'linear' binFunction cases
+        self.maxLinearBins = 256
 
         layerType = band.GetMetadataItem('LAYER_TYPE')
         thematic = (layerType == "thematic")
 
-        # Note that we explicitly set histstep in each datatype case.
+        # Note that we explicitly set step in each datatype case.
         # In principle, this can be calculated, as it is done in the
         # float and large-int cases, but for some of the others we need
         # it to be exactly equal to 1, so we set it explicitly here, to
@@ -300,12 +306,12 @@ class HistogramParams:
 
         if band.DataType == gdal.GDT_Byte:
             # if byte data use 256 bins and the whole range
-            self.min = 0
-            self.max = 255
-            self.step = 1.0
-            self.calcMin = -0.5
-            self.calcMax = 255.5
             self.nbins = 256
+            self.min = 0
+            self.max = self.nbins - 1
+            self.step = 1.0
+            self.calcMin = self.min - 0.5
+            self.calcMax = self.max + 0.5
             self.binFunction = 'direct'
         elif thematic:
             # all other thematic types a bin per value
@@ -318,25 +324,25 @@ class HistogramParams:
             self.binFunction = 'direct'
         elif band.DataType in gdalLargeIntTypes:
             histrange = int(numpy.ceil(maxval) - numpy.floor(minval)) + 1
-            (self.min, self.max) = (minval, maxval)
-            if histrange <= 256:
+            (self.min, self.max) = (int(minval), int(maxval))
+            if histrange <= self.maxLinearBins:
                 self.nbins = histrange
                 self.step = 1.0
                 self.binFunction = 'direct'
                 self.calcMin = self.min - 0.5
                 self.calcMax = self.max + 0.5
             else:
-                self.nbins = 256
+                self.nbins = self.maxLinearBins
                 self.binFunction = 'linear'
-                self.calcMin = self.min
-                self.calcMax = self.max
+                self.calcMin = int(self.min)
+                self.calcMax = int(self.max)
                 self.step = float(self.calcMax - self.calcMin) / self.nbins
         elif band.DataType in gdalFloatTypes:
-            self.nbins = 256
-            (self.min, self.max) = (minval, maxval)
+            self.nbins = self.maxLinearBins
+            (self.min, self.max) = (float(minval), float(maxval))
             self.binFunction = 'linear'
-            self.calcMin = minval
-            self.calcMax = maxval
+            self.calcMin = float(minval)
+            self.calcMax = float(maxval)
             if self.calcMin == self.calcMax:
                 self.calcMax = self.calcMax + 0.5
                 self.nbins = 1
@@ -862,6 +868,13 @@ def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
         if minval is not None:
             band = ds.GetRasterBand(i + 1)
             histParams = HistogramParams(band, minval, maxval)
+            if ((histParams.binFunction == 'linear') and
+                    (len(counts) > histParams.maxLinearBins)):
+                # Our rules dictate that we want a linear bin-Function histogram
+                # so convert the 'direct' one we have
+                desiredNbins = histParams.maxLinearBins
+                counts = linearHistFromDirect(desiredNbins, histParams.step,
+                    counts)
             writeHistogram(ds, band, counts, histParams)
 
 
@@ -921,3 +934,56 @@ def writeHistogram(ds, band, hist, histParams):
     if ratObj is not None and not ratObj.ChangesAreWrittenToFile():
         # For drivers that require the in memory thing
         band.SetDefaultRAT(ratObj)
+
+
+def linearHistFromDirect(desiredNbins, step, counts):
+    """
+    Take a direct-binFunction histogram and use linear interpolation
+    to create a linear-binFunction equivalent. This is intended for use
+    with counts created with the single-pass algorithm, but in cases
+    when we would otherwise have chosen a linear-binFunction histogram.
+    Generally this is to save writing a very large number of counts.
+
+    The minval and maxval will be preserved. The given desiredNbins is the
+    number of bins desired in the new histogram. The counts are the old
+    counts, and will be re-calculated with the requested number of bins.
+
+    We preserve the total count, so the new histogram refers to the same
+    total number of pixels.
+
+    """
+    if desiredNbins > len(counts):
+        msg = "{} > {}. Cannot increase the number of bins".format(desiredNbins,
+            len(counts))
+        raise SinglePassActionsError(msg)
+
+    newCounts = numpy.zeros(desiredNbins, dtype=counts.dtype)
+
+    upper = 0
+    for i in range(desiredNbins):
+        lower = upper
+        upper = (i + 1) * step
+        # First accumulate the count for all bins intersecting this new bin
+        j1 = int(lower)
+        j2 = int(numpy.ceil(upper))
+        if j2 == upper:
+            j2 += 1
+        c = counts[j1:j2].sum()
+        # Now the add/subtract the fractions at either end
+        p1 = (lower - int(lower))
+        c = c - (counts[j1] * p1)
+        p2 = 1 - (upper - int(upper))
+        if p2 < 1:
+            c = c - (counts[j2] * p2)
+        newCounts[i] = int(round(c))
+
+    # Now adjust to exactly preserve the total. I don't think this is strictly
+    # necessary, but the perfectionist in me wants it to be so.
+    diff = counts.sum() - newCounts.sum()
+    # 'diff' is the amount we need to add to the newCounts to make the totals
+    # match. We add this to the bin with the largest count, where it will
+    # do the least damage.
+    ndx = numpy.argmax(newCounts)
+    newCounts[ndx] += diff
+
+    return newCounts
