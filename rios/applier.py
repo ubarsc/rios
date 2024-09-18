@@ -217,18 +217,25 @@ class ApplierControls(object):
                     msg = msg.format(option, imagename)
                     raise ValueError(msg)
 
-        # Warn against use of approx stats with thematic output images
+        # Check output files for a number of conditions
         outImageList = [symbName for (symbName, seqNum, filename) in
             outfiles]
         outImageList = list(set(outImageList))
         for imagename in outImageList:
             thematic = self.getOptionForImagename('thematic', imagename)
             approxStats = self.getOptionForImagename('approxStats', imagename)
+            omitPyramids = self.getOptionForImagename('omitPyramids', imagename)
+
             if thematic and approxStats:
                 msg = ("Warning: Output image {} is thematic, and also " +
                        "uses approximate statistics. This is not " +
                        "recommended").format(imagename)
                 print(msg, file=sys.stderr)
+
+            if omitPyramids and approxStats:
+                msg = ("Approximate stats requires pyramid layers, " +
+                       "which have been omitted")
+                raise ValueError(msg)
 
     def setLoggingStream(self, loggingstream):
         """
