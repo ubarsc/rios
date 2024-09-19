@@ -103,7 +103,7 @@ def run():
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
 
-    return ok
+    return allOK
 
 
 hugeIntGDALTypes = (gdal.GDT_Int32, gdal.GDT_UInt32, gdal.GDT_Int64, gdal.GDT_UInt64)
@@ -387,9 +387,8 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
     """
     Do simple check(s) on the histogram
     """
-    metadata = band.GetMetadata()
-    if "STATISTICS_HISTOBINVALUES" in metadata:
-        histValsStr = metadata["STATISTICS_HISTOBINVALUES"]
+    histValsStr = band.GetMetadataItem("STATISTICS_HISTOBINVALUES")
+    if histValsStr is not None:
         if histValsStr[-1] == '|':
             # Remove trailing '|'
             histValsStr = histValsStr[:-1]
@@ -412,6 +411,20 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
         if totalCount != trueTotalCount:
             ok = False
             msgList.append("Histogram total count error: {} != {}".format(totalCount, trueTotalCount))
+
+        # Test the individual counts, but only for "direct" binning
+        layerType = band.GetMetadataItem("LAYER_TYPE")
+        thematic = (layerType == "thematic")
+        if thematic or (imgArr.dtype == numpy.uint8):
+            trueHist = numpy.bincount(imgArr[imgArr != nullVal])
+            mismatch = (histVals != trueHist)
+            if mismatch.any():
+                ok = False
+                numMismatch = numpy.count_nonzero(mismatch)
+                msgList.append(("Thematic histogram mis-match " +
+                    "for {} values").format(numMismatch))
+
+        # We don't (yet ?) have a test for linear binned histograms
     else:
         ok = False
         msgList.append("Histogram not found, so could not be checked")
