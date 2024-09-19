@@ -216,7 +216,7 @@ def addHistogramsGDAL(ds, minMaxList, approx_ok):
             hist = band.GetHistogram(histParams.calcMin, histParams.calcMax,
                         histParams.nbins, includeOutOfRange, approx_ok)
             # comes back as a list for some reason
-            hist = numpy.array(hist)
+            hist = numpy.array(hist, dtype=numpy.uint64)
 
             # Check if GDAL's histogram code overflowed. This is not a
             # fool-proof test, as some overflows will not result in negative
@@ -299,7 +299,7 @@ class HistogramParams:
         self.maxLinearBins = 256
 
         layerType = band.GetMetadataItem('LAYER_TYPE')
-        thematic = (layerType == "thematic")
+        self.thematic = (layerType == "thematic")
 
         # Note that we explicitly set step in each datatype case.
         # In principle, this can be calculated, as it is done in the
@@ -307,15 +307,25 @@ class HistogramParams:
         # it to be exactly equal to 1, so we set it explicitly here, to
         # avoid rounding error problems.
 
-        if thematic or (band.DataType == gdal.GDT_Byte):
-            # We want a bin for every individual value
-            self.min = int(numpy.floor(minval))
+        if self.thematic or (band.DataType == gdal.GDT_Byte):
+            # We want a bin for every individual value, and the bin width is 1.
+            # We also fix the min value to zero, instead of minval. This is
+            # not ideal, but is because of interactions with the use of the
+            # RAT WriteArray and ReadAsArray functions to handle the histogram
+            # as a RAT column.
+            self.min = 0
             self.max = int(numpy.ceil(maxval))
             self.step = 1.0
-            self.calcMin = minval - 0.5
-            self.calcMax = maxval + 0.5
+            self.calcMin = self.min - 0.5
+            self.calcMax = self.max + 0.5
             self.nbins = (self.max - self.min + 1)
             self.binFunction = 'direct'
+
+            # If we have a negative minval, then we are screwed.
+            if minval < 0:
+                msg = ("Histogram code does not cope with negative values " +
+                       "in thematic raster. Please complain to the authors.")
+                raise ValueError(msg)
         elif band.DataType in gdalLargeIntTypes:
             histrange = int(numpy.ceil(maxval) - numpy.floor(minval)) + 1
             (self.min, self.max) = (int(minval), int(maxval))
@@ -335,8 +345,8 @@ class HistogramParams:
             self.nbins = self.maxLinearBins
             (self.min, self.max) = (float(minval), float(maxval))
             self.binFunction = 'linear'
-            self.calcMin = float(minval)
-            self.calcMax = float(maxval)
+            self.calcMin = self.min
+            self.calcMax = self.max
             if self.calcMin == self.calcMax:
                 self.calcMax = self.calcMax + 0.5
                 self.nbins = 1
@@ -406,6 +416,7 @@ class SinglePassManager:
         self.omit = {}
         self.singlePassRequested = {}
         self.approxOK = {}
+        self.thematic = {}
         self.overviewLevels = {}
         self.oviewAggtype = {}
         self.arrDtype = {}
@@ -442,6 +453,8 @@ class SinglePassManager:
 
             self.approxOK[symbolicName] = controls.getOptionForImagename(
                 'approxStats', symbolicName)
+            self.thematic[symbolicName] = controls.getOptionForImagename(
+                'thematic', symbolicName)
             oviewLvls = controls.getOptionForImagename('overviewLevels',
                 symbolicName)
             aggType = controls.getOptionForImagename(
@@ -509,11 +522,12 @@ class SinglePassManager:
         includeHist = self.doSinglePassHistogram(symbolicName)
         if includeStats or includeHist:
             nullval = ds.GetRasterBand(1).GetNoDataValue()
+            thematic = self.thematic[symbolicName]
             key = (symbolicName, seqNum)
             numBands = arr.shape[0]
             self.accumulators[key] = [
                 SinglePassAccumulator(includeStats, includeHist,
-                        arr.dtype, nullval)
+                        arr.dtype, nullval, thematic)
                 for i in range(numBands)
             ]
         if self.doSinglePassPyramids(symbolicName):
@@ -592,15 +606,11 @@ class SinglePassAccumulator:
     Accumulator for statistics and histogram for a single band. Used when
     doing single-pass stats and/or histogram.
     """
-    def __init__(self, includeStats, includeHist, dtype, nullval):
+    def __init__(self, includeStats, includeHist, dtype, nullval, thematic):
         self.nullval = nullval
-        self.histNullval = nullval
-        if nullval is None and includeHist:
-            # We can't use None in the njit-ed histogram code, so make a
-            # value that would be impossible, given the supported datatypes
-            self.histNullval = numpy.uint32(2**32 - 1)
         self.includeStats = includeStats
         self.includeHist = includeHist
+        self.thematic = thematic
         if includeStats:
             self.minval = None
             self.maxval = None
@@ -608,9 +618,14 @@ class SinglePassAccumulator:
             self.ssq = 0
             self.count = 0
         if includeHist:
-            # We only do single-pass histograms if we are also
-            # doing direct binning histograms.
-            self.binFunc = "direct"
+            # Match the 'thematic' behaviour in HistogramParams
+            if thematic or (dtype == numpy.uint8):
+                self.binFunc = "direct"
+                self.histMinZero = True
+            else:
+                self.binFunc = "linear"
+                self.histMinZero = False
+
             # Separate count arrays for (values >= 0) and (values < 0)
             self.hist_pos = None
             self.hist_neg = None
@@ -734,9 +749,9 @@ class SinglePassAccumulator:
             else:
                 self.hist_neg = self.addTwoHistograms(self.hist_neg, newCounts)
 
-    def finalHist(self):
+    def fullHist(self):
         """
-        Return the final histogram, as (minval, maxval, counts)
+        Return the full histogram, as (minval, maxval, counts)
         """
         minval = maxval = counts = None
         havePos = (self.hist_pos is not None)
@@ -763,6 +778,13 @@ class SinglePassAccumulator:
             nonzeroNdx = numpy.where(self.hist_pos > 0)[0]
             maxval = nonzeroNdx[-1]
             counts = numpy.concatenate([self.hist_neg[::-1], self.hist_pos])
+        counts = counts.astype(numpy.uint64)
+
+        if minval is not None and minval > 0 and self.histMinZero:
+            newCounts = numpy.zeros(int(maxval) + 1, dtype=numpy.uint64)
+            newCounts[minval:] = counts
+            counts = newCounts
+            minval = 0
 
         return (minval, maxval, counts)
 
@@ -859,7 +881,7 @@ def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
     numBands = len(accumList)
     for i in range(numBands):
         accum = accumList[i]
-        (minval, maxval, counts) = accum.finalHist()
+        (minval, maxval, counts) = accum.fullHist()
         if minval is not None:
             band = ds.GetRasterBand(i + 1)
             histParams = HistogramParams(band, minval, maxval)
@@ -870,6 +892,7 @@ def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
                 desiredNbins = histParams.maxLinearBins
                 counts = linearHistFromDirect(desiredNbins, histParams.step,
                     counts)
+
             writeHistogram(ds, band, counts, histParams)
 
 
@@ -911,8 +934,8 @@ def writeHistogram(ds, band, hist, histParams):
             histParams.binFunction)
 
     # estimate the median - bin with the middle number
-    middlenum = hist.astype(numpy.float64).sum() / 2
-    gtmiddle = hist.astype(numpy.float64).cumsum() >= middlenum
+    middlenum = hist.astype(numpy.uint64).sum() / 2
+    gtmiddle = hist.astype(numpy.uint64).cumsum() >= middlenum
     medianbin = gtmiddle.nonzero()[0][0]
     medianval = medianbin * histParams.step + histParams.min
     if band.DataType in gdalFloatTypes:
@@ -960,19 +983,12 @@ def linearHistFromDirect(desiredNbins, step, counts):
     for i in range(desiredNbins):
         lower = upper
         upper = (i + 1) * step
-        # First accumulate the count for all bins intersecting this new bin
+        # Accumulate the count for all bins intersecting this new bin
         j1 = int(lower)
         j2 = int(numpy.ceil(upper))
         if j2 == upper:
             j2 += 1
-        c = counts[j1:j2].sum()
-        # Now the add/subtract the fractions at either end
-        p1 = (lower - int(lower))
-        c = c - (counts[j1] * p1)
-        p2 = 1 - (upper - int(upper))
-        if p2 < 1:
-            c = c - (counts[j2] * p2)
-        newCounts[i] = int(round(c))
+        newCounts[i] = counts[j1:j2].sum()
 
     # Now adjust to exactly preserve the total. I don't think this is strictly
     # necessary, but the perfectionist in me wants it to be so.
