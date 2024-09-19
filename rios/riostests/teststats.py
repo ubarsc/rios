@@ -35,7 +35,7 @@ def run():
     """
     riostestutils.reportStart(TESTNAME)
 
-    ok = True
+    allOK = True
     
     # We repeat the basic test for a number of different GDAL datatypes, with different
     # ranges of data. Each element of the following list is a tuple of
@@ -93,13 +93,14 @@ def run():
 
         # Loop over all datatype tuples in the list
         for (fileDtype, scalefactor) in dataTypesForDriver:
-            ok = testForDriverAndType(driverName, creationOptions, fileDtype,
-                scalefactor, rampInfile, ext)
+            ok = testForDriverAndType(driverName, creationOptions,
+                fileDtype, scalefactor, rampInfile, ext)
+            allOK = allOK and ok
     
     if os.path.exists(rampInfile):
         riostestutils.removeRasterFile(rampInfile)
 
-    if ok:
+    if allOK:
         riostestutils.report(TESTNAME, "Passed")
 
     return ok
@@ -187,6 +188,18 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor,
             not singlePassMgr.doSinglePassPyramids(symbolicName)):
         ok = False
         msg = "Iteration={}\nSingle-pass requested, but not done for pyramids"
+        riostestutils.report(TESTNAME, msg)
+
+    if (singlePass is True and
+            not singlePassMgr.doSinglePassStatistics(symbolicName)):
+        ok = False
+        msg = "Iteration={}\nSingle-pass requested, but not done for basic stats"
+        riostestutils.report(TESTNAME, msg)
+
+    if (singlePass is True and
+            not singlePassMgr.doSinglePassHistogram(symbolicName)):
+        ok = False
+        msg = "Iteration={}\nSingle-pass requested, but not done for histogram"
         riostestutils.report(TESTNAME, msg)
 
     # Read back the written data as a numpy array
