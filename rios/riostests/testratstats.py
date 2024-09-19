@@ -24,7 +24,7 @@ from rios import calcstats
 from rios import fileinfo
 from rios import rat
 from rios import cuiprogress
-from . import riostestutils
+from rios.riostests import riostestutils
 
 TESTNAME = 'TESTRATSTATS'
 
@@ -37,10 +37,11 @@ def run():
     
     allOK = True
 
-    imgfile = 'test.img'
+    imgfile = 'test.kea'
     nRows = 100
     nCols = 1
-    ds = riostestutils.createTestFile(imgfile, numRows=nRows, numCols=nCols)
+    ds = riostestutils.createTestFile(imgfile, numRows=nRows, numCols=nCols,
+        driverName='KEA', creationOptions=[])
     imgArray = numpy.ones((nRows, nCols), dtype=numpy.uint8)
     imgArray[1:10, 0] = numpy.arange(1, 10)
     imgArray[50:, 0] = 0
@@ -48,13 +49,13 @@ def run():
     band.WriteArray(imgArray)
     
     nullDN = 0
+    band.SetMetadataItem('LAYER_TYPE', 'thematic')
     calcstats.calcStats(ds, ignore=nullDN, progress=cuiprogress.SilentProgress())
     columnName = 'Value'
     # Note that the RAT has a row for lots of values which have no corresponding pixel
     ratValues = (numpy.mgrid[0:nRows]**2).astype(numpy.float64)
     ratValues[0] = 500
     rat.writeColumnToBand(band, columnName, ratValues)
-    band.SetMetadataItem('LAYER_TYPE', 'thematic')
     del ds
     
     ratStats = fileinfo.RatStats(imgfile, columnlist=[columnName])
@@ -62,10 +63,10 @@ def run():
     # Construct an image of the values, by translating pixel values into RAT values
     ratValImg = numpy.zeros(imgArray.shape, dtype=numpy.float64)
     for dn in numpy.unique(imgArray):
-        if dn != 0:
+        if dn != nullDN:
             mask = (imgArray == dn)
             ratValImg[mask] = ratValues[dn]
-    ratValImgNonNull = ratValImg[imgArray!=0]
+    ratValImgNonNull = ratValImg[imgArray!=nullDN]
 
     # Now find the "true" values of the various stats for this image (i.e. this is the
     # histogramweighted=True case, which I think will be the most common one)
