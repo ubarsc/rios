@@ -216,7 +216,7 @@ def addHistogramsGDAL(ds, minMaxList, approx_ok):
             hist = band.GetHistogram(histParams.calcMin, histParams.calcMax,
                         histParams.nbins, includeOutOfRange, approx_ok)
             # comes back as a list for some reason
-            hist = numpy.array(hist, dtype=numpy.uint64)
+            hist = numpy.array(hist)
 
             # Check if GDAL's histogram code overflowed. This is not a
             # fool-proof test, as some overflows will not result in negative
@@ -778,10 +778,9 @@ class SinglePassAccumulator:
             nonzeroNdx = numpy.where(self.hist_pos > 0)[0]
             maxval = nonzeroNdx[-1]
             counts = numpy.concatenate([self.hist_neg[::-1], self.hist_pos])
-        counts = counts.astype(numpy.uint64)
 
         if minval is not None and minval > 0 and self.histMinZero:
-            newCounts = numpy.zeros(int(maxval) + 1, dtype=numpy.uint64)
+            newCounts = numpy.zeros(int(maxval) + 1, dtype=numpy.int64)
             newCounts[minval:] = counts
             counts = newCounts
             minval = 0
@@ -934,8 +933,8 @@ def writeHistogram(ds, band, hist, histParams):
             histParams.binFunction)
 
     # estimate the median - bin with the middle number
-    middlenum = hist.astype(numpy.uint64).sum() / 2
-    gtmiddle = hist.astype(numpy.uint64).cumsum() >= middlenum
+    middlenum = hist.astype(numpy.int64).sum() / 2
+    gtmiddle = hist.astype(numpy.int64).cumsum() >= middlenum
     medianbin = gtmiddle.nonzero()[0][0]
     medianval = medianbin * histParams.step + histParams.min
     if band.DataType in gdalFloatTypes:
@@ -985,13 +984,14 @@ def linearHistFromDirect(desiredNbins, step, counts):
         upper = (i + 1) * step
         # Accumulate the count for all bins intersecting this new bin
         j1 = int(lower)
-        j2 = int(numpy.ceil(upper))
-        if j2 == upper:
+        j2 = int(upper)
+        if (i + 1) == desiredNbins:
             j2 += 1
         newCounts[i] = counts[j1:j2].sum()
 
     # Now adjust to exactly preserve the total. I don't think this is strictly
-    # necessary, but the perfectionist in me wants it to be so.
+    # necessary, but the perfectionist in me wants it to be so. (Maybe it should
+    # be an exception if (diff != 0) ???)
     diff = counts.sum() - newCounts.sum()
     # 'diff' is the amount we need to add to the newCounts to make the totals
     # match. We add this to the bin with the largest count, where it will
