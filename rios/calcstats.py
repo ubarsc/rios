@@ -879,6 +879,8 @@ def writeHistogram(ds, band, hist, histParams):
     to calculate median and mode, and write them as well.
     """
     ratObj = band.GetDefaultRAT()
+    layerType = band.GetMetadataItem('LAYER_TYPE')
+    thematic = (layerType == "thematic")
     # The GDAL HFA driver has a bug in its SetLinearBinning function,
     # which was introduced as part of the RFC40 changes. Until
     # this is fixed and widely distributed, we should disable the use
@@ -886,12 +888,12 @@ def writeHistogram(ds, band, hist, histParams):
     driverName = ds.GetDriver().ShortName
     disableRFC40 = (driverName == 'HFA')
 
-    if ratObj is not None and not disableRFC40:
+    if thematic and ratObj is not None and not disableRFC40:
         histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount,
                                 "Histogram", gdal.GFT_Real)
         # write the hist in a single go
-        ratObj.SetRowCount(histParams.nbins)
-        ratObj.WriteArray(hist, histIndx)
+        ratObj.SetRowCount(histParams.nbins + int(histParams.min))
+        ratObj.WriteArray(hist, histIndx, start=int(histParams.min))
 
         ratObj.SetLinearBinning(histParams.min,
             (histParams.calcMax - histParams.calcMin) / histParams.nbins)
