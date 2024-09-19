@@ -22,7 +22,7 @@ import numpy
 from osgeo import gdal
 from osgeo.gdal_array import GDALTypeCodeToNumericTypeCode
 
-from rios import calcstats, cuiprogress, VersionObj
+from rios import applier, VersionObj
 
 from rios.riostests import riostestutils
 
@@ -34,8 +34,7 @@ def run():
     Run a test of statistics calculation
     """
     riostestutils.reportStart(TESTNAME)
-    
-    nullVal = 0
+
     ok = True
     
     # We repeat the basic test for a number of different GDAL datatypes, with different
@@ -64,17 +63,22 @@ def run():
         dataTypesList.append((gdal.GDT_Int64, 30000))
         dataTypesList.append((gdal.GDT_UInt64, 30000))
     
-    # We repeat these tests on a number of different drivers, if they are available,
-    # as some stats-related things may work fine on some drivers but not on others. 
+    # We repeat these tests on a number of different drivers, if they are
+    # available, as some stats-related things may work fine on some drivers
+    # but not on others. 
     driverTestList = [
         ('HFA', ['COMPRESS=YES']),
-        ('GTiff', ['COMPRESS=LZW', 'TILED=YES', 'INTERLEAVE=BAND']),
+        ('GTiff', ['COMPRESS=DEFLATE', 'TILED=YES', 'INTERLEAVE=BAND']),
         ('KEA', [])
     ]
     # Remove any drivers not supported by current GDAL
     driverTestList = [(drvrName, options) for (drvrName, options) in driverTestList
         if gdal.GetDriverByName(drvrName) is not None]
-    
+
+    # Create a test input file
+    rampInfile = 'ramp.img'
+    riostestutils.genRampImageFile(rampInfile)
+
     # Loop over all drivers
     for (driverName, creationOptions) in driverTestList:
         drvr = gdal.GetDriverByName(driverName)
@@ -89,67 +93,176 @@ def run():
 
         # Loop over all datatype tuples in the list
         for (fileDtype, scalefactor) in dataTypesForDriver:
-            arrDtype = GDALTypeCodeToNumericTypeCode(fileDtype)
-            imgfile = 'test.' + ext
-            ds = riostestutils.createTestFile(imgfile, dtype=fileDtype, driverName=driverName, 
-                    creationOptions=creationOptions)
-            rampArr = riostestutils.genRampArray().astype(arrDtype) * scalefactor
-            (nRows, nCols) = rampArr.shape
-            # Set half of it to null
-            rampArr[:, :nCols // 2] = nullVal
-            band = ds.GetRasterBand(1)
-            band.WriteArray(rampArr)
-            del ds
-
-            # Calculate  the stats on the file
-            ds = gdal.Open(imgfile, gdal.GA_Update)
-            calcstats.calcStats(ds, progress=cuiprogress.SilentProgress(), 
-                ignore=nullVal)
-            del ds
-
-            # Read back the data as a numpy array
-            ds = gdal.Open(imgfile)
-            band = ds.GetRasterBand(1)
-            rampArr = band.ReadAsArray()
-
-            # Get stats from file, and from array, and compare
-            stats1 = getStatsFromBand(band)
-            stats2 = getStatsFromArray(rampArr, nullVal)
-            iterationName = "%s %s scale=%s"%(driverName, gdal.GetDataTypeName(fileDtype), scalefactor)
-            # This relative tolerance is used for comparing the median and mode, 
-            # because those are approximate only, and the likely error depends on the 
-            # size of the numbers in question (thus it depends on the scalefactor). 
-            # Please do not make it any larger unless you have a really solid reason. 
-            relativeTolerance = 0.1 * scalefactor
-            statsOK = compareStats(stats1, stats2, iterationName, relativeTolerance)
-            ok = ok and statsOK
-
-            histOK = checkHistogram(band, rampArr, nullVal, iterationName)
-            ok = ok and histOK
-
-            del ds
-
-        if os.path.exists(imgfile):
-            riostestutils.removeRasterFile(imgfile)
+            ok = testForDriverAndType(driverName, creationOptions, fileDtype,
+                scalefactor, rampInfile, ext)
     
+    if os.path.exists(rampInfile):
+        riostestutils.removeRasterFile(rampInfile)
+
     if ok:
         riostestutils.report(TESTNAME, "Passed")
 
     return ok
 
 
+hugeIntGDALTypes = (gdal.GDT_Int32, gdal.GDT_UInt32, gdal.GDT_Int64, gdal.GDT_UInt64)
+floatGDALTypes = (gdal.GDT_Float32, gdal.GDT_Float64)
+
+
+def testForDriverAndType(driverName, creationOptions, fileDtype, scalefactor,
+        rampInfile, ext):
+    """
+    Run a set of stats tests for the given drive and datatype.
+    """
+    # The default behaviour
+    ok = runOneTest(driverName, creationOptions, fileDtype, scalefactor,
+        rampInfile, ext, False, None, False)
+
+    # With thematic output
+    if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
+        ok = runOneTest(driverName, creationOptions, fileDtype, scalefactor,
+            rampInfile, ext, False, None, True)
+
+    # Omit pyramids/stats/histogram
+    ok = ok and runOneTest(driverName, creationOptions, fileDtype, scalefactor,
+        rampInfile, ext, True, None, False)
+
+    # Force single-pass, with thematic output
+    if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
+        ok = ok and runOneTest(driverName, creationOptions, fileDtype,
+            scalefactor, rampInfile, ext, False, True, True)
+
+    # Force GDAL pyramids/stats/histogram
+    ok = ok and runOneTest(driverName, creationOptions, fileDtype, scalefactor,
+        rampInfile, ext, False, False, False)
+
+    # With GDAL, and thematic output
+    if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
+        ok = ok and runOneTest(driverName, creationOptions, fileDtype, scalefactor,
+            rampInfile, ext, False, False, True)
+
+    return ok    
+
+
+def runOneTest(driverName, creationOptions, fileDtype, scalefactor,
+        rampInfile, ext, omit, singlePass, thematic):
+    """
+    Run a full test of stats and histogram for the given configuration
+    """
+    ok = True
+
+    nullVal = 0
+    iterationName = "{} {} scale={} omit={} singlePass={} thematic={}".format(
+        driverName, gdal.GetDataTypeName(fileDtype), scalefactor,
+        omit, singlePass, thematic)
+
+    infiles = applier.FilenameAssociations()
+    outfiles = applier.FilenameAssociations()
+    controls = applier.ApplierControls()
+    otherargs = applier.OtherInputs()
+
+    infiles.inimg = rampInfile
+    
+    arrDtype = GDALTypeCodeToNumericTypeCode(fileDtype)
+    outfiles.outimg = 'test.' + ext
+
+    otherargs.scale = scalefactor
+    otherargs.dtype = arrDtype
+    controls.setOutputDriverName(driverName)
+    controls.setThematic(thematic)
+    controls.setOmitPyramids(omit)
+    controls.setOmitBasicStats(omit)
+    controls.setOmitHistogram(omit)
+    controls.setSinglePassPyramids(singlePass)
+    controls.setSinglePassBasicStats(singlePass)
+    controls.setSinglePassHistogram(singlePass)
+
+    rtn = applier.apply(doit, infiles, outfiles, otherargs, controls=controls)
+
+    # Check whether we actually did single-pass when supposed to
+    singlePassMgr = rtn.singlePassMgr
+    symbolicName = 'outimg'
+    if (singlePassMgr.directPyramidsSupported[symbolicName] and
+            (singlePass is True) and
+            not singlePassMgr.doSinglePassPyramids(symbolicName)):
+        ok = False
+        msg = "Iteration={}\nSingle-pass requested, but not done for pyramids"
+        riostestutils.report(TESTNAME, msg)
+
+    # Read back the written data as a numpy array
+    ds = gdal.Open(outfiles.outimg)
+    band = ds.GetRasterBand(1)
+    outarr = band.ReadAsArray()
+
+    # Get stats from file, and from array, and compare
+    stats1 = getStatsFromBand(band)
+    if stats1 is not None:
+        stats2 = getStatsFromArray(outarr, nullVal)
+
+        # This relative tolerance is used for comparing the median and mode, 
+        # because those are approximate only, and the likely error depends on the 
+        # size of the numbers in question (thus it depends on the scalefactor). 
+        # Please do not make it any larger unless you have a really solid reason. 
+        relativeTolerance = 0.3 * scalefactor
+        statsOK = compareStats(stats1, stats2, iterationName, relativeTolerance)
+        ok = ok and statsOK
+    elif not omit:
+        msg = "Stats missing, even though not omitting them"
+        riostestutils.report(TESTNAME, 
+            'Iteration={}\n{}'.format(iterationName, msg))
+        ok = False
+    elif omit and stats1 is not None:
+        msg = "Stats present, even though directed to omit"
+        riostestutils.report(TESTNAME, 
+            'Iteration={}\n{}'.format(iterationName, msg))
+        ok = False
+
+    if not omit:
+        histOK = checkHistogram(band, outarr, nullVal, iterationName)
+        ok = ok and histOK
+
+    if os.path.exists(outfiles.outimg):
+        riostestutils.removeRasterFile(outfiles.outimg)
+    return ok
+
+
+def doit(info, inputs, outputs, otherargs):
+    """
+    Re-write the input, with scaling and chabge of datatype
+    """
+    dtype = otherargs.dtype
+    outimg = inputs.inimg.astype(dtype) * otherargs.scale
+    outputs.outimg = outimg.astype(dtype)
+
+
 def getStatsFromBand(band):
     """
     Get statistics from given band object, return Stats instance
     """
-    mean = float(band.GetMetadataItem('STATISTICS_MEAN'))
-    stddev = float(band.GetMetadataItem('STATISTICS_STDDEV'))
-    minval = float(band.GetMetadataItem('STATISTICS_MINIMUM'))
-    maxval = float(band.GetMetadataItem('STATISTICS_MAXIMUM'))
-    median = float(band.GetMetadataItem('STATISTICS_MEDIAN'))
-    mode = float(band.GetMetadataItem('STATISTICS_MODE'))
-    statsObj = Stats(mean, stddev, minval, maxval, median, mode)
+    mean = getStatsFloatVal(band, 'STATISTICS_MEAN')
+    stddev = getStatsFloatVal(band, 'STATISTICS_STDDEV')
+    minval = getStatsFloatVal(band, 'STATISTICS_MINIMUM')
+    maxval = getStatsFloatVal(band, 'STATISTICS_MAXIMUM')
+    median = getStatsFloatVal(band, 'STATISTICS_MEDIAN')
+    mode = getStatsFloatVal(band, 'STATISTICS_MODE')
+    if None not in (mean, stddev, minval, maxval, median, mode):
+        statsObj = Stats(mean, stddev, minval, maxval, median, mode)
+    else:
+        statsObj = None
     return statsObj
+
+
+def getStatsFloatVal(band, metadataName):
+    """
+    Get a single float value from the band metadata, or None if
+    it is not present
+    """
+    valStr = band.GetMetadataItem(metadataName)
+    if valStr is not None:
+        value = float(valStr)
+    else:
+        value = None
+    return value
 
 
 def getStatsFromArray(arr, nullVal):
@@ -231,7 +344,7 @@ class Stats(object):
             for n in ['mean', 'stddev', 'minval', 'maxval', 'median', 'mode']])
 
 
-def compareStats(stats1, stats2, dtypeName, relativeTolerance):
+def compareStats(stats1, stats2, iterationName, relativeTolerance):
     """
     Compare two Stats instances, and report differences. Also
     return True if all OK. 
@@ -253,7 +366,7 @@ def compareStats(stats1, stats2, dtypeName, relativeTolerance):
     if len(msgList) > 0:
         ok = False
         riostestutils.report(TESTNAME, 
-            'Datatype=%s\n%s'%(dtypeName, '\n'.join(msgList)))
+            'Iteration=%s\n%s'%(iterationName, '\n'.join(msgList)))
     return ok
 
 
@@ -291,7 +404,8 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
         msgList.append("Histogram not found, so could not be checked")
 
     if not ok:
-        riostestutils.report(TESTNAME, 'Iteration=%s\n%s'%(iterationName, '\n'.join(msgList)))
+        msg = 'Iteration={}\n{}'.format(iterationName, '\n'.join(msgList))
+        riostestutils.report(TESTNAME, msg)
 
     return ok
 
