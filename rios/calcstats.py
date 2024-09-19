@@ -929,8 +929,8 @@ def writeHistogram(ds, band, hist, histParams):
         band.SetMetadataItem("STATISTICS_HISTOMAX", repr(histParams.max))
         band.SetMetadataItem("STATISTICS_HISTONUMBINS",
             repr(int(histParams.nbins)))
-        band.SetMetadataItem("STATISTICS_HISTOBINFUNCTION",
-            histParams.binFunction)
+
+    band.SetMetadataItem("STATISTICS_HISTOBINFUNCTION", histParams.binFunction)
 
     # estimate the median - bin with the middle number
     middlenum = hist.astype(numpy.int64).sum() / 2
