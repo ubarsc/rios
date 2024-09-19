@@ -262,7 +262,8 @@ def writeBasicStats(band, minval, maxval, meanval, stddev, approx_ok):
     It is assumed that by this point, we have set the null value on the band
     (this is normally done when the file is opened).
     """
-    band.SetStatistics(float(minval), float(maxval), meanval, stddev)
+    band.SetStatistics(float(minval), float(maxval), float(meanval),
+        float(stddev))
 
     nullval = band.GetNoDataValue()
     if nullval is not None:
@@ -306,17 +307,8 @@ class HistogramParams:
         # it to be exactly equal to 1, so we set it explicitly here, to
         # avoid rounding error problems.
 
-        if band.DataType == gdal.GDT_Byte:
-            # if byte data use 256 bins and the whole range
-            self.nbins = 256
-            self.min = 0
-            self.max = self.nbins - 1
-            self.step = 1.0
-            self.calcMin = self.min - 0.5
-            self.calcMax = self.max + 0.5
-            self.binFunction = 'direct'
-        elif thematic:
-            # all other thematic types a bin per value
+        if thematic or (band.DataType == gdal.GDT_Byte):
+            # We want a bin for every individual value
             self.min = int(numpy.floor(minval))
             self.max = int(numpy.ceil(maxval))
             self.step = 1.0
@@ -632,8 +624,8 @@ class SinglePassAccumulator:
         else:
             values = arr[arr != self.nullval]
         if len(values) > 0:
-            self.sum += values.sum()
-            self.ssq += (values.astype(numpy.float32)**2).sum()
+            self.sum += values.astype(numpy.float64).sum()
+            self.ssq += (values.astype(numpy.float64)**2).sum()
             self.count += values.size
             minval = values.min()
             if self.minval is None or minval < self.minval:
@@ -664,6 +656,10 @@ class SinglePassAccumulator:
         Accumulate the histogram with counts from the given arr
         """
         if (arr.dtype in numpyUnsignedIntTypes):
+            if arr.dtype == numpy.uint64:
+                # bincount() wants to do a 'safe' cast into int64 (don't know
+                # why). This fails for uint64, so do an 'unsafe' cast first.
+                arr = arr.astype(numpy.int64)
             counts = numpy.bincount(arr.flatten())
             if self.nullval is not None:
                 counts = self.removeNullFromCounts(counts, self.nullval)
@@ -913,8 +909,8 @@ def writeHistogram(ds, band, hist, histParams):
             histParams.binFunction)
 
     # estimate the median - bin with the middle number
-    middlenum = hist.sum() / 2
-    gtmiddle = hist.cumsum() >= middlenum
+    middlenum = hist.astype(numpy.float64).sum() / 2
+    gtmiddle = hist.astype(numpy.float64).cumsum() >= middlenum
     medianbin = gtmiddle.nonzero()[0][0]
     medianval = medianbin * histParams.step + histParams.min
     if band.DataType in gdalFloatTypes:
