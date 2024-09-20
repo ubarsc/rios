@@ -243,7 +243,9 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor,
 
 def doit(info, inputs, outputs, otherargs):
     """
-    Re-write the input, with scaling and chabge of datatype
+    Called from RIOS.
+
+    Re-write the input, with scaling and change of datatype
     """
     dtype = otherargs.dtype
     outimg = inputs.inimg.astype(dtype) * otherargs.scale
