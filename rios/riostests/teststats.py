@@ -96,6 +96,11 @@ def run():
             ok = testForDriverAndType(driverName, creationOptions,
                 fileDtype, scalefactor, rampInfile, ext)
             allOK = allOK and ok
+
+    # A simple test of omitting pyramids/stats/histogram
+    ok = runOneTest('KEA', [], gdal.GDT_Byte, 1, rampInfile, 'kea',
+        True, None, False)
+    allOK = allOK and ok
     
     if os.path.exists(rampInfile):
         riostestutils.removeRasterFile(rampInfile)
@@ -123,10 +128,6 @@ def testForDriverAndType(driverName, creationOptions, fileDtype, scalefactor,
     if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
         ok = runOneTest(driverName, creationOptions, fileDtype, scalefactor,
             rampInfile, ext, False, None, True)
-
-    # Omit pyramids/stats/histogram
-    ok = ok and runOneTest(driverName, creationOptions, fileDtype, scalefactor,
-        rampInfile, ext, True, None, False)
 
     # Force single-pass, with thematic output
     if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
