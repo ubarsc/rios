@@ -913,9 +913,12 @@ def writeHistogram(ds, band, hist, histParams):
     if thematic and ratObj is not None and not disableRFC40:
         histIndx, histNew = findOrCreateColumn(ratObj, gdal.GFU_PixelCount,
                                 "Histogram", gdal.GFT_Real)
-        # write the hist in a single go
-        ratObj.SetRowCount(histParams.nbins + int(histParams.min))
-        ratObj.WriteArray(hist, histIndx, start=int(histParams.min))
+        # Write the hist in a single go. Note that this only works because we
+        # have forced histParams.min to be zero, which is why we only
+        # do it this way for thematic cases. For other cases, the use of
+        # the RAT Histogram column is questionable.
+        ratObj.SetRowCount(histParams.nbins)
+        ratObj.WriteArray(hist, histIndx)
 
         ratObj.SetLinearBinning(histParams.min,
             (histParams.calcMax - histParams.calcMin) / histParams.nbins)
