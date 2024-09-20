@@ -589,7 +589,7 @@ class ApplierControls(object):
         not possible, it will be done at the end of processing, which will
         require an extra pass through each output file.
 
-        The single-pass histogram is only supported integer datatypes. The
+        The single-pass histogram is only supported for integer datatypes. The
         default behaviour is to do single-pass histograms if possible, and
         if not, to fall back computing histograms using GDAL's GetHistogram()
         function, after the output files have been written.
