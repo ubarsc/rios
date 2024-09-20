@@ -544,10 +544,16 @@ class ApplierControls(object):
         overviews) for output files as each block is computed. This avoids
         an extra pass through the data afterwards.
 
+        The single-pass pyramids requires that incremental writing of
+        pyramids is supported by the output format driver. This is checked
+        for each driver used. The default will use it if supported, but fall
+        back to GDAL if not.
+
         If singlePassPyramids is given here as False, then this will not be
         attempted, and instead GDAL's BuildOverviews() function will be called
         after the output is completed (i.e. a whole extra pass through the
-        data).
+        data). If True is given, and the driver does not support it, then
+        an exception will be raised.
 
         New in version 2.0.5.
 
@@ -583,12 +589,10 @@ class ApplierControls(object):
         not possible, it will be done at the end of processing, which will
         require an extra pass through each output file.
 
-        The single-pass histogram requires the ``numba`` package, and is
-        only supported for 8 and 16 bit integer datatypes. The default
-        behaviour is to do single-pass histograms if both these conditions
-        are satisfied, and if not, to fall back computing histograms using
-        GDAL's GetHistogram() function, after the output files have been
-        written.
+        The single-pass histogram is only supported integer datatypes. The
+        default behaviour is to do single-pass histograms if possible, and
+        if not, to fall back computing histograms using GDAL's GetHistogram()
+        function, after the output files have been written.
 
         If singlePassHistogram is given here as False, then GDAL's function
         will always be used. If singlePassHistogram is given here as True,
