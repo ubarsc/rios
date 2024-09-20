@@ -787,22 +787,6 @@ class SinglePassAccumulator:
 
         return (minval, maxval, counts)
 
-    def histLimits(self):
-        """
-        Return the values which describe the limits of the histogram, 
-        i.e. the lowest and highest values with non-zero counts
-        """
-        nonzeroNdx = numpy.where(self.hist > 0)[0]
-        if len(nonzeroNdx) > 0:
-            first = nonzeroNdx[0]
-            last = nonzeroNdx[-1]
-            minval = self.histmin + first
-            maxval = self.histmin + last
-            nbins = last - first + 1
-        else:
-            minval = maxval = first = last = nbins = None
-        return (minval, maxval, first, last, nbins)
-
 
 def handleSinglePassActions(ds, arr, singlePassMgr, symbolicName, seqNum,
         xOff, yOff, timings):
