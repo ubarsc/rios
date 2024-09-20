@@ -989,14 +989,4 @@ def linearHistFromDirect(desiredNbins, step, counts):
             j2 += 1
         newCounts[i] = counts[j1:j2].sum()
 
-    # Now adjust to exactly preserve the total. I don't think this is strictly
-    # necessary, but the perfectionist in me wants it to be so. (Maybe it should
-    # be an exception if (diff != 0) ???)
-    diff = counts.sum() - newCounts.sum()
-    # 'diff' is the amount we need to add to the newCounts to make the totals
-    # match. We add this to the bin with the largest count, where it will
-    # do the least damage.
-    ndx = numpy.argmax(newCounts)
-    newCounts[ndx] += diff
-
     return newCounts
