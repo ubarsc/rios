@@ -416,20 +416,33 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
 
         # Test the individual counts, but only for "direct" binning
         binFunc = band.GetMetadataItem("STATISTICS_HISTOBINFUNCTION")
+        histMin = float(band.GetMetadataItem("STATISTICS_HISTOMIN"))
+        imgArrNonNull = imgArr[imgArr != nullVal]
         if binFunc == "direct":
-            histMin = int(band.GetMetadataItem("STATISTICS_HISTOMIN"))
-            trueHist = numpy.bincount(imgArr[imgArr != nullVal])
+            trueHist = numpy.bincount(imgArrNonNull)
             # For athematic direct case, histMin may not be zero
-            trueHist = trueHist[histMin:]
+            trueHist = trueHist[int(histMin):]
 
             mismatch = (histVals != trueHist)
             if mismatch.any():
                 ok = False
                 numMismatch = numpy.count_nonzero(mismatch)
-                msgList.append(("Thematic histogram mis-match " +
+                msgList.append(("Direct-binned histogram mis-match " +
                     "for {} values").format(numMismatch))
-
-        # We don't (yet ?) have a test for linear binned histograms
+        else:
+            histMax = float(band.GetMetadataItem("STATISTICS_HISTOMAX"))
+            numBins = len(histVals)
+            (trueHist, bin_edges) = numpy.histogram(imgArrNonNull,
+                bins=len(histVals), range=(histMin, histMax))
+            # For the test cases, it appears that we always get exactly the same
+            # linear histogram counts. This feels unexpectedly lucky, but it
+            # makes the following test possible
+            mismatch = (histVals != trueHist)
+            if mismatch.any():
+                ok = False
+                numMismatch = numpy.count_nonzero(mismatch)
+                msgList.append(("Linear-binned histogram mis-match " +
+                    "for {} values").format(numMismatch))
     else:
         ok = False
         msgList.append("Histogram not found, so could not be checked")
