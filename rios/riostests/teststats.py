@@ -413,10 +413,13 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
             msgList.append("Histogram total count error: {} != {}".format(totalCount, trueTotalCount))
 
         # Test the individual counts, but only for "direct" binning
-        layerType = band.GetMetadataItem("LAYER_TYPE")
-        thematic = (layerType == "thematic")
-        if thematic or (imgArr.dtype == numpy.uint8):
+        binFunc = band.GetMetadataItem("STATISTICS_HISTOBINFUNCTION")
+        if binFunc == "direct":
+            histMin = int(band.GetMetadataItem("STATISTICS_HISTOMIN"))
             trueHist = numpy.bincount(imgArr[imgArr != nullVal])
+            # For athematic direct case, histMin may not be zero
+            trueHist = trueHist[histMin:]
+
             mismatch = (histVals != trueHist)
             if mismatch.any():
                 ok = False
