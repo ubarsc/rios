@@ -433,7 +433,6 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
                     "for {} values").format(numMismatch))
         else:
             histMax = float(band.GetMetadataItem("STATISTICS_HISTOMAX"))
-            numBins = len(histVals)
             (trueHist, bin_edges) = numpy.histogram(imgArrNonNull,
                 bins=len(histVals), range=(histMin, histMax))
             # For the test cases, it appears that we always get exactly the same
