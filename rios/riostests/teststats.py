@@ -225,7 +225,8 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor,
         riostestutils.report(TESTNAME, 
             'Iteration={}\n{}'.format(iterationName, msg))
         ok = False
-    elif omit and stats1 is not None:
+
+    if omit and stats1 is not None:
         msg = "Stats present, even though directed to omit"
         riostestutils.report(TESTNAME, 
             'Iteration={}\n{}'.format(iterationName, msg))
