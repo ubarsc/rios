@@ -104,7 +104,11 @@ def run():
     allOK = allOK and ok
     # A test with negative pixel values
     ok = runOneTest('KEA', [], gdal.GDT_Int16, 300, -20, rampInfile, 'kea',
-        True, None, False)
+        False, None, False)
+    allOK = allOK and ok
+    # A test with no null value
+    ok = runOneTest('KEA', [], gdal.GDT_Byte, 1, 0, rampInfile, 'kea',
+        False, None, False, noNull=True)
     allOK = allOK and ok
     
     if os.path.exists(rampInfile):
@@ -152,7 +156,7 @@ def testForDriverAndType(driverName, creationOptions, fileDtype, scalefactor,
 
 
 def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
-        rampInfile, ext, omit, singlePass, thematic):
+        rampInfile, ext, omit, singlePass, thematic, noNull=False):
     """
     Run a full test of stats and histogram for the given configuration
     """
@@ -160,6 +164,8 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
 
     # A random null value, so we don't rely on it being zero.
     nullVal = 52 * scalefactor
+    if noNull:
+        nullVal = None
 
     iterationName = "{} {} scale={} omit={} singlePass={} thematic={}".format(
         driverName, gdal.GetDataTypeName(fileDtype), scalefactor,
@@ -258,9 +264,11 @@ def doit(info, inputs, outputs, otherargs):
     Re-write the input, with scaling and change of datatype
     """
     dtype = otherargs.dtype
-    nullmask = (inputs.inimg == otherargs.nullval)
+    if otherargs.nullval is not None:
+        nullmask = (inputs.inimg == otherargs.nullval)
     outimg = inputs.inimg.astype(dtype) * otherargs.scale + otherargs.offset
-    outimg[nullmask] = otherargs.nullval
+    if otherargs.nullval is not None:
+        outimg[nullmask] = otherargs.nullval
     outputs.outimg = outimg.astype(dtype)
 
 
