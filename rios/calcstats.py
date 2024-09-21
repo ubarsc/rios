@@ -726,7 +726,7 @@ class SinglePassAccumulator:
         numCounts = len(counts)
         if nullval < (numCounts - 1):
             counts[int(nullval)] = 0
-        else:
+        elif nullval == (numCounts - 1):
             # The null count is at the end, so find the next non-zero count,
             # and trim back to there. We don't need to trim from the start,
             # because of how numpy.bincount works.
