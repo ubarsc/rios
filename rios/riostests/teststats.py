@@ -158,7 +158,9 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
     """
     ok = True
 
-    nullVal = 0
+    # A random null value, so we don't rely on it being zero.
+    nullVal = 52 * scalefactor
+
     iterationName = "{} {} scale={} omit={} singlePass={} thematic={}".format(
         driverName, gdal.GetDataTypeName(fileDtype), scalefactor,
         omit, singlePass, thematic)
@@ -179,6 +181,7 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
     otherargs.dtype = arrDtype
     controls.setOutputDriverName(driverName)
     controls.setThematic(thematic)
+    controls.setStatsIgnore(nullVal)
     controls.setOmitPyramids(omit)
     controls.setOmitBasicStats(omit)
     controls.setOmitHistogram(omit)
