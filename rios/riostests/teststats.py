@@ -419,34 +419,21 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
             ok = False
             msgList.append("Histogram total count error: {} != {}".format(totalCount, trueTotalCount))
 
-        # Test the individual counts, but only for "direct" binning
-        binFunc = band.GetMetadataItem("STATISTICS_HISTOBINFUNCTION")
-        histMin = float(band.GetMetadataItem("STATISTICS_HISTOMIN"))
+        # Test the individual counts
         imgArrNonNull = imgArr[imgArr != nullVal]
-        if binFunc == "direct":
-            trueHist = numpy.bincount(imgArrNonNull)
-            # For athematic direct case, histMin may not be zero
-            trueHist = trueHist[int(histMin):]
-
-            mismatch = (histVals != trueHist)
-            if mismatch.any():
-                ok = False
-                numMismatch = numpy.count_nonzero(mismatch)
-                msgList.append(("Direct-binned histogram mis-match " +
-                    "for {} values").format(numMismatch))
-        else:
-            histMax = float(band.GetMetadataItem("STATISTICS_HISTOMAX"))
-            (trueHist, bin_edges) = numpy.histogram(imgArrNonNull,
-                bins=len(histVals), range=(histMin, histMax))
-            # For the test cases, it appears that we always get exactly the same
-            # linear histogram counts. This feels unexpectedly lucky, but it
-            # makes the following test possible
-            mismatch = (histVals != trueHist)
-            if mismatch.any():
-                ok = False
-                numMismatch = numpy.count_nonzero(mismatch)
-                msgList.append(("Linear-binned histogram mis-match " +
-                    "for {} values").format(numMismatch))
+        histMin = float(band.GetMetadataItem("STATISTICS_HISTOMIN"))
+        histMax = float(band.GetMetadataItem("STATISTICS_HISTOMAX"))
+        (trueHist, bin_edges) = numpy.histogram(imgArrNonNull,
+            bins=len(histVals), range=(histMin, histMax))
+        # For the test cases, it appears that we always get exactly the same
+        # histogram counts. This feels unexpectedly lucky, but it
+        # makes the following test possible
+        mismatch = (histVals != trueHist)
+        if mismatch.any():
+            ok = False
+            numMismatch = numpy.count_nonzero(mismatch)
+            msg = "Histogram mis-match for {} values".format(numMismatch)
+            msgList.append(msg)
     else:
         ok = False
         msgList.append("Histogram not found, so could not be checked")
