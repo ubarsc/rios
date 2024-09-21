@@ -64,9 +64,12 @@ def addPyramid(ds, progress,
     Adds Pyramid layers to the dataset. Adds levels until
     the raster dimension of the overview layer is < minoverviewdim,
     up to a maximum level controlled by the levels parameter. 
-    
+
+    Assumes that any desired null value has already been set on each
+    band of the Dataset.
+
     Uses gdal.Dataset.BuildOverviews() to do the work. 
-    
+
     """
     progress.setLabelText("Computing Pyramid Layers...")
     progress.setProgress(0)
@@ -143,12 +146,12 @@ def addStatistics(ds, progress, ignore=None, approx_ok=False):
     2.0.5, this function is no longer used directly with RIOS, and
     is maintained purely for backward compatibility with programs
     which call it directly.
-    
+
     Uses gdal.Band.ComputeStatistics() for mean, stddev, min and max,
     and gdal.Band.GetHistogram() to do histogram calculation. 
     The median and mode are estimated using the histogram, and so 
     for larger datatypes, they will be approximate only. 
-    
+
     For thematic layers, the histogram is calculated with as many bins 
     as required, for athematic integer and float types, a maximum
     of 256 bins is used.
@@ -178,6 +181,9 @@ def addBasicStatsGDAL(ds, approx_ok):
     much faster approximate statistics will be calculated (in particular,
     the min and max will only be approximate).
 
+    Assumes that any desired null value has already been set on each
+    band of the Dataset.
+
     Return a list of the minimum and maximum values for each band, in case
     this is required later for the histogram.
 
@@ -199,6 +205,9 @@ def addHistogramsGDAL(ds, minMaxList, approx_ok):
     function. If approx_ok is True, then much faster approximate histograms
     will be calculated (i.e. the pixel counts will be in proportion, but
     not exactly accurate).
+
+    Assumes that any desired null value has already been set on each
+    band of the Dataset.
 
     The minMaxList is as returned by addBasicStatsGDAL.
 
