@@ -78,6 +78,7 @@ def run():
     # Create a test input file
     rampInfile = 'ramp.img'
     riostestutils.genRampImageFile(rampInfile)
+    offset = 0
 
     # Loop over all drivers
     for (driverName, creationOptions) in driverTestList:
@@ -94,11 +95,15 @@ def run():
         # Loop over all datatype tuples in the list
         for (fileDtype, scalefactor) in dataTypesForDriver:
             ok = testForDriverAndType(driverName, creationOptions,
-                fileDtype, scalefactor, rampInfile, ext)
+                fileDtype, scalefactor, offset, rampInfile, ext)
             allOK = allOK and ok
 
     # A simple test of omitting pyramids/stats/histogram
-    ok = runOneTest('KEA', [], gdal.GDT_Byte, 1, rampInfile, 'kea',
+    ok = runOneTest('KEA', [], gdal.GDT_Byte, 1, 0, rampInfile, 'kea',
+        True, None, False)
+    allOK = allOK and ok
+    # A test with negative pixel values
+    ok = runOneTest('KEA', [], gdal.GDT_Int16, 300, -20, rampInfile, 'kea',
         True, None, False)
     allOK = allOK and ok
     
@@ -116,37 +121,37 @@ floatGDALTypes = (gdal.GDT_Float32, gdal.GDT_Float64)
 
 
 def testForDriverAndType(driverName, creationOptions, fileDtype, scalefactor,
-        rampInfile, ext):
+        offset, rampInfile, ext):
     """
     Run a set of stats tests for the given drive and datatype.
     """
     # The default behaviour
     ok = runOneTest(driverName, creationOptions, fileDtype, scalefactor,
-        rampInfile, ext, False, None, False)
+        offset, rampInfile, ext, False, None, False)
 
     # With thematic output
     if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
         ok = runOneTest(driverName, creationOptions, fileDtype, scalefactor,
-            rampInfile, ext, False, None, True)
+            offset, rampInfile, ext, False, None, True)
 
     # Force single-pass, with thematic output
     if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
         ok = ok and runOneTest(driverName, creationOptions, fileDtype,
-            scalefactor, rampInfile, ext, False, True, True)
+            scalefactor, offset, rampInfile, ext, False, True, True)
 
     # Force GDAL pyramids/stats/histogram
     ok = ok and runOneTest(driverName, creationOptions, fileDtype, scalefactor,
-        rampInfile, ext, False, False, False)
+        offset, rampInfile, ext, False, False, False)
 
     # With GDAL, and thematic output
     if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
         ok = ok and runOneTest(driverName, creationOptions, fileDtype, scalefactor,
-            rampInfile, ext, False, False, True)
+            offset, rampInfile, ext, False, False, True)
 
     return ok    
 
 
-def runOneTest(driverName, creationOptions, fileDtype, scalefactor,
+def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
         rampInfile, ext, omit, singlePass, thematic):
     """
     Run a full test of stats and histogram for the given configuration
@@ -169,6 +174,8 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor,
     outfiles.outimg = 'test.' + ext
 
     otherargs.scale = scalefactor
+    otherargs.offset = offset
+    otherargs.nullval = nullVal
     otherargs.dtype = arrDtype
     controls.setOutputDriverName(driverName)
     controls.setThematic(thematic)
@@ -248,7 +255,9 @@ def doit(info, inputs, outputs, otherargs):
     Re-write the input, with scaling and change of datatype
     """
     dtype = otherargs.dtype
-    outimg = inputs.inimg.astype(dtype) * otherargs.scale
+    nullmask = (inputs.inimg == otherargs.nullval)
+    outimg = inputs.inimg.astype(dtype) * otherargs.scale + otherargs.offset
+    outimg[nullmask] = otherargs.nullval
     outputs.outimg = outimg.astype(dtype)
 
 
