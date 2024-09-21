@@ -391,7 +391,10 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
     """
     Do simple check(s) on the histogram
     """
-    histValsStr = band.GetMetadataItem("STATISTICS_HISTOBINVALUES")
+    histValsStr = None
+    metadataDict = band.GetMetadata()
+    if "STATISTICS_HISTOBINVALUES" in metadataDict:
+        histValsStr = metadataDict["STATISTICS_HISTOBINVALUES"]
     if histValsStr is not None:
         if histValsStr[-1] == '|':
             # Remove trailing '|'
