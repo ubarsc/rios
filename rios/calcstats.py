@@ -671,7 +671,10 @@ class SinglePassAccumulator:
 
     def doHistAccum(self, arr):
         """
-        Accumulate the histogram with counts from the given arr
+        Accumulate the histogram with counts from the given arr. For signed
+        int types, maintain two separate count arrays, one for positive
+        values and one for negatives. This is due to using numpy.bincount()
+        to do the counting.
         """
         if (arr.dtype in numpyUnsignedIntTypes):
             if arr.dtype == numpy.uint64:
@@ -796,8 +799,8 @@ class SinglePassAccumulator:
 def handleSinglePassActions(ds, arr, singlePassMgr, symbolicName, seqNum,
         xOff, yOff, timings):
     """
-    Called from writeBlock, to handle the single-pass actions which may
-    or may not be required.
+    Called from writeBlock, to handle any single-pass actions which may
+    be required.
     """
     numBands = arr.shape[0]
     if singlePassMgr.doSinglePassPyramids(symbolicName):
@@ -863,7 +866,8 @@ def finishSinglePassStats(ds, singlePassMgr, symbolicName, seqNum):
 
 def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
     """
-    Finish the histogram
+    Finish the single-pass histogram, and write to file. Also writes the median
+    and mode, which are estimated from the histogram.
     """
     accumList = singlePassMgr.accumulators[symbolicName, seqNum]
     numBands = len(accumList)
@@ -887,7 +891,7 @@ def finishSinglePassHistogram(ds, singlePassMgr, symbolicName, seqNum):
 def writeHistogram(ds, band, hist, histParams):
     """
     Write the given histogram into the band object. Also use the histogram
-    to calculate median and mode, and write them as well.
+    to estimate median and mode, and write them as well.
     """
     ratObj = band.GetDefaultRAT()
     layerType = band.GetMetadataItem('LAYER_TYPE')
@@ -949,10 +953,10 @@ def writeHistogram(ds, band, hist, histParams):
 
 def linearHistFromDirect(desiredNbins, step, counts):
     """
-    Take a direct-binFunction histogram and use linear interpolation
-    to create a linear-binFunction equivalent. This is intended for use
-    with counts created with the single-pass algorithm, but in cases
-    when we would otherwise have chosen a linear-binFunction histogram.
+    Take a direct-binFunction histogram and re-bin it to create a
+    linear-binFunction equivalent. This is intended for use with counts
+    created with the single-pass algorithm, for the cases when we would
+    otherwise have chosen a linear-binFunction histogram.
     Generally this is to save writing a very large number of counts.
 
     The minval and maxval will be preserved. The given desiredNbins is the
