@@ -85,8 +85,7 @@ def addPyramid(ds, progress,
         if (mindim // i) > minoverviewdim:
             nOverviews = nOverviews + 1
 
-    # Need to find out if we are thematic or continuous. 
-    tmpmeta = ds.GetRasterBand(1).GetMetadata()
+    # Need to find out if we are thematic or continuous.
     if aggregationType is None:
         aggregationType = DEFAULT_OVERVIEWAGGREGRATIONTYPE
     
