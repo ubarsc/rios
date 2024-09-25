@@ -126,8 +126,11 @@ def run():
     return allOK
 
 
-hugeIntGDALTypes = (gdal.GDT_Int32, gdal.GDT_UInt32, gdal.GDT_Int64, gdal.GDT_UInt64)
-floatGDALTypes = (gdal.GDT_Float32, gdal.GDT_Float64)
+hugeIntGDALTypes = (gdal.GDT_Int32, gdal.GDT_UInt32)
+floatGDALTypes = (gdal.GDT_Float32,)
+if hasattr(gdal, 'GDT_Int64'):
+    hugeIntGDALTypes += (gdal.GDT_Int64, gdal.GDT_UInt64)
+    floatGDALTypes += (gdal.GDT_Float64,)
 
 
 def testForDriverAndType(driverName, creationOptions, fileDtype, scalefactor,
