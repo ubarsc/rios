@@ -743,6 +743,8 @@ class SinglePassAccumulator:
             if len(nonzeroNdx) > 0:
                 last = nonzeroNdx[-1]
                 counts = counts[:last + 1]
+            else:
+                counts = numpy.array([], dtype=counts.dtype)
         return counts
 
     def updateHist(self, newCounts, positive):
