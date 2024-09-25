@@ -99,16 +99,18 @@ def run():
             allOK = allOK and ok
 
     # A simple test of omitting pyramids/stats/histogram
-    ok = runOneTest('KEA', [], gdal.GDT_Byte, 1, 0, rampInfile, 'kea',
+    gtiffOptions = [options for (drvrName, options) in driverTestList
+        if drvrName == "GTiff"][0]
+    ok = runOneTest('GTiff', gtiffOptions, gdal.GDT_Byte, 1, 0, rampInfile, 'tif',
         True, None, False)
     allOK = allOK and ok
     # A test with negative pixel values
-    ok = runOneTest('KEA', [], gdal.GDT_Int16, 300, -20, rampInfile, 'kea',
-        False, None, False)
+    ok = runOneTest('GTiff', gtiffOptions, gdal.GDT_Int16, 300, -20, rampInfile,
+        'tif', False, None, False)
     allOK = allOK and ok
     # A test with no null value
-    ok = runOneTest('KEA', [], gdal.GDT_Byte, 1, 0, rampInfile, 'kea',
-        False, None, False, noNull=True)
+    ok = runOneTest('GTiff', gtiffOptions, gdal.GDT_Byte, 1, 0, rampInfile,
+        'tif', False, None, False, noNull=True)
     allOK = allOK and ok
 
     # Run a test with the output being all null values
