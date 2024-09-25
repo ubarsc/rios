@@ -272,7 +272,12 @@ def testAll():
     ok = teststats.run()
     if not ok:
         failureCount += 1
-    
+
+    from . import testpyramids
+    ok = testpyramids.run()
+    if not ok:
+        failureCount += 1
+
     from . import testrat
     ok = testrat.run()
     if not ok:
