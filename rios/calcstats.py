@@ -109,7 +109,7 @@ def findOrCreateColumn(ratObj, usage, name, dtype):
     Returns the index of an existing column matched
     on usage. Creates it if not already existing using 
     the supplied name and dtype
-    Returns a tupe with index and a boolean specifying if 
+    Returns a tuple with index and a boolean specifying if 
     it is a new column or not
     """
     ncols = ratObj.GetColumnCount()
