@@ -110,6 +110,10 @@ def run():
     ok = runOneTest('KEA', [], gdal.GDT_Byte, 1, 0, rampInfile, 'kea',
         False, None, False, noNull=True)
     allOK = allOK and ok
+
+    # Run a test with the output being all null values
+    ok = testAllNull()
+    allOK = allOK and ok
     
     if os.path.exists(rampInfile):
         riostestutils.removeRasterFile(rampInfile)
@@ -463,6 +467,78 @@ def checkHistogram(band, imgArr, nullVal, iterationName):
         riostestutils.report(TESTNAME, msg)
 
     return ok
+
+
+def testAllNull():
+    """
+    Write an output file which is all nulls, and check that the stats and
+    histogram behave appropriately.
+    """
+    infiles = applier.FilenameAssociations()
+    outfiles = applier.FilenameAssociations()
+    controls = applier.ApplierControls()
+    otherargs = applier.OtherInputs()
+
+    infiles.inimg = "empty.img"
+    outfiles.outimg = "empty2.tif"
+    nullval = 27
+    otherargs.nullval = nullval
+    controls.setOutputDriverName("GTiff")
+    controls.setStatsIgnore(nullval)
+
+    ds = riostestutils.createTestFile(infiles.inimg)
+    nRows = ds.RasterYSize
+    nCols = ds.RasterXSize
+    arr = numpy.full((nRows, nCols), nullval, dtype=numpy.uint8)
+    ds.GetRasterBand(1).WriteArray(arr)
+    del ds
+
+    ok = True
+    # These keys should all not be present in the resulting metadata
+    keysToCheck = [
+        'STATISTICS_MEAN',
+        'STATISTICS_STDDEV',
+        'STATISTICS_MINIMUM',
+        'STATISTICS_MAXIMUM',
+        'STATISTICS_MEDIAN',
+        'STATISTICS_MODE',
+        'STATISTICS_HISTOMIN',
+        'STATISTICS_HISTOMAX',
+        'STATISTICS_HISTOBINVALUES',
+        'STATISTICS_HISTONUMBINS'
+    ]
+
+    for singlePass in [True, False]:
+        controls.setSinglePassBasicStats(singlePass)
+        controls.setSinglePassHistogram(singlePass)
+        applier.apply(doAllNull, infiles, outfiles, otherargs,
+            controls=controls)
+
+        ds = gdal.Open(outfiles.outimg)
+        band = ds.GetRasterBand(1)
+        md = band.GetMetadata()
+        for k in keysToCheck:
+            if k in md:
+                msg = ("Found statistics item '{}', even though output is " +
+                       "all nulls").format(k)
+                riostestutils.report(TESTNAME, msg)
+                ok = False
+
+    for fn in [infiles.inimg, outfiles.outimg]:
+        if os.path.exists(fn):
+            riostestutils.removeRasterFile(fn)
+
+    return ok
+
+
+def doAllNull(info, inputs, outputs, otherargs):
+    """
+    Called from RIOS. Write an output which is all nulls
+    """
+    shape = inputs.inimg.shape
+    dtype = inputs.inimg.dtype
+    nullval = otherargs.nullval
+    outputs.outimg = numpy.full(shape, nullval, dtype=dtype)
 
 
 if __name__ == "__main__":
