@@ -88,13 +88,7 @@ def addPyramid(ds, progress,
     # Need to find out if we are thematic or continuous. 
     tmpmeta = ds.GetRasterBand(1).GetMetadata()
     if aggregationType is None:
-        if 'LAYER_TYPE' in tmpmeta:
-            if tmpmeta['LAYER_TYPE'] == 'athematic':
-                aggregationType = "AVERAGE"
-            else:
-                aggregationType = "NEAREST"
-        else:
-            aggregationType = DEFAULT_OVERVIEWAGGREGRATIONTYPE
+        aggregationType = DEFAULT_OVERVIEWAGGREGRATIONTYPE
     
     userdata = ProgressUserData()
     userdata.progress = progress
