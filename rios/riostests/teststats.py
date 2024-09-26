@@ -529,6 +529,7 @@ def testAllNull():
                        "all nulls").format(k)
                 riostestutils.report(TESTNAME, msg)
                 ok = False
+        del ds
 
     for fn in [infiles.inimg, outfiles.outimg]:
         if os.path.exists(fn):
