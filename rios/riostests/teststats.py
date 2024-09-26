@@ -149,7 +149,8 @@ def testForDriverAndType(driverName, creationOptions, fileDtype, scalefactor,
 
     # Force single-pass, with thematic output
     if fileDtype not in (hugeIntGDALTypes + floatGDALTypes):
-        print('single-pass/thematic', driverName, fileDtype)
+        print('single-pass/thematic', driverName, fileDtype, floatGDALTypes,
+            gdal.__version__)
         ok = ok and runOneTest(driverName, creationOptions, fileDtype,
             scalefactor, offset, rampInfile, ext, False, True, True)
 
