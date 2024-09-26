@@ -232,7 +232,6 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
     ds = gdal.Open(outfiles.outimg)
     band = ds.GetRasterBand(1)
     outarr = band.ReadAsArray()
-    del ds
 
     # Get stats from file, and from array, and compare
     stats1 = getStatsFromBand(band)
@@ -262,6 +261,7 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
         histOK = checkHistogram(band, outarr, nullVal, iterationName)
         ok = ok and histOK
 
+    del ds
     if os.path.exists(outfiles.outimg):
         riostestutils.removeRasterFile(outfiles.outimg)
     return ok
