@@ -37,11 +37,10 @@ def run():
     
     allOK = True
 
-    imgfile = 'test.kea'
+    imgfile = 'test.img'
     nRows = 100
     nCols = 1
-    ds = riostestutils.createTestFile(imgfile, numRows=nRows, numCols=nCols,
-        driverName='KEA', creationOptions=[])
+    ds = riostestutils.createTestFile(imgfile, numRows=nRows, numCols=nCols)
     imgArray = numpy.ones((nRows, nCols), dtype=numpy.uint8)
     imgArray[1:10, 0] = numpy.arange(1, 10)
     imgArray[50:, 0] = 0
