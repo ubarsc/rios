@@ -127,10 +127,9 @@ def run():
 
 
 hugeIntGDALTypes = (gdal.GDT_Int32, gdal.GDT_UInt32)
-floatGDALTypes = (gdal.GDT_Float32,)
+floatGDALTypes = (gdal.GDT_Float32, gdal.GDT_Float64)
 if VersionObj(gdal.__version__) >= VersionObj('3.5.2'):
     hugeIntGDALTypes += (gdal.GDT_Int64, gdal.GDT_UInt64)
-    floatGDALTypes += (gdal.GDT_Float64,)
 
 
 def testForDriverAndType(driverName, creationOptions, fileDtype, scalefactor,
