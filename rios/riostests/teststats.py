@@ -232,6 +232,7 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
     ds = gdal.Open(outfiles.outimg)
     band = ds.GetRasterBand(1)
     outarr = band.ReadAsArray()
+    del ds
 
     # Get stats from file, and from array, and compare
     stats1 = getStatsFromBand(band)
