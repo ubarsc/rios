@@ -88,12 +88,14 @@ def genRampArray(nRows=DEFAULT_ROWS, nCols=DEFAULT_COLS):
 
 
 def genRampImageFile(filename, reverse=False, xLeft=DEFAULT_XLEFT,
-        yTop=DEFAULT_YTOP, nullVal=None):
+        yTop=DEFAULT_YTOP, nullVal=None,
+        numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS):
     """
     Generate a test image of a simple 2-d linear ramp. 
     """
-    ds = createTestFile(filename, xLeft=xLeft, yTop=yTop)
-    ramp = genRampArray()
+    ds = createTestFile(filename, xLeft=xLeft, yTop=yTop, numRows=numRows,
+        numCols=numCols)
+    ramp = genRampArray(nRows=numRows, nCols=numCols)
     if reverse:
         # Flip left-to-right
         ramp = ramp[:, ::-1]
@@ -270,7 +272,12 @@ def testAll():
     ok = teststats.run()
     if not ok:
         failureCount += 1
-    
+
+    from . import testpyramids
+    ok = testpyramids.run()
+    if not ok:
+        failureCount += 1
+
     from . import testrat
     ok = testrat.run()
     if not ok:

@@ -799,7 +799,8 @@ class Timers:
             "{:20s}       {:11s}".format("Timer", "Total (sec)"),
             ("-" * 32)
         ]
-        fieldOrder = ['reading', 'userfunction', 'writing', 'closing',
+        fieldOrder = ['reading', 'userfunction', 'writing', 'pyramids',
+            'basicstats', 'stats+histogram', 'histogram',
             'insert_readbuffer', 'pop_readbuffer', 'insert_computebuffer',
             'pop_computebuffer']
         for name in fieldOrder:
@@ -1083,6 +1084,8 @@ class ApplierReturn:
     def __init__(self):
         self.timings = None
         self.otherArgsList = None
+        self.workinggrid = None
+        self.singlePassMgr = None
 
 
 class WorkerErrorRecord:
