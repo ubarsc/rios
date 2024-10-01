@@ -28,6 +28,7 @@ from osgeo import gdal
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError, SinglePassActionsError
 
+
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
 dfltOverviewLvls = os.getenv('RIOS_DFLT_OVERVIEWLEVELS')
