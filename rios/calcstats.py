@@ -1,6 +1,6 @@
 """
 This module creates pyramid layers and calculates statistics for image
-files. Much of it was originally for ERDAS Imagine files but should work 
+files. Much of it was originally for ERDAS Imagine files but should work
 with any other format that supports pyramid layers and statistics
 
 """
@@ -27,6 +27,7 @@ from osgeo import gdal
 
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError, SinglePassActionsError
+
 
 # When calculating overviews (i.e. pyramid layers), default behaviour
 # is controlled by these
@@ -831,8 +832,8 @@ def writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff):
     for i in range(numBands):
         band = ds.GetRasterBand(i + 1)
         for j in range(nOverviews):
-            band_ov = band.GetOverview(i)
-            lvl = overviewLevels[i]
+            band_ov = band.GetOverview(j)
+            lvl = overviewLevels[j]
             # Offset from top-left edge
             o = lvl // 2
             # Sub-sample by taking every lvl-th pixel in each direction

@@ -39,8 +39,8 @@ def run():
 
     # Create a test input file
     rampInfile = 'ramp.img'
-    # Set a raster size which will result in exactly one pyramid layer
-    nRows = nCols = 1024
+    # Set a raster size which will result in exactly two pyramid layers
+    nRows = nCols = 2048
     riostestutils.genRampImageFile(rampInfile, numRows=nRows, numCols=nCols)
 
     infiles = applier.FilenameAssociations()
@@ -84,36 +84,37 @@ def checkPyramids(filename, singlePass):
     band = ds.GetRasterBand(1)
     arr = band.ReadAsArray()
     numOverviews = band.GetOverviewCount()
-    if numOverviews != 1:
+    if numOverviews != 2:
         msg = "Incorrect overview count: {}".format(numOverviews)
         riostestutils.report(TESTNAME, msg)
         ok = False
 
-    band_ov = band.GetOverview(0)
-    arr_ov = band_ov.ReadAsArray()
+    for i in range(numOverviews):
+        band_ov = band.GetOverview(i)
+        arr_ov = band_ov.ReadAsArray()
 
-    # Work out which offset (o) to use
-    factor = int(round(arr.shape[0] / arr_ov.shape[0]))
-    if singlePass:
-        o = int(round(factor / 2))
-    else:
-        # GDAL doesn't use an offset (sigh....)
-        o = 0
+        # Work out which offset (o) to use
+        factor = int(round(arr.shape[0] / arr_ov.shape[0]))
+        if singlePass:
+            o = int(round(factor / 2))
+        else:
+            # GDAL doesn't use an offset (sigh....)
+            o = 0
 
-    # The true sub-sampled overview array
-    true_arr_ov = arr[o::factor, o::factor]
-    if true_arr_ov.shape != arr_ov.shape:
-        msg = "Overview shape mis-match: {} != {}".format(true_arr_ov.shape,
-            arr_ov.shape)
-        riostestutils.report(TESTNAME, msg)
-        ok = False
-    else:
-        mismatch = (arr_ov != true_arr_ov)
-        numMismatch = numpy.count_nonzero(mismatch)
-        if numMismatch > 0:
-            msg = "Pyramid layer pixel mis-match for {} pixels".format(numMismatch)
+        # The true sub-sampled overview array
+        true_arr_ov = arr[o::factor, o::factor]
+        if true_arr_ov.shape != arr_ov.shape:
+            msg = "Overview shape mis-match: {} != {}".format(true_arr_ov.shape,
+                arr_ov.shape)
             riostestutils.report(TESTNAME, msg)
             ok = False
+        else:
+            mismatch = (arr_ov != true_arr_ov)
+            numMismatch = numpy.count_nonzero(mismatch)
+            if numMismatch > 0:
+                msg = "Pyramid layer pixel mis-match for {} pixels".format(numMismatch)
+                riostestutils.report(TESTNAME, msg)
+                ok = False
 
     return ok
 
