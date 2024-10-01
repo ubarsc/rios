@@ -1,6 +1,6 @@
 """
 This module creates pyramid layers and calculates statistics for image
-files. Much of it was originally for ERDAS Imagine files but should work 
+files. Much of it was originally for ERDAS Imagine files but should work
 with any other format that supports pyramid layers and statistics
 
 """
