@@ -831,8 +831,8 @@ def writeBlockPyramids(ds, arr, singlePassMgr, symbolicName, xOff, yOff):
     for i in range(numBands):
         band = ds.GetRasterBand(i + 1)
         for j in range(nOverviews):
-            band_ov = band.GetOverview(i)
-            lvl = overviewLevels[i]
+            band_ov = band.GetOverview(j)
+            lvl = overviewLevels[j]
             # Offset from top-left edge
             o = lvl // 2
             # Sub-sample by taking every lvl-th pixel in each direction
