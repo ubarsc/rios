@@ -81,7 +81,8 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
     blockListByWorker = dataChan.workerInitData.get('blockListByWorker', None)
     blockList = blockListByWorker[workerID]
 
-    if not controls.concurrency.singleBlockComputeWorkers:
+    if (not controls.concurrency.singleBlockComputeWorkers and
+            hasattr(workerBarrier, 'wait')):
         # Wait at the barrier, so nothing proceeds until all workers have had
         # a chance to start
         computeBarrierTimeout = controls.concurrency.computeBarrierTimeout

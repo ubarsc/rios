@@ -967,7 +967,8 @@ class NetworkDataChannel:
         """
         if hasattr(self, 'server'):
             self.server.stop_event.set()
-            self.workerBarrier.abort()
+            if self.workerBarrier is not None:
+                self.workerBarrier.abort()
             futures.wait([self.serverThread])
             self.threadPool.shutdown()
 
