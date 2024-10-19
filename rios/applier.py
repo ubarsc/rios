@@ -1149,6 +1149,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp,
             exceptionQue=exceptionQue)
     except Exception as e:
+        computeMgr.shutdown()
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
         raise e
