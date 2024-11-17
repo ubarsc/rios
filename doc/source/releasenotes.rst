@@ -1,6 +1,27 @@
 Release Notes
 =============
 
+Version 2.0.5 (2024-11-18)
+--------------------------
+Improvements
+  * Output file statistics, histograms & overviews (i.e. pyramids) are now
+    computed incrementally as each block is processed, rather than when the
+    output files are closed. The old way required several extra passes through
+    the output data, so this change gives useful speedups, with no change needed
+    to the application script. Note that the GDAL KEA driver required a fix to
+    support this, so for KEA outputs, best results require GDAL version 3.9.3.
+    New methods are added to the controls object to fully control this new
+    behaviour (https://github.com/ubarsc/rios/pull/116).
+  * Better disk space management when using CW_AWSBATCH compute workers
+    (https://github.com/ubarsc/rios/pull/112)
+  * Added controls.setJobName(), to support better tracking of multiple
+    jobs and compute workers. (https://github.com/ubarsc/rios/pull/113)
+
+Bug Fixes
+  * When using CW_AWSBATCH compute workers, ensure consistency between the
+    install location of RIOS and the Dockerfile being used
+    (https://github.com/ubarsc/rios/pull/109).
+
 Version 2.0.4 (2024-07-16)
 --------------------------
 Bug Fixes
