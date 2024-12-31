@@ -303,9 +303,14 @@ class FilenameAssociations(object):
     way, a single loop is able to iterate through all of the files defined
     on the object, with full information about where they are found.
 
-    The object can also be indexed, using the tuple of
+    The object can also be indexed, using a tuple of
     (symbolicName, sequenceNumber) as an index. The value at that index
-    is the corresponding filename. This cannot be used to set the filename.
+    is the corresponding filename. If seqNum is None, or the index is just
+    the symbolicName string instead of a tuple, then the index operation
+    returns the full entry for that symbolicName, which may be either a
+    single filename or a list of filenames.
+
+    Indexing is read-only, and cannot be used to set filenames.
 
     """
     def __getitem__(self, key):
@@ -352,6 +357,21 @@ class FilenameAssociations(object):
 
 
 class FilenameAssocIterator(object):
+    """
+    Separate class for the iterator of a FilenameAssociations object.
+
+    Using a separate class allows us to maintain the iteration state here,
+    without putting these extra variables onto the original FilenameAssociations
+    object. Not sure how important this is, but it is an approach originally
+    suggested in the old Python docs. In later Python versions, this approach is
+    no longer explicitly suggested in the docs, but seems to have some merit,
+    so we still do it this way.
+
+    When one iterates a FilenameAssociations object, the loop is actually
+    iterating on a new instance of this class, and the original object is thus
+    left untouched.
+
+    """
     def __init__(self, infiles):
         self.fullList = []
         for symbolicName in infiles.__dict__:
