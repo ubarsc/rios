@@ -372,6 +372,9 @@ class FilenameAssocIterator(object):
         else:
             raise StopIteration()
 
+    def __iter__(self):
+        return self
+
 
 class BlockAssociations:
     """
