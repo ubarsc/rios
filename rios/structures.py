@@ -112,6 +112,11 @@ class ConcurrencyStyle:
             See the `Concurrency <concurrency.html>`_ doc page
             for a deeper discussion on suitable use of the different
             kinds of compute worker.
+        computeWorkerExtraParams: dict
+            Any extra parameters required by a particular computeWorkerKind.
+            This is a Python dictionary, and its contents are interpreted by
+            the requested computeWorkerKind. See the documentation
+            for the kind in question. Default is None.
             
         numComputeWorkers: int
             The number of distinct compute workers. If zero, then
@@ -188,6 +193,7 @@ class ConcurrencyStyle:
     """
     def __init__(self, numReadWorkers=0, numComputeWorkers=0,
                  computeWorkerKind=CW_NONE,
+                 computeWorkerExtraParams=None,
                  computeWorkersRead=False,
                  singleBlockComputeWorkers=False,
                  haveSharedTemp=True,
@@ -200,6 +206,7 @@ class ConcurrencyStyle:
         self.numReadWorkers = numReadWorkers
         self.numComputeWorkers = numComputeWorkers
         self.computeWorkerKind = computeWorkerKind
+        self.computeWorkerExtraParams = computeWorkerExtraParams
         self.computeWorkersRead = computeWorkersRead
         self.singleBlockComputeWorkers = singleBlockComputeWorkers
         self.haveSharedTemp = haveSharedTemp
