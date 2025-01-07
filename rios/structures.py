@@ -27,6 +27,7 @@ from . import rioserrors
 
 CW_NONE = "CW_NONE"
 CW_THREADS = "CW_THREADS"
+CW_ECS = "CW_ECS"
 CW_PBS = "CW_PBS"
 CW_SLURM = "CW_SLURM"
 CW_AWSBATCH = "CW_AWSBATCH"
