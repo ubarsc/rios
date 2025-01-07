@@ -7,6 +7,7 @@ import subprocess
 import time
 import threading
 import copy
+import random
 
 try:
     import boto3
@@ -17,7 +18,7 @@ from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
 from .structures import WorkerErrorRecord
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
-from .structures import CW_SUBPROC
+from .structures import CW_SUBPROC, CW_ECS
 from .readerinfo import makeReaderInfo
 
 
@@ -240,6 +241,180 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         self.threadPool.shutdown()
 
         self.makeOutObjList()
+
+
+class ECSComputeWorkerMgr(ComputeWorkerManager):
+    """
+    Manage compute workers using Amazon AWS ECS
+    """
+    computeWorkerKind = CW_ECS
+
+    def startWorkers(self, numWorkers=None, userFunction=None,
+            infiles=None, outfiles=None, otherArgs=None, controls=None,
+            blockList=None, inBlockBuffer=None, outBlockBuffer=None,
+            workinggrid=None, allInfo=None, computeWorkersRead=False,
+            singleBlockComputeWorkers=False, tmpfileMgr=None,
+            haveSharedTemp=True, exceptionQue=None):
+        """
+        Start <numWorkers> ECS tasks to process blocks of data
+        """
+        if boto3 is None:
+            raise rioserrors.UnavailableError("boto3 is unavailable")
+
+        self.forceExit = threading.Event()
+        self.workerBarrier = threading.Barrier(numWorkers + 1)
+
+        self.setupNetworkCommunication(userFunction, infiles, outfiles,
+            otherArgs, controls, workinggrid, allInfo, blockList,
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
+            exceptionQue, self.workerBarrier)
+
+        channAddr = self.dataChan.addressStr()
+        self.ecsClient = boto3.client("ecs")
+        extraParams = controls.concurrency.computeWorkerExtraParams
+        if extraParams is None:
+            msg = "ECSComputeWorkerMgr requires computeWorkerExtraParams"
+            raise ValueError(msg)
+
+        # Create the ECS task definition
+        taskDef_kwArgs = extraParams.get('register_task_definition')
+        if taskDef_kwArgs is not None:
+            taskDefResponse = self.ecsClient.register_task_definition(**taskDef_kwArgs)
+            self.taskDefArn = taskDefResponse['taskDefinition']['taskDefinitionArn']
+
+        # Now create a task for each compute worker
+        runTask_kwArgs = extraParams['run_task']
+        runTask_kwArgs['taskDefinition'] = self.taskDefArn
+        containerOverrides = runTask_kwArgs['overrides']['containerOverrides'][0]
+
+        for workerID in range(numWorkers):
+            # Construct the command args entry with the current workerID
+            workerCmdArgs = ['-i', str(workerID), '--channaddr', channAddr]
+            containerOverrides['command'] = workerCmdArgs
+
+            runTaskResponse = self.ecsClient.run_task(**runTask_kwArgs)
+
+            failuresList = runTaskResponse['failures']
+            if len(failuresList) > 0:
+                self.dataChan.shutdown()
+                msgList = []
+                for failure in failuresList:
+                    reason = failure['reason']
+                    detail = failure['detail']
+                    msg = "Worker {}: {}\n{}".format(workerID, reason, detail)
+                    msgList.append(msg)
+                fullMsg = '\n'.join(msgList)
+                raise rioserrors.ECSError(fullMsg)
+
+        # Do not proceed until all workers have started
+        computeBarrierTimeout = controls.concurrency.computeBarrierTimeout
+        self.workerBarrier.wait(timeout=computeBarrierTimeout)
+
+    def shutdown(self):
+        """
+        Shut down the workers
+        """
+        self.forceExit.set()
+        self.makeOutObjList()
+        self.ecsClient.deregister_task_definition(taskDefinition=self.taskDefArn)
+        if hasattr(self, 'dataChan'):
+            self.dataChan.shutdown()
+
+    @staticmethod
+    def makeFargateExtraParams(jobName=None, containerImage=None, taskRoleArn=None,
+            executionRoleArn=None, subnets=None, securityGroups=None,
+            cpu='0.5 vCPU', memory='1GB', cpuArchitecture=None):
+        """
+        Helper function to construct a minimal computeWorkerExtraParams
+        dictionary suitable for using ECS with Fargate launchType, given
+        just the bare essential information.
+
+        Returns a Python dictionary.
+
+        jobName: str
+            Arbitrary string. If given, this name will be incorporated into
+            some AWS/ECS names for the compute workers, including the container
+            name and the task family name.
+        containerImage: str
+            Required. URI of the container image to use for compute workers
+        executionRoleArn: str
+            Required. ARN for an AWS role. This allows ECS to use AWS services on
+            your behalf. A good start is a role including
+            AmazonECSTaskExecutionRolePolicy, which allows access to ECR
+            container registries and CloudWatch logs.
+        taskRoleArn: str
+            Required. ARN for an AWS role. This allows your code to use AWS
+            services. This role should include policies such as AmazonS3FullAccess,
+            covering any AWS services your compute workers will need.
+        subnets: list of str
+            Required. List of subnet ID strings associated with the VPC in which
+            workers will run.
+        securityGroups: list of str
+            Required. List of security groups associated with the VPC.
+        cpu: str
+            Number of CPU units requested for each compute worker, expressed in
+            AWS's own units. For example, '0.5 vCPU', or '1024' (which
+            corresponds to the same thing). Both must be strings.
+        memory: str
+            Amount of memory requested for each compute worker, expressed in MiB,
+            or with a units suffix. For example, '1024' or its equivalent '1GB'.
+        cpuArchitecture: str
+            If given, selects the CPU architecture of the hosts to run worker on.
+            Can be 'ARM64', defaults to 'X86_64'.
+
+        Only certain combinations of cpu and memory are allowed, as these are used
+        by Fargate to select a suitable VM instance type. See run_task()
+        documentation for further details.
+
+        """
+        jobSubstr = ""
+        if jobName is not None:
+            jobSubstr = "_" + jobName
+        containerName = 'RIOS{}_container'.format(jobSubstr)
+        taskDefIDstr = random.randbytes(4).hex()
+        taskFamily = "RIOS{}_{}_task".format(jobSubstr, taskDefIDstr)
+
+        containerDefs = [{'name': containerName,
+                          'image': containerImage,
+                          'entryPoint': ['/usr/bin/env', 'rios_computeworker']}]
+
+        networkConf = {
+            'awsvpcConfiguration': {
+                'assignPublicIp': 'DISABLED',
+                'subnets': subnets,
+                'securityGroups': securityGroups
+            }
+        }
+
+        taskDefParams = {
+            'family': taskFamily,
+            'networkMode': 'awsvpc',
+            'requiresCompatibilities': ['FARGATE'],
+            'containerDefinitions': containerDefs,
+            'cpu': cpu,
+            'memory': memory
+        }
+        if taskRoleArn is not None:
+            taskDefParams['taskRoleArn'] = taskRoleArn
+        if executionRoleArn is not None:
+            taskDefParams['executionRoleArn'] = executionRoleArn
+        if cpuArchitecture is not None:
+            taskDefParams['runtimePlatform'] = {'cpuArchitecture': cpuArchitecture}
+
+        runTaskParams = {
+            'launchType': 'FARGATE',
+            'networkConfiguration': networkConf,
+            'taskDefinition': 'Dummy, to be over-written within RIOS',
+            'overrides': {'containerOverrides': [{
+                "command": 'Dummy, to be over-written within RIOS',
+                'name': containerName}]}
+        }
+
+        extraParams = {
+            'register_task_definition': taskDefParams,
+            'run_task': runTaskParams
+        }
+        return extraParams
 
 
 class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
