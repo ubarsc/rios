@@ -338,12 +338,12 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         containerImage: str
             Required. URI of the container image to use for compute workers
         executionRoleArn: str
-            Required. ARN for an AWS role. This allows ECS to use AWS services on
+            ARN for an AWS role. This allows ECS to use AWS services on
             your behalf. A good start is a role including
             AmazonECSTaskExecutionRolePolicy, which allows access to ECR
             container registries and CloudWatch logs.
         taskRoleArn: str
-            Required. ARN for an AWS role. This allows your code to use AWS
+            ARN for an AWS role. This allows your code to use AWS
             services. This role should include policies such as AmazonS3FullAccess,
             covering any AWS services your compute workers will need.
         subnets: list of str
