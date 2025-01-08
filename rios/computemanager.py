@@ -403,6 +403,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         runTaskParams = {
             'launchType': 'FARGATE',
+            'cluster': 'default',
             'networkConfiguration': networkConf,
             'taskDefinition': 'Dummy, to be over-written within RIOS',
             'overrides': {'containerOverrides': [{
