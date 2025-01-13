@@ -270,29 +270,37 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             exceptionQue, self.workerBarrier)
 
         channAddr = self.dataChan.addressStr()
-        self.ecsClient = boto3.client("ecs")
+        self.jobIDstr = self.makeJobIDstr(controls.jobName)
+
+        ecsClient = boto3.client("ecs")
+        self.ecsClient = ecsClient
         extraParams = controls.concurrency.computeWorkerExtraParams
         if extraParams is None:
             msg = "ECSComputeWorkerMgr requires computeWorkerExtraParams"
             raise ValueError(msg)
+        self.extraParams = extraParams
 
-        # Create the ECS task definition
-        taskDef_kwArgs = extraParams.get('register_task_definition')
-        if taskDef_kwArgs is not None:
-            taskDefResponse = self.ecsClient.register_task_definition(**taskDef_kwArgs)
-            self.taskDefArn = taskDefResponse['taskDefinition']['taskDefinitionArn']
+        # Create ECS cluster (if requested)
+        self.createCluster()
+        # Instance, one for each worker (if requested)
+        self.createInstances(numWorkers)
+
+        # Create the ECS task definition (if requested)
+        self.createTaskDef()
 
         # Now create a task for each compute worker
         runTask_kwArgs = extraParams['run_task']
         runTask_kwArgs['taskDefinition'] = self.taskDefArn
         containerOverrides = runTask_kwArgs['overrides']['containerOverrides'][0]
+        if self.createdCluster:
+            runTask_kwArgs['cluster'] = self.clusterName
 
         for workerID in range(numWorkers):
             # Construct the command args entry with the current workerID
             workerCmdArgs = ['-i', str(workerID), '--channaddr', channAddr]
             containerOverrides['command'] = workerCmdArgs
 
-            runTaskResponse = self.ecsClient.run_task(**runTask_kwArgs)
+            runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
 
             failuresList = runTaskResponse['failures']
             if len(failuresList) > 0:
@@ -316,9 +324,75 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         self.forceExit.set()
         self.makeOutObjList()
-        self.ecsClient.deregister_task_definition(taskDefinition=self.taskDefArn)
         if hasattr(self, 'dataChan'):
             self.dataChan.shutdown()
+
+        if self.createdTaskDef:
+            self.ecsClient.deregister_task_definition(self.taskDefArn)
+        if self.createdCluster:
+            self.ecsClient.delete_cluster(self.clusterName)
+        if hasattr(self, 'instanceList'):
+            for inst in self.instanceList:
+                inst.terminate()
+
+    @staticmethod
+    def makeJobIDstr(jobName):
+        """
+        Make a job ID string to use in various generate names. It is unique to
+        this run, and also includes any human-readable information available
+        """
+        hexStr = random.randbytes(4).hex()
+        if jobName is None:
+            jobIDstr = hexStr
+        else:
+            jobIDstr = "{}-{}".format(jobName, hexStr)
+        return jobIDstr
+
+    def createCluster(self):
+        """
+        If requested to do so, create an ECS cluster to run on
+        """
+        self.createdCluster = False
+        createCluster_kwArgs = self.extraParams.get('create_cluster')
+        if createCluster_kwArgs is not None:
+            self.createdCluster = True
+            self.clusterName = createCluster_kwArgs.get('clusterName')
+
+            self.ecsClient.create_cluster(**createCluster_kwArgs)
+
+    def createInstances(self, numWorkers):
+        """
+        If requested to do so, create EC2 instances on which to run each compute
+        worker.
+        """
+        self.createdInstances = False
+        createInstances_kwArgs = self.extraParams.get('create_instances')
+        if createInstances_kwArgs is not None:
+            self.createdInstances = True
+            self.ec2 = boto3.resource('ec2')
+            if 'UserData' not in createInstances_kwArgs:
+                # Do this bizarre incantation to get the instance
+                # registered into the cluster.
+                userCmds = [
+                    "#!/bin/bash",
+                    "echo ECS_CLUSTER={} >> /etc/ecs/ecs.config".format(self.clusterName)
+                ]
+                userData = '\n'.join(userCmds)
+                createInstances_kwArgs['UserData'] = userData
+
+            instanceList = self.ec2.create_instances(**createInstances_kwArgs)
+            self.instanceList = instanceList
+
+    def createTaskDef(self):
+        """
+        If requested to do so, create a task definition for the worker tasks
+        """
+        self.createdTaskDef = False
+        taskDef_kwArgs = self.extraParams.get('register_task_definition')
+        if taskDef_kwArgs is not None:
+            self.createdTaskDef = True
+            taskDefResponse = self.ecsClient.register_task_definition(**taskDef_kwArgs)
+            self.taskDefArn = taskDefResponse['taskDefinition']['taskDefinitionArn']
 
     @staticmethod
     def makeFargateExtraParams(jobName=None, containerImage=None, taskRoleArn=None,
@@ -367,12 +441,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         documentation for further details.
 
         """
-        jobSubstr = ""
-        if jobName is not None:
-            jobSubstr = "_" + jobName
-        containerName = 'RIOS{}_container'.format(jobSubstr)
-        taskDefIDstr = random.randbytes(4).hex()
-        taskFamily = "RIOS{}_{}_task".format(jobSubstr, taskDefIDstr)
+        jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
+        containerName = 'RIOS_{}_container'.format(jobIDstr)
+        taskFamily = "RIOS_{}_task".format(jobIDstr)
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
