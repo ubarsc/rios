@@ -282,8 +282,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         # Create ECS cluster (if requested)
         self.createCluster()
-        # Instance, one for each worker (if requested)
-        self.createInstances(numWorkers)
+        # Instances, one for each worker (if requested)
+        self.runInstances(numWorkers)
 
         # Create the ECS task definition (if requested)
         self.createTaskDef()
@@ -331,9 +331,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             self.ecsClient.deregister_task_definition(self.taskDefArn)
         if self.createdCluster:
             self.ecsClient.delete_cluster(self.clusterName)
-        if hasattr(self, 'instanceList'):
-            for inst in self.instanceList:
-                inst.terminate()
+        if self.createdInstances:
+            instIdList = [inst['InstanceId'] for inst in self.instanceList]
+            self.ec2client.terminate_instances(InstanceIds=instIdList)
 
     @staticmethod
     def makeJobIDstr(jobName):
@@ -360,17 +360,17 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
             self.ecsClient.create_cluster(**createCluster_kwArgs)
 
-    def createInstances(self, numWorkers):
+    def runInstances(self, numWorkers):
         """
-        If requested to do so, create EC2 instances on which to run each compute
+        If requested to do so, run EC2 instances on which to run each compute
         worker.
         """
         self.createdInstances = False
-        createInstances_kwArgs = self.extraParams.get('create_instances')
-        if createInstances_kwArgs is not None:
+        runInstances_kwArgs = self.extraParams.get('run_instances')
+        if runInstances_kwArgs is not None:
             self.createdInstances = True
-            self.ec2 = boto3.resource('ec2')
-            if 'UserData' not in createInstances_kwArgs:
+            self.ec2client = boto3.client('ec2')
+            if 'UserData' not in runInstances_kwArgs:
                 # Do this bizarre incantation to get the instance
                 # registered into the cluster.
                 userCmds = [
@@ -378,10 +378,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                     "echo ECS_CLUSTER={} >> /etc/ecs/ecs.config".format(self.clusterName)
                 ]
                 userData = '\n'.join(userCmds)
-                createInstances_kwArgs['UserData'] = userData
+                runInstances_kwArgs['UserData'] = userData
 
-            instanceList = self.ec2.create_instances(**createInstances_kwArgs)
-            self.instanceList = instanceList
+            response = self.ec2client.run_instances(**runInstances_kwArgs)
+            self.instanceList = response['Instances']
 
     def createTaskDef(self):
         """
