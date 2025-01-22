@@ -639,6 +639,8 @@ class SinglePassAccumulator:
         """
         if self.nullval is None:
             values = arr.flatten()
+        elif numpy.isnan(self.nullval):
+            values = arr[~numpy.isnan(arr)]
         else:
             values = arr[arr != self.nullval]
         if len(values) > 0:
