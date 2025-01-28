@@ -329,11 +329,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         if self.createdTaskDef:
             self.ecsClient.deregister_task_definition(self.taskDefArn)
-        if self.createdCluster:
-            self.ecsClient.delete_cluster(self.clusterName)
         if self.createdInstances:
             instIdList = [inst['InstanceId'] for inst in self.instanceList]
             self.ec2client.terminate_instances(InstanceIds=instIdList)
+        if self.createdCluster:
+            self.ecsClient.delete_cluster(self.clusterName)
 
     @staticmethod
     def makeJobIDstr(jobName):
