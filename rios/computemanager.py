@@ -328,7 +328,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             self.dataChan.shutdown()
 
         if self.createdTaskDef:
-            self.ecsClient.deregister_task_definition(self.taskDefArn)
+            self.ecsClient.deregister_task_definition(taskDefinition=self.taskDefArn)
         if self.createdInstances:
             instIdList = [inst['InstanceId'] for inst in self.instanceList]
             self.ec2client.terminate_instances(InstanceIds=instIdList)
