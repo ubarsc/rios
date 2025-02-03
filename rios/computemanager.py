@@ -272,6 +272,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         channAddr = self.dataChan.addressStr()
         self.jobIDstr = self.makeJobIDstr(controls.jobName)
 
+        self.createdTaskDef = False
+        self.createdCluster = False
+        self.createdInstances = False
+
         ecsClient = boto3.client("ecs")
         self.ecsClient = ecsClient
         extraParams = controls.concurrency.computeWorkerExtraParams
@@ -352,7 +356,6 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         If requested to do so, create an ECS cluster to run on
         """
-        self.createdCluster = False
         createCluster_kwArgs = self.extraParams.get('create_cluster')
         if createCluster_kwArgs is not None:
             self.createdCluster = True
@@ -365,7 +368,6 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         If requested to do so, run EC2 instances on which to run each compute
         worker.
         """
-        self.createdInstances = False
         runInstances_kwArgs = self.extraParams.get('run_instances')
         if runInstances_kwArgs is not None:
             self.createdInstances = True
@@ -387,7 +389,6 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         If requested to do so, create a task definition for the worker tasks
         """
-        self.createdTaskDef = False
         taskDef_kwArgs = self.extraParams.get('register_task_definition')
         if taskDef_kwArgs is not None:
             self.createdTaskDef = True
