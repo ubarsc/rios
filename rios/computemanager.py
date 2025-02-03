@@ -275,6 +275,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         self.createdTaskDef = False
         self.createdCluster = False
         self.createdInstances = False
+        self.instanceList = None
 
         ecsClient = boto3.client("ecs")
         self.ecsClient = ecsClient
@@ -333,7 +334,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         if self.createdTaskDef:
             self.ecsClient.deregister_task_definition(taskDefinition=self.taskDefArn)
-        if self.createdInstances:
+        if self.createdInstances and self.instanceList is not None:
             instIdList = [inst['InstanceId'] for inst in self.instanceList]
             self.ec2client.terminate_instances(InstanceIds=instIdList)
         if self.createdCluster:
