@@ -10,9 +10,10 @@ installed ("conda install build" or "pip install build").
    DON'T FORGET TO COMMIT THIS, BEFORE THE NEXT STEP!!!!
 4. Push the changes to github with "git push". 
 
-   In practice, steps 2-3 are usually done as a single pull request, and
-   merged, rather than pushed directly, but I am skipping all the detail
-   of how to do a PR.
+ * In practice, steps 2-3 are usually done as a single pull request, and
+ * merged, rather than pushed directly, but I am skipping all the detail
+ * of how to do a PR.
+
 5. Check out a clean copy of the repository into /tmp or
    somewhere similar and 'cd' into it.
 6. Create the distribution tar.gz file, using
