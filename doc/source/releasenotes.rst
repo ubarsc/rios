@@ -1,6 +1,12 @@
 Release Notes
 =============
 
+Version 2.0.6 (2025-02-17)
+--------------------------
+Bug Fixes
+  * Rigorous iterable protocol required for python-3.13.1 (https://github.com/ubarsc/rios/pull/122)
+  * Proper handling when output NoDataValue is NaN (https://github.com/ubarsc/rios/pull/126)
+
 Version 2.0.5 (2024-11-18)
 --------------------------
 Improvements
