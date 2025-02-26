@@ -195,6 +195,7 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
 
     """
     (xRes, yRes) = (workinggrid.xRes, abs(workinggrid.yRes))
+    gdalVersion = VersionObj(gdal.__version__)
 
     # If the file is actually a vector, then first rasterize it
     # onto the right pixel size. If it is the wrong projection, it will
@@ -279,7 +280,7 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
 
         srcProj = specialProjFixes(fileInfo.projection)
         dstProj = specialProjFixes(workinggrid.projection)
-        if VersionObj(gdal.__version__) >= VersionObj('3.8.0'):
+        if gdalVersion >= VersionObj('3.8.0'):
             # We restrict the extent of the reprojection VRT to the reprojected
             # extent of the underlying raster
             corners = fileInfo.getCorners(outWKT=dstProj)
@@ -335,6 +336,16 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
             nullval = None
         else:
             nullval = ' '.join([repr(n) for n in nullvalList])
+
+            # Cope with a small bug in gdal 3.9.0 & 3.9.1. For these versions,
+            # if the null value for the first layer is negative, then having a
+            # leading minus causes trouble with how the string is parsed. By
+            # prepending a leading space we avoid the problem.
+            gdalHasNegNullBug = (gdalVersion == VersionObj('3.9.0') or
+                                 gdalVersion == VersionObj('3.9.1'))
+            if (gdalHasNegNullBug and len(nullvalList) > 1 and
+                    nullvalList[0] < 0):
+                nullval = ' ' + nullval
 
         overviewLevel = 'NONE'
         if controls.getOptionForImagename('allowOverviewsGdalwarp',
