@@ -248,6 +248,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     Manage compute workers using Amazon AWS ECS
     """
     computeWorkerKind = CW_ECS
+    defaultWaitClusterInstanceCountTimeout = 300
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
@@ -357,6 +358,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         If requested to do so, create an ECS cluster to run on. Requires kwArgs
         for both ECS.Client.create_cluster() and EC2.Client.run_instances().
         """
+        self.waitClusterInstanceCountTimeout = self.extraParams.get(
+            'waitClusterInstanceCountTimeout',
+            self.defaultWaitClusterInstanceCountTimeout)
+
         createCluster_kwArgs = self.extraParams.get('create_cluster')
         runInstances_kwArgs = self.extraParams.get('run_instances')
         if createCluster_kwArgs is not None and runInstances_kwArgs is not None:
@@ -391,9 +396,20 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         given endInstanceCount
         """
         instanceCount = self.getClusterInstanceCount(clusterName)
-        while instanceCount != endInstanceCount:
+        startTime = time.time()
+        timeout = self.waitClusterInstanceCountTimeout
+        timeExceeded = False
+
+        while ((instanceCount != endInstanceCount) and (not timeExceeded)):
             time.sleep(5)
             instanceCount = self.getClusterInstanceCount(clusterName)
+            timeExceeded = (time.time() < (startTime + timeout))
+
+        # If we exceeded timeout without reaching endInstanceCount,
+        # raise an exception
+        if timeExceeded and (instanceCount != endInstanceCount):
+            msg = "Cluster instance count timeout ({} seconds)".format(timeout)
+            raise rioserrors.TimeoutError(msg)
 
     def createTaskDef(self):
         """
@@ -617,6 +633,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         }
 
         extraParams = {
+            'waitClusterInstanceCountTimeout':
+                ECSComputeWorkerMgr.defaultWaitClusterInstanceCountTimeout,
             'create_cluster': createClusterParams,
             'run_instances': runInstancesParams,
             'register_task_definition': taskDefParams,
