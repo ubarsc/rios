@@ -335,6 +335,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if self.createdInstances and self.instanceList is not None:
             instIdList = [inst['InstanceId'] for inst in self.instanceList]
             self.ec2client.terminate_instances(InstanceIds=instIdList)
+            self.waitClusterInstanceCount(self.clusterName, 0)
         if self.createdCluster:
             self.ecsClient.delete_cluster(cluster=self.clusterName)
 
