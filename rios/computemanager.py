@@ -508,7 +508,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     def makeExtraParams_PrivateCluster(jobName=None, numInstances=None,
             ami=None, instanceType=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None,
-            subnet=None, securityGroups=None, instanceProfileArn=None):
+            subnet=None, securityGroups=None, instanceProfileArn=None,
+            memoryReservation=1024):
         """
         Helper function to construct a basic computeWorkerExtraParams
         dictionary suitable for using ECS with a private per-job cluster,
@@ -554,6 +555,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             The IamInstanceProfile ARN to use for the VM instances. This should
             include AmazonEC2ContainerServiceforEC2Role policy, which allows the
             instances to be part of an ECS cluster.
+        memoryReservation: int
+            Optional. Memory (in MiB) reserved for the containers in each
+            compute worker.
 
         """
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
@@ -579,6 +583,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
+                          'memoryReservation': memoryReservation,
                           'entryPoint': ['/usr/bin/env', 'rios_computeworker']}]
 
         networkConf = {
