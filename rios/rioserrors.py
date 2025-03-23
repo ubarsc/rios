@@ -152,6 +152,10 @@ class SinglePassActionsError(RiosError):
     "An error in processing single-pass actions"
 
 
+class ECSError(RiosError):
+    "Error arising from AWS ECS"
+
+
 deprecationAlreadyWarned = set()
 
 

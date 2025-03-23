@@ -7,6 +7,7 @@ import subprocess
 import time
 import threading
 import copy
+import random
 
 try:
     import boto3
@@ -17,7 +18,7 @@ from . import rioserrors
 from .structures import Timers, BlockAssociations, NetworkDataChannel
 from .structures import WorkerErrorRecord
 from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
-from .structures import CW_SUBPROC
+from .structures import CW_SUBPROC, CW_ECS
 from .readerinfo import makeReaderInfo
 
 
@@ -158,7 +159,7 @@ class ComputeWorkerManager(ABC):
 
 class ThreadsComputeWorkerMgr(ComputeWorkerManager):
     """
-    Manage compute workers using the threads within the current process.
+    Manage compute workers using threads within the current process.
     """
     computeWorkerKind = CW_THREADS
 
@@ -240,6 +241,422 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
         self.threadPool.shutdown()
 
         self.makeOutObjList()
+
+
+class ECSComputeWorkerMgr(ComputeWorkerManager):
+    """
+    Manage compute workers using Amazon AWS ECS
+
+    Requires some extra parameters in the ConcurrencyStyle constructor
+    (computeWorkerExtraParams), in order to configure the AWS infrastructure.
+    This class provides some helper functions for creating these for
+    various use cases.
+    """
+    computeWorkerKind = CW_ECS
+    defaultWaitClusterInstanceCountTimeout = 300
+
+    def startWorkers(self, numWorkers=None, userFunction=None,
+            infiles=None, outfiles=None, otherArgs=None, controls=None,
+            blockList=None, inBlockBuffer=None, outBlockBuffer=None,
+            workinggrid=None, allInfo=None, computeWorkersRead=False,
+            singleBlockComputeWorkers=False, tmpfileMgr=None,
+            haveSharedTemp=True, exceptionQue=None):
+        """
+        Start <numWorkers> ECS tasks to process blocks of data
+        """
+        if boto3 is None:
+            raise rioserrors.UnavailableError("boto3 is unavailable")
+
+        self.forceExit = threading.Event()
+        self.workerBarrier = threading.Barrier(numWorkers + 1)
+
+        self.setupNetworkCommunication(userFunction, infiles, outfiles,
+            otherArgs, controls, workinggrid, allInfo, blockList,
+            numWorkers, inBlockBuffer, outBlockBuffer, self.forceExit,
+            exceptionQue, self.workerBarrier)
+
+        channAddr = self.dataChan.addressStr()
+        self.jobIDstr = self.makeJobIDstr(controls.jobName)
+
+        self.createdTaskDef = False
+        self.createdCluster = False
+        self.createdInstances = False
+        self.instanceList = None
+
+        ecsClient = boto3.client("ecs")
+        self.ecsClient = ecsClient
+        extraParams = controls.concurrency.computeWorkerExtraParams
+        if extraParams is None:
+            msg = "ECSComputeWorkerMgr requires computeWorkerExtraParams"
+            raise ValueError(msg)
+        self.extraParams = extraParams
+
+        # Create ECS cluster (if requested)
+        try:
+            self.createCluster(numWorkers)
+        except Exception as e:
+            self.shutdownCluster()
+            raise e
+
+        # Create the ECS task definition (if requested)
+        self.createTaskDef()
+
+        # Now create a task for each compute worker
+        runTask_kwArgs = extraParams['run_task']
+        runTask_kwArgs['taskDefinition'] = self.taskDefArn
+        containerOverrides = runTask_kwArgs['overrides']['containerOverrides'][0]
+        if self.createdCluster:
+            runTask_kwArgs['cluster'] = self.clusterName
+
+        for workerID in range(numWorkers):
+            # Construct the command args entry with the current workerID
+            workerCmdArgs = ['-i', str(workerID), '--channaddr', channAddr]
+            containerOverrides['command'] = workerCmdArgs
+
+            runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
+
+            failuresList = runTaskResponse['failures']
+            if len(failuresList) > 0:
+                self.dataChan.shutdown()
+                msgList = []
+                for failure in failuresList:
+                    reason = failure['reason']
+                    detail = failure['detail']
+                    msg = "Worker {}: {}\n{}".format(workerID, reason, detail)
+                    msgList.append(msg)
+                fullMsg = '\n'.join(msgList)
+                raise rioserrors.ECSError(fullMsg)
+
+        # Do not proceed until all workers have started
+        computeBarrierTimeout = controls.concurrency.computeBarrierTimeout
+        self.workerBarrier.wait(timeout=computeBarrierTimeout)
+
+    def shutdown(self):
+        """
+        Shut down the workers
+        """
+        self.forceExit.set()
+        self.makeOutObjList()
+        if hasattr(self, 'dataChan'):
+            self.dataChan.shutdown()
+
+        if self.createdTaskDef:
+            self.ecsClient.deregister_task_definition(taskDefinition=self.taskDefArn)
+        # Shut down the ECS cluster, if one was created.
+        self.shutdownCluster()
+
+    def shutdownCluster(self):
+        """
+        Shut down the ECS cluster, if one has been created
+        """
+        if self.createdInstances and self.instanceList is not None:
+            instIdList = [inst['InstanceId'] for inst in self.instanceList]
+            self.ec2client.terminate_instances(InstanceIds=instIdList)
+            self.waitClusterInstanceCount(self.clusterName, 0)
+        if self.createdCluster:
+            self.ecsClient.delete_cluster(cluster=self.clusterName)
+
+    @staticmethod
+    def makeJobIDstr(jobName):
+        """
+        Make a job ID string to use in various generate names. It is unique to
+        this run, and also includes any human-readable information available
+        """
+        hexStr = random.randbytes(4).hex()
+        if jobName is None:
+            jobIDstr = hexStr
+        else:
+            jobIDstr = "{}-{}".format(jobName, hexStr)
+        return jobIDstr
+
+    def createCluster(self, numWorkers):
+        """
+        If requested to do so, create an ECS cluster to run on. Requires kwArgs
+        for both ECS.Client.create_cluster() and EC2.Client.run_instances().
+        """
+        self.waitClusterInstanceCountTimeout = self.extraParams.get(
+            'waitClusterInstanceCountTimeout',
+            self.defaultWaitClusterInstanceCountTimeout)
+
+        createCluster_kwArgs = self.extraParams.get('create_cluster')
+        runInstances_kwArgs = self.extraParams.get('run_instances')
+        if createCluster_kwArgs is not None and runInstances_kwArgs is not None:
+            self.clusterName = createCluster_kwArgs.get('clusterName')
+            self.ecsClient.create_cluster(**createCluster_kwArgs)
+            self.createdCluster = True
+
+            self.ec2client = boto3.client('ec2')
+
+            response = self.ec2client.run_instances(**runInstances_kwArgs)
+            self.instanceList = response['Instances']
+            self.createdInstances = True
+            self.waitClusterInstanceCount(self.clusterName, numWorkers)
+
+    def getClusterInstanceCount(self, clusterName):
+        """
+        Query the given cluster, and return the number of instances it has. If the
+        cluster does not exist, return None.
+        """
+        count = None
+        response = self.ecsClient.describe_clusters(clusters=[clusterName])
+        if 'clusters' in response:
+            for descr in response['clusters']:
+                if descr['clusterName'] == clusterName:
+                    count = descr['registeredContainerInstancesCount']
+        return count
+
+    def waitClusterInstanceCount(self, clusterName, endInstanceCount):
+        """
+        Poll the given cluster until the instanceCount is equal to the
+        given endInstanceCount
+        """
+        instanceCount = self.getClusterInstanceCount(clusterName)
+        startTime = time.time()
+        timeout = self.waitClusterInstanceCountTimeout
+        timeExceeded = False
+
+        while ((instanceCount != endInstanceCount) and (not timeExceeded)):
+            time.sleep(5)
+            instanceCount = self.getClusterInstanceCount(clusterName)
+            timeExceeded = (time.time() > (startTime + timeout))
+
+        # If we exceeded timeout without reaching endInstanceCount,
+        # raise an exception
+        if timeExceeded and (instanceCount != endInstanceCount):
+            msg = ("Cluster instance count timeout ({} seconds). ".format(timeout) +
+                   "See extraParams['waitClusterInstanceCountTimeout']")
+            raise rioserrors.TimeoutError(msg)
+
+    def createTaskDef(self):
+        """
+        If requested to do so, create a task definition for the worker tasks
+        """
+        taskDef_kwArgs = self.extraParams.get('register_task_definition')
+        if taskDef_kwArgs is not None:
+            self.createdTaskDef = True
+            taskDefResponse = self.ecsClient.register_task_definition(**taskDef_kwArgs)
+            self.taskDefArn = taskDefResponse['taskDefinition']['taskDefinitionArn']
+
+    @staticmethod
+    def makeExtraParams_Fargate(jobName=None, containerImage=None,
+            taskRoleArn=None, executionRoleArn=None, subnets=None,
+            securityGroups=None, cpu='0.5 vCPU', memory='1GB',
+            cpuArchitecture=None, clusterName='default'):
+        """
+        Helper function to construct a minimal computeWorkerExtraParams
+        dictionary suitable for using ECS with Fargate launchType, given
+        just the bare essential information.
+
+        Returns a Python dictionary.
+
+        jobName: str
+            Arbitrary string, optional. If given, this name will be incorporated
+            into some AWS/ECS names for the compute workers, including the
+            container name and the task family name.
+        containerImage: str
+            Required. URI of the container image to use for compute workers
+        executionRoleArn: str
+            Required. ARN for an AWS role. This allows ECS to use AWS services on
+            your behalf. A good start is a role including
+            AmazonECSTaskExecutionRolePolicy, which allows access to ECR
+            container registries and CloudWatch logs.
+        taskRoleArn: str
+            Required. ARN for an AWS role. This allows your code to use AWS
+            services. This role should include policies such as AmazonS3FullAccess,
+            covering any AWS services your compute workers will need.
+        subnets: list of str
+            Required. List of subnet ID strings associated with the VPC in which
+            workers will run.
+        securityGroups: list of str
+            Required. List of security group IDs associated with the VPC.
+        cpu: str
+            Number of CPU units requested for each compute worker, expressed in
+            AWS's own units. For example, '0.5 vCPU', or '1024' (which
+            corresponds to the same thing). Both must be strings. This helps
+            Fargate to select a suitable VM instance type (see below).
+        memory: str
+            Amount of memory requested for each compute worker, expressed in MiB,
+            or with a units suffix. For example, '1024' or its equivalent '1GB'.
+            This helps Fargate to select a suitable VM instance type (see below).
+        cpuArchitecture: str
+            If given, selects the CPU architecture of the hosts to run worker on.
+            Can be 'ARM64', defaults to 'X86_64'.
+        clusterName: str
+            If given, Fargate will use this cluster name instead of the default,
+            which is called "default".
+
+        Only certain combinations of cpu and memory are allowed, as these are used
+        by Fargate to select a suitable VM instance type. See ESC.Client.run_task()
+        documentation for further details.
+
+        """
+        jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
+        containerName = 'RIOS_{}_container'.format(jobIDstr)
+        taskFamily = "RIOS_{}_task".format(jobIDstr)
+
+        containerDefs = [{'name': containerName,
+                          'image': containerImage,
+                          'entryPoint': ['/usr/bin/env', 'rios_computeworker']}]
+
+        networkConf = {
+            'awsvpcConfiguration': {
+                'assignPublicIp': 'DISABLED',
+                'subnets': subnets,
+                'securityGroups': securityGroups
+            }
+        }
+
+        taskDefParams = {
+            'family': taskFamily,
+            'networkMode': 'awsvpc',
+            'requiresCompatibilities': ['FARGATE'],
+            'containerDefinitions': containerDefs,
+            'cpu': cpu,
+            'memory': memory
+        }
+        if taskRoleArn is not None:
+            taskDefParams['taskRoleArn'] = taskRoleArn
+        if executionRoleArn is not None:
+            taskDefParams['executionRoleArn'] = executionRoleArn
+        if cpuArchitecture is not None:
+            taskDefParams['runtimePlatform'] = {'cpuArchitecture': cpuArchitecture}
+
+        runTaskParams = {
+            'launchType': 'FARGATE',
+            'cluster': clusterName,
+            'networkConfiguration': networkConf,
+            'taskDefinition': 'Dummy, to be over-written within RIOS',
+            'overrides': {'containerOverrides': [{
+                "command": 'Dummy, to be over-written within RIOS',
+                'name': containerName}]}
+        }
+
+        extraParams = {
+            'register_task_definition': taskDefParams,
+            'run_task': runTaskParams
+        }
+        return extraParams
+
+    @staticmethod
+    def makeExtraParams_PrivateCluster(jobName=None, numInstances=None,
+            ami=None, instanceType=None, containerImage=None,
+            taskRoleArn=None, executionRoleArn=None,
+            subnet=None, securityGroups=None, instanceProfileArn=None,
+            memoryReservation=1024):
+        """
+        Helper function to construct a basic computeWorkerExtraParams
+        dictionary suitable for using ECS with a private per-job cluster,
+        given just the bare essential information.
+
+        Returns a Python dictionary.
+
+        jobName: str
+            Arbitrary string, optional. If given, this name will be incorporated
+            into some AWS/ECS names for the compute workers, including the
+            container name and the task family name.
+        numInstances: int
+            Number of VM instances which will comprise the private ECS cluster.
+            The RIOS compute workers will be distributed across these, so it
+            makes sense to have the same number of instances, i.e. one work
+            on each instance.
+        ami: str
+            Amazon Machine Image ID string. This should be for an ECS-Optimized
+            machine image, either as supplied by AWS, or custom-built, but it must
+            have the ECS Agent installed. An example would
+            be "ami-00065bb22bcbffde0", which is an AWS-supplied ECS-Optimized
+            image.
+        instanceType: str
+            The string identifying the instance type for the VM instances which
+            will make up the ECS cluster. An example would be "a1.medium".
+        containerImage: str
+            Required. URI of the container image to use for compute workers
+        executionRoleArn: str
+            Required. ARN for an AWS role. This allows ECS to use AWS services on
+            your behalf. A good start is a role including
+            AmazonECSTaskExecutionRolePolicy, which allows access to ECR
+            container registries and CloudWatch logs.
+        taskRoleArn: str
+            Required. ARN for an AWS role. This allows your code to use AWS
+            services. This role should include policies such as AmazonS3FullAccess,
+            covering any AWS services your compute workers will need.
+        subnets: list of str
+            Required. List of subnet ID strings associated with the VPC in which
+            workers will run.
+        securityGroups: list of str
+            Required. List of security group IDs associated with the VPC.
+        instanceProfileArn: str
+            The IamInstanceProfile ARN to use for the VM instances. This should
+            include AmazonEC2ContainerServiceforEC2Role policy, which allows the
+            instances to be part of an ECS cluster.
+        memoryReservation: int
+            Optional. Memory (in MiB) reserved for the containers in each
+            compute worker.
+
+        """
+        jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
+        containerName = 'RIOS_{}_container'.format(jobIDstr)
+        taskFamily = "RIOS_{}_task".format(jobIDstr)
+        clusterName = "RIOS_{}_cluster".format(jobIDstr)
+
+        createClusterParams = {"clusterName": clusterName}
+        userData = '\n'.join([
+            "#!/bin/bash",
+            f"echo ECS_CLUSTER={clusterName} >> /etc/ecs/ecs.config"
+        ])
+        runInstancesParams = {
+            "ImageId": ami,
+            "InstanceType": instanceType,
+            "MaxCount": numInstances,
+            "MinCount": numInstances,
+            "SecurityGroupIds": securityGroups,
+            "SubnetId": subnet,
+            "IamInstanceProfile": {"Arn": instanceProfileArn},
+            "UserData": userData
+        }
+
+        containerDefs = [{'name': containerName,
+                          'image': containerImage,
+                          'memoryReservation': memoryReservation,
+                          'entryPoint': ['/usr/bin/env', 'rios_computeworker']}]
+
+        networkConf = {
+            'awsvpcConfiguration': {
+                'assignPublicIp': 'DISABLED',
+                'subnets': [subnet],
+                'securityGroups': securityGroups
+            }
+        }
+
+        taskDefParams = {
+            'family': taskFamily,
+            'networkMode': 'awsvpc',
+            'requiresCompatibilities': ['EC2'],
+            'containerDefinitions': containerDefs
+        }
+        if taskRoleArn is not None:
+            taskDefParams['taskRoleArn'] = taskRoleArn
+        if executionRoleArn is not None:
+            taskDefParams['executionRoleArn'] = executionRoleArn
+
+        runTaskParams = {
+            'launchType': 'EC2',
+            'cluster': clusterName,
+            'networkConfiguration': networkConf,
+            'taskDefinition': 'Dummy, to be over-written within RIOS',
+            'overrides': {'containerOverrides': [{
+                "command": 'Dummy, to be over-written within RIOS',
+                'name': containerName}]}
+        }
+
+        extraParams = {
+            'waitClusterInstanceCountTimeout':
+                ECSComputeWorkerMgr.defaultWaitClusterInstanceCountTimeout,
+            'create_cluster': createClusterParams,
+            'run_instances': runInstancesParams,
+            'register_task_definition': taskDefParams,
+            'run_task': runTaskParams
+        }
+        return extraParams
 
 
 class AWSBatchComputeWorkerMgr(ComputeWorkerManager):

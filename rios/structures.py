@@ -27,6 +27,7 @@ from . import rioserrors
 
 CW_NONE = "CW_NONE"
 CW_THREADS = "CW_THREADS"
+CW_ECS = "CW_ECS"
 CW_PBS = "CW_PBS"
 CW_SLURM = "CW_SLURM"
 CW_AWSBATCH = "CW_AWSBATCH"
@@ -90,7 +91,7 @@ class ConcurrencyStyle:
             compute workers.
 
     Compute Concurrency
-        computeWorkerKind: One of {CW_NONE, CW_THREADS, CW_PBS, CW_SLURM,
+        computeWorkerKind: One of {CW_NONE, CW_THREADS, CW_ECS, CW_PBS, CW_SLURM,
             CW_AWSBATCH, CW_SUBPROC}.
 
             Selects the paradigm used to distribute compute workers.
@@ -98,6 +99,10 @@ class ConcurrencyStyle:
             running within the same process as the rest of RIOS. This is
             almost certainly the best option to start exploring compute
             concurrency in RIOS.
+
+            The CW_ECS option is the most sophisticated. The compute workers
+            run as separate containerized tasks on an AWS ECS cluster, with
+            options to control how those ECS tasks are launched.
 
             The CW_PBS, CW_SLURM and CW_AWSBATCH options all refer to different
             batch queue systems, so that compute workers can run as jobs
@@ -112,6 +117,11 @@ class ConcurrencyStyle:
             See the `Concurrency <concurrency.html>`_ doc page
             for a deeper discussion on suitable use of the different
             kinds of compute worker.
+        computeWorkerExtraParams: dict
+            Any extra parameters required by a particular computeWorkerKind.
+            This is a Python dictionary, and its contents are interpreted by
+            the requested computeWorkerKind. See the documentation
+            for the kind in question. Default is None.
             
         numComputeWorkers: int
             The number of distinct compute workers. If zero, then
@@ -188,6 +198,7 @@ class ConcurrencyStyle:
     """
     def __init__(self, numReadWorkers=0, numComputeWorkers=0,
                  computeWorkerKind=CW_NONE,
+                 computeWorkerExtraParams=None,
                  computeWorkersRead=False,
                  singleBlockComputeWorkers=False,
                  haveSharedTemp=True,
@@ -200,6 +211,7 @@ class ConcurrencyStyle:
         self.numReadWorkers = numReadWorkers
         self.numComputeWorkers = numComputeWorkers
         self.computeWorkerKind = computeWorkerKind
+        self.computeWorkerExtraParams = computeWorkerExtraParams
         self.computeWorkersRead = computeWorkersRead
         self.singleBlockComputeWorkers = singleBlockComputeWorkers
         self.haveSharedTemp = haveSharedTemp
