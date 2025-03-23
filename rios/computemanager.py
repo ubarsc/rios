@@ -287,7 +287,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         self.extraParams = extraParams
 
         # Create ECS cluster (if requested)
-        self.createCluster(numWorkers)
+        try:
+            self.createCluster(numWorkers)
+        except Exception as e:
+            self.shutdownCluster()
+            raise e
 
         # Create the ECS task definition (if requested)
         self.createTaskDef()
@@ -333,6 +337,13 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         if self.createdTaskDef:
             self.ecsClient.deregister_task_definition(taskDefinition=self.taskDefArn)
+        # Shut down the ECS cluster, if one was created.
+        self.shutdownCluster()
+
+    def shutdownCluster(self):
+        """
+        Shut down the ECS cluster, if one has been created
+        """
         if self.createdInstances and self.instanceList is not None:
             instIdList = [inst['InstanceId'] for inst in self.instanceList]
             self.ec2client.terminate_instances(InstanceIds=instIdList)
@@ -365,16 +376,15 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         createCluster_kwArgs = self.extraParams.get('create_cluster')
         runInstances_kwArgs = self.extraParams.get('run_instances')
         if createCluster_kwArgs is not None and runInstances_kwArgs is not None:
-            self.createdCluster = True
             self.clusterName = createCluster_kwArgs.get('clusterName')
-
             self.ecsClient.create_cluster(**createCluster_kwArgs)
+            self.createdCluster = True
 
-            self.createdInstances = True
             self.ec2client = boto3.client('ec2')
 
             response = self.ec2client.run_instances(**runInstances_kwArgs)
             self.instanceList = response['Instances']
+            self.createdInstances = True
             self.waitClusterInstanceCount(self.clusterName, numWorkers)
 
     def getClusterInstanceCount(self, clusterName):
