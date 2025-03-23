@@ -159,7 +159,7 @@ class ComputeWorkerManager(ABC):
 
 class ThreadsComputeWorkerMgr(ComputeWorkerManager):
     """
-    Manage compute workers using the threads within the current process.
+    Manage compute workers using threads within the current process.
     """
     computeWorkerKind = CW_THREADS
 
@@ -246,6 +246,11 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
 class ECSComputeWorkerMgr(ComputeWorkerManager):
     """
     Manage compute workers using Amazon AWS ECS
+
+    Requires some extra parameters in the ConcurrencyStyle constructor
+    (computeWorkerExtraParams), in order to configure the AWS infrastructure.
+    This class provides some helper functions for creating these for
+    various use cases.
     """
     computeWorkerKind = CW_ECS
     defaultWaitClusterInstanceCountTimeout = 300
