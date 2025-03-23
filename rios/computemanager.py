@@ -418,7 +418,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         # If we exceeded timeout without reaching endInstanceCount,
         # raise an exception
         if timeExceeded and (instanceCount != endInstanceCount):
-            msg = "Cluster instance count timeout ({} seconds)".format(timeout)
+            msg = ("Cluster instance count timeout ({} seconds). ".format(timeout) +
+                   "See extraParams['waitClusterInstanceCountTimeout']")
             raise rioserrors.TimeoutError(msg)
 
     def createTaskDef(self):
