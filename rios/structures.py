@@ -91,7 +91,7 @@ class ConcurrencyStyle:
             compute workers.
 
     Compute Concurrency
-        computeWorkerKind: One of {CW_NONE, CW_THREADS, CW_PBS, CW_SLURM,
+        computeWorkerKind: One of {CW_NONE, CW_THREADS, CW_ECS, CW_PBS, CW_SLURM,
             CW_AWSBATCH, CW_SUBPROC}.
 
             Selects the paradigm used to distribute compute workers.
@@ -99,6 +99,10 @@ class ConcurrencyStyle:
             running within the same process as the rest of RIOS. This is
             almost certainly the best option to start exploring compute
             concurrency in RIOS.
+
+            The CW_ECS option is the most sophisticated. The compute workers
+            run as separate containerized tasks on an AWS ECS cluster, with
+            options to control how those ECS tasks are launched.
 
             The CW_PBS, CW_SLURM and CW_AWSBATCH options all refer to different
             batch queue systems, so that compute workers can run as jobs
