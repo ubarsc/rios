@@ -413,7 +413,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         while ((instanceCount != endInstanceCount) and (not timeExceeded)):
             time.sleep(5)
             instanceCount = self.getClusterInstanceCount(clusterName)
-            timeExceeded = (time.time() < (startTime + timeout))
+            timeExceeded = (time.time() > (startTime + timeout))
 
         # If we exceeded timeout without reaching endInstanceCount,
         # raise an exception
