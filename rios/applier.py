@@ -1142,14 +1142,15 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             inBlockBuffer, timings, exceptionQue)
 
     try:
-        computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
-            userFunction=userFunction, infiles=infiles, outfiles=outfiles,
-            otherArgs=otherArgs, controls=controls, blockList=blockList,
-            inBlockBuffer=inBlockBuffer, outBlockBuffer=outBlockBuffer,
-            workinggrid=workinggrid, allInfo=allInfo,
-            singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
-            tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp,
-            exceptionQue=exceptionQue)
+        with timings.interval('startcomputeworkers'):
+            computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
+                userFunction=userFunction, infiles=infiles, outfiles=outfiles,
+                otherArgs=otherArgs, controls=controls, blockList=blockList,
+                inBlockBuffer=inBlockBuffer, outBlockBuffer=outBlockBuffer,
+                workinggrid=workinggrid, allInfo=allInfo,
+                singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
+                tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp,
+                exceptionQue=exceptionQue)
     except Exception as e:
         computeMgr.shutdown()
         if readWorkerMgr is not None:
