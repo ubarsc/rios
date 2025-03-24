@@ -836,8 +836,8 @@ class Timers:
             "{:20s}       {:11s}".format("Timer", "Total (sec)"),
             ("-" * 32)
         ]
-        fieldOrder = ['reading', 'userfunction', 'writing', 'pyramids',
-            'basicstats', 'stats+histogram', 'histogram',
+        fieldOrder = ['reading', 'startcomputeworkers', 'userfunction',
+            'writing', 'pyramids', 'basicstats', 'stats+histogram', 'histogram',
             'insert_readbuffer', 'pop_readbuffer', 'insert_computebuffer',
             'pop_computebuffer']
         for name in fieldOrder:
