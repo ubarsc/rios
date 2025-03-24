@@ -1,3 +1,8 @@
+"""
+The ComputeWorkerManager abstract base class is for creating and managing
+a set of compute workers. Each different computeWorkerKind is implemented
+as a concrete subclass of this. All these classes are found in this module.
+"""
 import sys
 import os
 from abc import ABC, abstractmethod
