@@ -56,14 +56,14 @@ class ComputeWorkerManager(ABC):
     outObjList = None
     outqueue = None
     jobName = None
+    computeWorkersRead_default = None
 
     @abstractmethod
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
-            workinggrid=None, allInfo=None, computeWorkersRead=False,
-            singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True, exceptionQue=None):
+            workinggrid=None, allInfo=None, singleBlockComputeWorkers=False,
+            tmpfileMgr=None, haveSharedTemp=True, exceptionQue=None):
         """
         Start the specified compute workers
         """
@@ -162,6 +162,7 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
     Manage compute workers using threads within the current process.
     """
     computeWorkerKind = CW_THREADS
+    computeWorkersRead_default = False
 
     def __init__(self):
         self.threadPool = None
@@ -172,9 +173,8 @@ class ThreadsComputeWorkerMgr(ComputeWorkerManager):
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
-            workinggrid=None, allInfo=None, computeWorkersRead=False,
-            singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True, exceptionQue=None):
+            workinggrid=None, allInfo=None, singleBlockComputeWorkers=False,
+            tmpfileMgr=None, haveSharedTemp=True, exceptionQue=None):
         """
         Start <numWorkers> threads to process blocks of data
         """
@@ -254,13 +254,13 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     """
     computeWorkerKind = CW_ECS
     defaultWaitClusterInstanceCountTimeout = 300
+    computeWorkersRead_default = True
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
-            workinggrid=None, allInfo=None, computeWorkersRead=False,
-            singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True, exceptionQue=None):
+            workinggrid=None, allInfo=None, singleBlockComputeWorkers=False,
+            tmpfileMgr=None, haveSharedTemp=True, exceptionQue=None):
         """
         Start <numWorkers> ECS tasks to process blocks of data
         """
@@ -664,13 +664,13 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
     Manage compute workers using AWS Batch.
     """
     computeWorkerKind = CW_AWSBATCH
+    computeWorkersRead_default = True
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
-            workinggrid=None, allInfo=None, computeWorkersRead=False,
-            singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True, exceptionQue=None):
+            workinggrid=None, allInfo=None, singleBlockComputeWorkers=False,
+            tmpfileMgr=None, haveSharedTemp=True, exceptionQue=None):
         """
         Start <numWorkers> AWS Batch jobs to process blocks of data
         """
@@ -763,13 +763,13 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
 
     """
     computeWorkerKind = None
+    computeWorkersRead_default = True
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
-            workinggrid=None, allInfo=None, computeWorkersRead=False,
-            singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True, exceptionQue=None):
+            workinggrid=None, allInfo=None, singleBlockComputeWorkers=False,
+            tmpfileMgr=None, haveSharedTemp=True, exceptionQue=None):
         """
         Start <numWorkers> PBS or SLURM jobs to process blocks of data
         """
@@ -1064,13 +1064,13 @@ class SubprocComputeWorkerManager(ComputeWorkerManager):
 
     """
     computeWorkerKind = CW_SUBPROC
+    computeWorkersRead_default = False
 
     def startWorkers(self, numWorkers=None, userFunction=None,
             infiles=None, outfiles=None, otherArgs=None, controls=None,
             blockList=None, inBlockBuffer=None, outBlockBuffer=None,
-            workinggrid=None, allInfo=None, computeWorkersRead=False,
-            singleBlockComputeWorkers=False, tmpfileMgr=None,
-            haveSharedTemp=True, exceptionQue=None):
+            workinggrid=None, allInfo=None, singleBlockComputeWorkers=False,
+            tmpfileMgr=None, haveSharedTemp=True, exceptionQue=None):
         """
         Start the specified compute workers
         """

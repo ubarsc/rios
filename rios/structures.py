@@ -127,20 +127,22 @@ class ConcurrencyStyle:
             The number of distinct compute workers. If zero, then
             computation happens within the main processing loop.
         computeWorkersRead: bool
+            The default is None, which means that a sensible True/False
+            choice will be made by the selected computeWorkerKind.
+
             If True, then each compute worker does its own reading,
             possibly with its own pool of read worker threads
             (<numReadWorkers> threads for each compute worker). This
-            is likely to be a good option when used with the batch
-            queue oriented compute workers, with workers running on
-            separate machines.
+            is likely to be a good option with any computeWorkerKind
+            which involves compute workers running on separate machines.
 
             If False, then all reading is done by the main RIOS process
             (possibly using one or more read workers) and data is sent
-            directly to each compute worker. False is required for CW_THREADS
-            compute workers, but may also be useful in cases when batch
-            queue nodes are on an internal network, but input files are
-            not accessible to the batch nodes, and must be read by a process
-            on the gateway machine.
+            directly to each compute worker. False (or None) is required
+            for CW_THREADS compute workers, but may also be useful in cases
+            when compute workers are on separate machines on an internal
+            network, but input files are not accessible to those machines,
+            and must be read by the main RIOS process.
         singleBlockComputeWorkers: bool
             This applies only to the batch queue paradigms. In some
             batch configurations, it is advantageous to run many small,
@@ -199,7 +201,7 @@ class ConcurrencyStyle:
     def __init__(self, numReadWorkers=0, numComputeWorkers=0,
                  computeWorkerKind=CW_NONE,
                  computeWorkerExtraParams=None,
-                 computeWorkersRead=False,
+                 computeWorkersRead=None,
                  singleBlockComputeWorkers=False,
                  haveSharedTemp=True,
                  readBufferInsertTimeout=10,
@@ -251,7 +253,7 @@ class ConcurrencyStyle:
                    "computeWorkerKind == {}".format(computeWorkerKind))
             raise ValueError(msg)
 
-        if ((numComputeWorkers > 0) and (not computeWorkersRead) and
+        if ((numComputeWorkers > 0) and (computeWorkersRead is False) and
                 (numReadWorkers == 0)):
             msg = ("Multiple non-reading compute workers with " +
                    "zero read workers is not a sensible choice. Best "

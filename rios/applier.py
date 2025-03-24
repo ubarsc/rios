@@ -1128,6 +1128,9 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
 
     inBlockBuffer = None
     readWorkerMgr = None
+    if concurrency.computeWorkersRead is None:
+        # Take the default from the computeMgr class
+        concurrency.computeWorkersRead = computeMgr.computeWorkersRead_default
     if not concurrency.computeWorkersRead:
         inBlockBuffer = BlockBuffer(infiles, concurrency.numReadWorkers,
             concurrency.readBufferInsertTimeout,
@@ -1144,7 +1147,6 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             otherArgs=otherArgs, controls=controls, blockList=blockList,
             inBlockBuffer=inBlockBuffer, outBlockBuffer=outBlockBuffer,
             workinggrid=workinggrid, allInfo=allInfo,
-            computeWorkersRead=concurrency.computeWorkersRead,
             singleBlockComputeWorkers=concurrency.singleBlockComputeWorkers,
             tmpfileMgr=tmpfileMgr, haveSharedTemp=concurrency.haveSharedTemp,
             exceptionQue=exceptionQue)
