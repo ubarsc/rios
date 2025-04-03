@@ -985,12 +985,12 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
                 rioserrors.deprecationWarning(msg)
 
             qsubOptions = self.extraParams.get('qsubOptions')
-            pbsInitCmds = self.extraParams.get('pbsInitCmds')
+            initCmds = self.extraParams.get('initCmds')
 
             if qsubOptions is not None:
                 scriptCmdList.append("#PBS %s" % qsubOptions)
-            if pbsInitCmds is not None:
-                scriptCmdList.append(pbsInitCmds)
+            if initCmds is not None:
+                scriptCmdList.append(initCmds)
         elif self.computeWorkerKind == CW_SLURM:
             scriptCmdList = [
                 "#!/bin/bash",
@@ -1006,12 +1006,12 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
                 rioserrors.deprecationWarning(msg)
 
             sbatchOptions = self.extraParams.get('sbatchOptions')
-            slurmInitCmds = self.extraParams.get('slurmInitCmds')
+            initCmds = self.extraParams.get('initCmds')
 
             if sbatchOptions is not None:
                 scriptCmdList.append("#SBATCH %s" % sbatchOptions)
-            if slurmInitCmds is not None:
-                scriptCmdList.append(slurmInitCmds)
+            if initCmds is not None:
+                scriptCmdList.append(initCmds)
 
         return scriptCmdList
 

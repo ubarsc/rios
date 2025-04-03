@@ -360,9 +360,9 @@ this should be a dictionary, with one or more of the following entries
      - Value
    * - ``"qsubOptions"``
      - A single string of space-separated options to the qsub command. This
-       will be embedded in the top of each job shell script with the ``#PBS``
+       will be embedded in the top of each job shell script with the ``#PBS ``
        prefix.
-   * - ``"pbsInitCmds"``
+   * - ``"initCmds"``
      - Any initial commands which should be executed at the start of the
        job shell script. The value is a single string (possibly with embedded
        newline characters) which is inserted into the script, after the
@@ -382,8 +382,8 @@ This behaves exactly like the CW_PBS compute workers, but using the SLURM
 batch queue system instead. See the PBS description.
 
 It also accepts the optional computeWorkerExtraParams argument to ConcurrencyStyle,
-very similarly to CW_PBS. The key values are ``"sbatchOptions"``,
-``"slurmInitCmds"``, ``"cmdPrefix"`` and ``"cmdSuffix"``.
+very similarly to CW_PBS. The key values are as for PBS, except for
+``"sbatchOptions"`` instead of ``"qsubOptions"``.
 See the corresponding PBS entries (above) for the corresponding
 descriptions.
 
