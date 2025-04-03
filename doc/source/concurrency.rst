@@ -348,32 +348,43 @@ set sharedTempDir=False, and it will be passed on the command line for each
 job. However, this is notionally less secure, since the command line is,
 in principle, publicly visible, so this is not recommended.
 
-The PBS jobs will honour two environment variables, which can be used to modify
-their behaviour. These are
+This compute worker kind can optionally be controlled further with the
+``computeWorkerExtraParams`` argument to the ConcurrencyStyle constructor. If given,
+this should be a dictionary, with one or more of the following entries
 
 .. list-table::
-   :widths: 20, 60
+   :widths: 15, 65
    :header-rows: 1
 
-   * - Environment Variable
-     - Description
-   * - RIOS_PBSJOBMGR_QSUBOPTIONS
+   * - Key
+     - Value
+   * - ``"qsubOptions"``
      - A single string of space-separated options to the qsub command. This
-       will be embedded in the top of each job shell script with the ``#PBS``
+       will be embedded in the top of each job shell script with the ``#PBS ``
        prefix.
-   * - RIOS_PBSJOBMGR_INITCMDS
+   * - ``"initCmds"``
      - Any initial commands which should be executed at the start of the
-       job shell script. The value is a single string which is inserted
-       into the script.
+       job shell script. The value is a single string (possibly with embedded
+       newline characters) which is inserted into the script, after the
+       ``#PBS`` lines.
+   * - ``"cmdPrefix"``
+     - A single string which will be prepended to the start of the
+       ``rios_computeworker`` command in the job shell script. This allows the
+       workers to be run in some special way, such as inside a container. The
+       string should include any required spaces or quote characters separating
+       it from the command.
+   * - ``"cmdSuffix"``
+     - As for cmdPrefix, but appended to the end of the command.
 
 **CW_SLURM**
 
 This behaves exactly like the CW_PBS compute workers, but using the SLURM
 batch queue system instead. See the PBS description.
 
-It also honours two environment variables, very similarly to CW_PBS. Their
-names are ``RIOS_SLURMJOBMGR_SBATCHOPTIONS`` and ``RIOS_SLURMJOBMGR_INITCMDS``.
-See the corresponding PBS environment variables (above) for the corresponding
+It also accepts the optional computeWorkerExtraParams argument to ConcurrencyStyle,
+very similarly to CW_PBS. The key values are as for PBS, except for
+``"sbatchOptions"`` instead of ``"qsubOptions"``.
+See the corresponding PBS entries (above) for the corresponding
 descriptions.
 
 **CW_SUBPROC**

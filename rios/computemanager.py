@@ -766,6 +766,10 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
     one must then assign computeWorkerKind as either CW_PBS or CW_SLURM
     before use.
 
+    Will make use of the computeWorkerExtraParams argument to ConcurrencyStyle,
+    if given, but this is optional. If given, it should be a dictionary, see
+    :doc:`concurrency` for details.
+
     """
     computeWorkerKind = None
     computeWorkersRead_default = True
@@ -788,6 +792,9 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
         if singleBlockComputeWorkers:
             # We ignore numWorkers, and have a worker for each block
             numWorkers = len(blockList)
+        self.extraParams = controls.concurrency.computeWorkerExtraParams
+        if self.extraParams is None:
+            self.extraParams = {}
 
         self.setupNetworkCommunication(userFunction, infiles, outfiles,
             otherArgs, controls, workinggrid, allInfo, blockList,
@@ -852,6 +859,10 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
             addressArgs = ["--channaddr", self.dataChan.addressStr()]
         computeWorkerCmd.extend(addressArgs)
         computeWorkerCmdStr = " ".join(computeWorkerCmd)
+        # Add any cmd prefix or suffix strings given
+        cmdPrefix = self.extraParams.get('cmdPrefix', '')
+        cmdSuffix = self.extraParams.get('cmdSuffix', '')
+        computeWorkerCmdStr = cmdPrefix + computeWorkerCmdStr + cmdSuffix
 
         # Mark the start of outputs from the worker command in the log
         scriptCmdList.append("echo 'Begin-rios-worker'")
@@ -966,13 +977,20 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
                 "#PBS -j oe -o {}".format(logfile),
                 "#PBS -N {}".format(workerName)
             ]
-            qsubOptions = os.getenv('RIOS_PBSJOBMGR_QSUBOPTIONS')
+            if (('RIOS_PBSJOBMGR_QSUBOPTIONS' in os.environ) or
+                    ('RIOS_PBSJOBMGR_INITCMDS' in os.environ)):
+                msg = ("RIOS PBS environment variables no longer supported. " +
+                       "Please use computeWorkerExtraParams argument of " +
+                       "ConcurrencyStyle instead")
+                rioserrors.deprecationWarning(msg)
+
+            qsubOptions = self.extraParams.get('qsubOptions')
+            initCmds = self.extraParams.get('initCmds')
+
             if qsubOptions is not None:
                 scriptCmdList.append("#PBS %s" % qsubOptions)
-
-            pbsInitCmds = os.getenv('RIOS_PBSJOBMGR_INITCMDS')
-            if pbsInitCmds is not None:
-                scriptCmdList.append(pbsInitCmds)
+            if initCmds is not None:
+                scriptCmdList.append(initCmds)
         elif self.computeWorkerKind == CW_SLURM:
             scriptCmdList = [
                 "#!/bin/bash",
@@ -980,13 +998,20 @@ class ClassicBatchComputeWorkerMgr(ComputeWorkerManager):
                 "#SBATCH -e %s" % logfile,
                 "#SBATCH -J {}".format(workerName)
             ]
-            sbatchOptions = os.getenv('RIOS_SLURMJOBMGR_SBATCHOPTIONS')
+            if (('RIOS_SLURMJOBMGR_SBATCHOPTIONS' in os.environ) or
+                    ('RIOS_SLURMJOBMGR_INITCMDS' in os.environ)):
+                msg = ("RIOS SLURM environment variables no longer supported. " +
+                       "Please use computeWorkerExtraParams argument of " +
+                       "ConcurrencyStyle instead")
+                rioserrors.deprecationWarning(msg)
+
+            sbatchOptions = self.extraParams.get('sbatchOptions')
+            initCmds = self.extraParams.get('initCmds')
+
             if sbatchOptions is not None:
                 scriptCmdList.append("#SBATCH %s" % sbatchOptions)
-
-            slurmInitCmds = os.getenv('RIOS_SLURMJOBMGR_INITCMDS')
-            if slurmInitCmds is not None:
-                scriptCmdList.append(slurmInitCmds)
+            if initCmds is not None:
+                scriptCmdList.append(initCmds)
 
         return scriptCmdList
 

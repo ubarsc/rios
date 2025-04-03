@@ -29,9 +29,9 @@ RIOS honours the following environment variables which can be used to override d
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_FOOTPRINT            | 0 for intersection, 1 for union       | Intersection   | footprint             |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
-|RIOS_DFLT_BLOCKXSIZE           | Window X size                         | 200            | windowxsize           |
+|RIOS_DFLT_BLOCKXSIZE           | Window X size                         | 256            | windowxsize           |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
-|RIOS_DFLT_BLOCKYSIZE           | Window Y size                         | 200            | windowysize           |
+|RIOS_DFLT_BLOCKYSIZE           | Window Y size                         | 256            | windowysize           |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_OVERLAP              | Overlap between blocks                | 0              | overlap               |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
@@ -46,11 +46,11 @@ RIOS honours the following environment variables which can be used to override d
 |                               | A comma-separated list of reduction   | 128,256,512    |                       |
 |                               | factors, as per gdaladdo command      |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
-|RIOS_DFLT_MINOVERLEVELDIM      | Minimum dimension of overview layers. | 33             | overviewMinDim        |
+|RIOS_DFLT_MINOVERLEVELDIM      | Minimum dimension of overview layers. | 128            | overviewMinDim        |
 |                               | Overview layers with any dimension    |                |                       |
 |                               | less than this will not be created.   |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
-|RIOS_DFLT_OVERVIEWAGGTYPE      | Default aggregation type for          | AVERAGE        | overviewAggType       |
+|RIOS_DFLT_OVERVIEWAGGTYPE      | Default aggregation type for          | NEAREST        | overviewAggType       |
 |                               | overviews, used with formats not      |                |                       |
 |                               | supporting LAYER_TYPE                 |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
@@ -64,11 +64,6 @@ RIOS honours the following environment variables which can be used to override d
 |                               | a temporary file in the output format |                |                       |
 |                               | will be used instead. Added in RIOS   |                |                       |
 |                               | 1.4.5.                                |                |                       |
-+-------------------------------+---------------------------------------+----------------+-----------------------+
-|RIOS_PBSJOBMGR_QSUBOPTIONS     | See :doc:`concurrency`                |                |                       |
-|RIOS_PBSJOBMGR_INITCMDS        | for descriptions of these variables   |                |                       |
-|RIOS_SLURMJOBMGR_SBATCHOPTIONS |                                       |                |                       |
-|RIOS_SLURMJOBMGR_INITCMDS      |                                       |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_AWSBATCH_STACK            | The CloudFormation stack name to use  | RIOS           | Not in controls       |
 |                               | for AWS Batch jobs                    |                |                       | 
