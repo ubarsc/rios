@@ -203,6 +203,7 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr, timings):
         overviewAggType = getOpt('overviewAggType', symbolicName)
         approxStats = getOpt('approxStats', symbolicName)
         autoColorTableType = getOpt('autoColorTableType', symbolicName)
+        callBeforeClose = getOpt('callBeforeClose', symbolicName)
         progress = getOpt('progress', symbolicName)
         if progress is None:
             from .cuiprogress import SilentProgress
@@ -239,6 +240,11 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr, timings):
         elif not omitHistogram:
             with timings.interval('histogram'):
                 calcstats.addHistogramsGDAL(ds, minMaxList, approxStats)
+
+        if callBeforeClose is not None and len(callBeforeClose) == 2:
+            (beforeCloseFunc, beforeCloseArgs) = callBeforeClose
+            with timings.interval('beforeclose'):
+                beforeCloseFunc(ds, *beforeCloseArgs)
 
         # This is doing everything I can to ensure the file gets fully closed
         # at this point.
