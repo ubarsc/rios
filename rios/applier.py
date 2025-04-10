@@ -859,18 +859,20 @@ class ApplierControls(object):
         """
         self.setOptionForImagename('approxStats', imagename, approxStats)
 
-    def setCallBeforeClose(self, beforeCloseFunc, beforeCloseArgs, imagename=None):
+    def setCallBeforeClose(self, func, args=(), imagename=None):
         """
         Set a function and its arguments, to be called on an output image,
         just before it is closed.
 
-        beforeCloseArgs is a tuple of arguments to the function. The function
-        will be called with the still-open GDAL Dataset object as its first
-        argument, and then all the arguments in beforeCloseArgs.
+        args is a tuple of arguments to the function (default is an empty tuple).
+        The function will be called with the still-open GDAL Dataset object as
+        its first argument, and then all the arguments in args, as follows::
+
+            func(dataset, *args)
 
         """
         self.setOptionForImagename('callBeforeClose', imagename,
-            (beforeCloseFunc, beforeCloseArgs))
+            (func, args))
 
     def emulateOldJobManager(self):
         """
