@@ -864,9 +864,9 @@ class ApplierControls(object):
         Set a function and its arguments, to be called on an output image,
         just before it is closed.
 
-        The function has the following call sequence::
-
-            beforeCloseFunc(outputDataset, *beforeCloseArgs)
+        beforeCloseArgs is a tuple of arguments to the function. The function
+        will be called with the still-open GDAL Dataset object as its first
+        argument, and then all the arguments in beforeCloseArgs.
 
         """
         self.setOptionForImagename('callBeforeClose', imagename,
