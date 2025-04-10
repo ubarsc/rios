@@ -278,6 +278,11 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testbeforeclose
+    ok = testbeforeclose.run()
+    if not ok:
+        failureCount += 1
+
     from . import testrat
     ok = testrat.run()
     if not ok:

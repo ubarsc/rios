@@ -108,6 +108,7 @@ class ApplierControls(object):
         * **approxStats**       Allow approx stats (much faster)
         * **layerselection**  List of selected layer numbers for input
         * **jobName**         String name for this job, for cosmetic use only
+        * **callBeforeClose**   Function and args to call before closing output file
     
     Options relating to vector input files
         * **burnvalue**       Value to burn into raster from vector
@@ -154,6 +155,7 @@ class ApplierControls(object):
         self.approxStats = False
         self.layerselection = None
         self.jobName = None
+        self.callBeforeClose = None
 
         # Vector fields
         self.burnvalue = 1
@@ -856,6 +858,19 @@ class ApplierControls(object):
 
         """
         self.setOptionForImagename('approxStats', imagename, approxStats)
+
+    def setCallBeforeClose(self, beforeCloseFunc, beforeCloseArgs, imagename=None):
+        """
+        Set a function and its arguments, to be called on an output image,
+        just before it is closed.
+
+        The function has the following call sequence::
+
+            beforeCloseFunc(outputDataset, *beforeCloseArgs)
+
+        """
+        self.setOptionForImagename('callBeforeClose', imagename,
+            (beforeCloseFunc, beforeCloseArgs))
 
     def emulateOldJobManager(self):
         """

@@ -838,8 +838,8 @@ class Timers:
         ]
         fieldOrder = ['reading', 'startcomputeworkers', 'userfunction',
             'writing', 'pyramids', 'basicstats', 'stats+histogram', 'histogram',
-            'insert_readbuffer', 'pop_readbuffer', 'insert_computebuffer',
-            'pop_computebuffer']
+            'beforeclose', 'insert_readbuffer', 'pop_readbuffer',
+            'insert_computebuffer', 'pop_computebuffer']
         for name in fieldOrder:
             if name in d:
                 line = "{:20s}    {:8.1f}".format(name, d[name]['tot'])
