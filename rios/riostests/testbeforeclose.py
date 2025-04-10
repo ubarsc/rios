@@ -36,7 +36,7 @@ def run():
 
     # Check that the function ran OK
     ds = gdal.Open(outfile)
-    val = ds.GetMetadataItem(nameValPair[0]) + 'z'
+    val = ds.GetMetadataItem(nameValPair[0])
     ok = (val == nameValPair[1])
     if not ok:
         msg = "Failed in call to 'beforeClose' function"
