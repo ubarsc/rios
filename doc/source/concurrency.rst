@@ -202,9 +202,25 @@ to be the most useful for the majority of users.
 
 The other compute worker kinds should be regarded as somewhat experimental.
 They are all intended to provide ways of making greater use of a larger
-cluster which is managed by some kind of batch system, but the complexities
-of this may mean they are more trouble than they are worth. Feedback is
-welcome.
+cluster of machines, which is managed by some kind of batch system, but
+the complexities of this may mean they are more trouble than they are worth.
+Feedback is welcome.
+
+The degree of speed-up achieved by using multiple compute workers follows a
+theoretical 1/N curve. So, if the number of compute workers is N, the total
+elapsed wall clock time spent in doing the computation over the whole raster
+will be proportional to 1/N, assuming that all workers are able to work
+to their full capacity. The main implications of this are:
+
+* The incremental benefit of adding a single worker diminishes as N increases
+* Doubling the number of compute workers should always halve the elapsed time,
+  at any level of N
+  
+For example, if the single-threaded compute time is 30 hours, using 2 worker
+will reduce this to 15. With 5 workers it would take 30 / 5 = 6 hours, while
+using 10 workers would take only 30 / 10 = 3 hours. However, adding one more
+worker to this would reduce it to 30 / 11 = 2.73 hours, so at larger N,
+the benefit of one more worker is much less.
 
 **CW_THREADS**
 
@@ -217,13 +233,13 @@ multi-CPU machine, with few restrictions on how many threads a single
 program may use. Set the number of computeWorkers to be a little below the
 number of CPUs (or CPU cores) available. Each compute worker does no reading
 of its own, and just uses the block buffers to supply it with blocks of
-data to compute with. The computeWorkersRead argument should be set to False.
+data to compute with.
 
 Since all threads are within the same Python instance, if the user is doing
 computation which does not release the Python GIL, then this may limit the
 amount of parallel computation. Most operations with tools like numpy and 
 scipy do release the GIL, and so it is not usually a problem. See CW_SUBPROC
-as a possible alternative.
+as a possible alternative if this situation does arise.
 
 **CW_ECS**
 
@@ -236,7 +252,7 @@ The simplest (and preferred) way to use this is to
 have the resources provided by the AWS Fargate system. If this is too limiting,
 e.g. if an unsupported instance type is required, then a more general
 configuration can be used, where the ECS cluster is managed using explicit
-EC2 instances.
+EC2 instances, which are created and deleted automatically.
 
 The configuration is passed as the computeWorkerExtraParams argument to
 the ConcurrencyStyle constructor. This argument is a Python dictionary, and
@@ -248,7 +264,7 @@ The boto3 functions supported are
 * ECS.Client.register_task_definition
 * ECS.Client.run_task
 
-The ECSComputeManagerMgr subclass provides some helper functions to generate
+The ECSComputeWorkerMgr subclass provides some helper functions to generate
 the extra params dictionary for the most obvious configurations. In particular,
 there is :func:`rios.computemanager.ECSComputeWorkerMgr.makeExtraParams_Fargate`, to
 support using Fargate ECS cluster launch type, and
@@ -271,8 +287,7 @@ The typical Fargate-based example would look something like this
         computeWorkerKind=CW_ECS,
         computeWorkerExtraParams=extraParams,
         numComputeWorkers=4,
-        numReadWorkers=2,
-        computeWorkersRead=True,
+        numReadWorkers=2
         )
     controls.setConcurrencyStyle(conc)
 
@@ -289,6 +304,9 @@ running the main thread should be configured to allow connections on sockets in
 that range.
 
 **CW_AWSBATCH**
+
+This should be regarded as obsolete, and will probably be deprecated in future.
+Its use is not recommended.
 
 Each compute worker runs as a separate AWS Batch job. Specific AWS infrastructure
 needs to be available. See :doc:`awsbatch` for more information. Note that no
@@ -320,26 +338,25 @@ this should be used with caution.
 
 Since PBS is generally used to manage a whole cluster, each compute worker may
 be running on a separate machine. This makes it quite advantageous to have each
-worker do its own reading, so one would usually run with
-computeWorkersRead=True. However, in some situations, the batch nodes may be 
-unable to read the input data directly (e.g. they may be on a private network 
-with no direct access to the wider internet), in which case one would set 
-computeWorkersRead=False.
+worker do its own reading, which is how it will default. However, in some
+situations, the batch nodes may be unable to read the input data directly
+(e.g. they may be on a private network with no direct access to the wider
+internet), in which case one would set computeWorkersRead=False.
 
 Setting singleBlockComputeWorkers=True will generate a separate compute worker,
 and thus a separate PBS job, for each block of processing (thus it ignores
 numComputeWorkers, which is taken to be equal to the number of blocks to
-process). This would be
-a good option in a PBS cluster which prioritizes short jobs over long ones, as
-the PBS scheduler would find it easy to allocate each of the individual jobs,
-and so throughput would be quite high. However, it does imply a reasonable 
-level of availability on the queue. The main originating thread will be waiting
-for some output to come from the individual jobs, and if they get stuck
-behind other jobs for too long, the main job will timeout. This may require a
-much larger value for computeBufferPopTimeout.
+process). This would be a good option in a PBS cluster which prioritizes
+short jobs over long ones, as the PBS scheduler would find it easy to allocate
+each of the individual jobs, and so throughput would be quite high. However,
+it does imply a reasonable level of availability on the queue. The main
+originating thread will be waiting for some output to come from the individual
+jobs, and if they get stuck behind other jobs for too long, the main job will
+timeout. This may require a much larger value for computeBufferPopTimeout.
 
 Communication between the jobs and the main thread is handled via a network
-socket, which is managed by an extra thread running in the main process. 
+socket (in the range 30000-50000), which is managed by an extra thread running
+in the main process. 
 That last point means that the main script may run one more thread than you
 expect. By default, the network address of this socket is passed to the compute
 worker jobs via a small file in a shared temporary directory. If no
@@ -398,10 +415,6 @@ useful alternative to CW_THREADS, for tasks which do not release the GIL.
 However, apart from that, there is probably no good reason to use this, and
 CW_THREADS is preferred.
 
-Since all workers are on the same machine, there is no particular benefit to 
-having each worker do its own reading, so this should be used with
-computeWorkersRead=False.
-
 Style Summary Table
 -------------------
 This table summarizes a few of the most common combinations of parameters
@@ -430,18 +443,19 @@ in the docstring for :class:`rios.structures.ConcurrencyStyle`.
        into the output buffer. The main loop pops available blocks from the
        output buffer and writes them. There is a total of *n+m+1* threads
        running. In a compute-bound task, just 1 read worker may be enough.
-   * - numReadWorkers=n computeWorkerKind=CW_AWSBATCH numComputeWorkers=m
-       computeWorkersRead=True
-     - Runs *m* batch jobs with a single compute worker thread each, on
-       separate machines. Each compute worker has *n* read worker threads,
-       plus the compute thread. The computed blocks are put into the output
-       buffer. The main thread, on the originating machine, pops blocks out
+   * - numReadWorkers=n computeWorkerKind=CW_ECS numComputeWorkers=m
+       computeWorkerExtraParams={....}
+     - Uses *m* separate ECS VMs, one for each compute worker, with *n*
+       read workers on each machine. These VMs are started and stopped
+       automatically by RIOS. Typically *n* should be small (e.g. 1 or 2).
+       The computed output blocks are put into the output buffer. The main
+       thread, running on the originating machine, pops blocks out
        of the output buffer and writes them. It maintains 1 extra thread to
        manage the socket for communicating with worker machines. The
-       originating process thus has 2 threads, while each of the *m* batch
-       jobs has a single process with a total of *n+1* threads.
+       originating process thus has 2 threads, while each of the *m* compute
+       workers has a single process with *n+1* threads.
 
-       This description also applies to CW_PBS and CW_SLURM.
+       Most of this description also applies to CW_PBS and CW_SLURM.
 
 Deprecated Code
 ---------------

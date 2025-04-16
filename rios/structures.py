@@ -128,7 +128,8 @@ class ConcurrencyStyle:
             computation happens within the main processing loop.
         computeWorkersRead: bool
             The default is None, which means that a sensible True/False
-            choice will be made by the selected computeWorkerKind.
+            choice will be made by the selected computeWorkerKind. In most
+            cases, this should be left to default.
 
             If True, then each compute worker does its own reading,
             possibly with its own pool of read worker threads
