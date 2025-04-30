@@ -7,7 +7,7 @@ import argparse
 from osgeo import gdal
 
 from rios import applier
-from rios.structures import NetworkDataChannel, Timers, WorkerErrorRecord
+from rios.structures import NetworkDataChannel, WorkerErrorRecord
 
 
 # Compute workers in separate processes should always use GDAL exceptions,
@@ -93,9 +93,7 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
             otherArgs, controls, allInfo, workinggrid, blockList,
             outBlockBuffer, inBlockBuffer, workerID, forceExit)
 
-        # Make a pickleable version of the timings
-        timings = Timers(pairs=rtn.timings.pairs, withlock=False)
-        dataChan.outqueue.put(timings)
+        dataChan.outqueue.put(rtn.timings)
         if otherArgs is not None:
             dataChan.outqueue.put(otherArgs)
     except Exception as e:
