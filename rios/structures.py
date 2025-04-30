@@ -747,18 +747,12 @@ class Timers:
     time when this operation was carried out.
 
     The object is thread-safe, so multiple threads can accumulate to
-    the same names.
+    the same names. The object is also pickle-able.
 
     """
-    def __init__(self, pairs=None, withlock=True):
-        if pairs is None:
-            self.pairs = {}
-        else:
-            self.pairs = pairs
-        if withlock:
-            self.lock = threading.Lock()
-        else:
-            self.lock = None
+    def __init__(self):
+        self.pairs = {}
+        self.lock = threading.Lock()
 
     @contextlib.contextmanager
     def interval(self, intervalName):
@@ -859,6 +853,22 @@ class Timers:
                     reportLines.append(line)
         reportStr = '\n'.join(reportLines)
         return reportStr
+
+    def __getstate__(self):
+        """
+        Ensure pickleability by omitting the lock attribute
+        """
+        d = {}
+        d.update(self.__dict__)
+        d.pop('lock')
+        return d
+
+    def __setstate__(self, state):
+        """
+        For unpickling, add a new lock attribute
+        """
+        self.__dict__.update(state)
+        self.lock = threading.Lock()
 
 
 class NetworkDataChannel:
