@@ -507,8 +507,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             # Grab all the container exit codes/reasons. Note that we
             # know we have only one container per task.
             ctrDescrList = [t['containers'][0] for t in descr['tasks']]
-            ecList = [(c['exitCode'], c['reason']) for c in ctrDescrList]
-            exitCodeList.extend(ecList)
+            for c in ctrDescrList:
+                if 'exitCode' in c and 'reason' in c:
+                    exitCodeList.append((c['exitCode'], c['reason']))
             i = j
 
         for f in failures:
