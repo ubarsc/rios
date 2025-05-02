@@ -361,6 +361,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             self.ec2client.terminate_instances(InstanceIds=instIdList)
             self.waitClusterInstanceCount(self.clusterName, 0)
         if self.createdCluster:
+            self.waitClusterTasksFinished()
             self.ecsClient.delete_cluster(cluster=self.clusterName)
 
     @staticmethod
@@ -417,6 +418,22 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                     count = descr['registeredContainerInstancesCount']
         return count
 
+    def getClusterTaskCount(self):
+        """
+        Query the cluster, and return the number of tasks it has.
+        This is the total of running and pending tasks.
+        If the cluster does not exist, return None.
+        """
+        count = None
+        clusterName = self.clusterName
+        response = self.ecsClient.describe_clusters(clusters=[clusterName])
+        if 'clusters' in response:
+            for descr in response['clusters']:
+                if descr['clusterName'] == clusterName:
+                    count = (descr['runningTasksCount'] +
+                             descr['pendingTasksCount'])
+        return count
+
     def waitClusterInstanceCount(self, clusterName, endInstanceCount):
         """
         Poll the given cluster until the instanceCount is equal to the
@@ -437,6 +454,25 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if timeExceeded and (instanceCount != endInstanceCount):
             msg = ("Cluster instance count timeout ({} seconds). ".format(timeout) +
                    "See extraParams['waitClusterInstanceCountTimeout']")
+            raise rioserrors.TimeoutError(msg)
+
+    def waitClusterTasksFinished(self):
+        """
+        Poll the given cluster until the number of tasks reaches zero
+        """
+        taskCount = self.getClusterTaskCount()
+        startTime = time.time()
+        timeout = 20
+        timeExceeded = False
+        while ((taskCount > 0) and (not timeExceeded)):
+            time.sleep(5)
+            taskCount = self.getClusterTaskCount()
+            timeExceeded = (time.time() > (startTime + timeout))
+
+        # If we exceeded timeout without reaching zero,
+        # raise an exception
+        if timeExceeded and (taskCount > 0):
+            msg = ("Cluster task count timeout ({} seconds). ".format(timeout))
             raise rioserrors.TimeoutError(msg)
 
     def createTaskDef(self):
