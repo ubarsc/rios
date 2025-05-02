@@ -346,6 +346,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         self.forceExit.set()
         self.makeOutObjList()
+        self.waitClusterTasksFinished()
         self.checkTaskErrors()
         if hasattr(self, 'dataChan'):
             self.dataChan.shutdown()
@@ -364,7 +365,6 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             self.ec2client.terminate_instances(InstanceIds=instIdList)
             self.waitClusterInstanceCount(self.clusterName, 0)
         if self.createdCluster:
-            self.waitClusterTasksFinished()
             self.ecsClient.delete_cluster(cluster=self.clusterName)
 
     @staticmethod
