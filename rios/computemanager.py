@@ -498,17 +498,26 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         TASKS_PER_PAGE = 100
         i = 0
         failures = []
+        exitCodeList = []
         while i < numTasks:
             j = i + TASKS_PER_PAGE
             descr = self.ecsClient.describe_tasks(cluster=self.clusterName,
                 tasks=self.taskArnList[i:j])
             failures.extend(descr['failures'])
+            # Grab all the container exit codes/reasons
+            ctrDescrList = [t['containers'] for t in descr['tasks']]
+            ecList = [(c['exitCode'], c['reason']) for c in ctrDescrList]
+            exitCodeList.extend(ecList)
             i = j
 
         for f in failures:
-            print("Error in ECS task:", f['reason'], file=sys.stderr)
+            print("Failure in ECS task:", f['reason'], file=sys.stderr)
             print("    ", f['details'], file=sys.stderr)
             print(file=sys.stderr)
+        for (exitCode, reason) in exitCodeList:
+            if exitCode != 0:
+                print("Error in ECS task container:", reason, file=sys.stderr)
+                print(file=sys.stderr)
 
     @staticmethod
     def makeExtraParams_Fargate(jobName=None, containerImage=None,
