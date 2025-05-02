@@ -298,7 +298,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         # Create ECS cluster (if requested)
         try:
-            self.createCluster(numWorkers)
+            self.createCluster()
+            self.runInstances(numWorkers)
         except Exception as e:
             self.shutdownCluster()
             raise e
@@ -318,9 +319,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             workerCmdArgs = ['-i', str(workerID), '--channaddr', channAddr]
             containerOverrides['command'] = workerCmdArgs
 
-            runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
+            self.runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
 
-            failuresList = runTaskResponse['failures']
+            failuresList = self.runTaskResponse['failures']
             if len(failuresList) > 0:
                 self.dataChan.shutdown()
                 msgList = []
@@ -342,6 +343,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         self.forceExit.set()
         self.makeOutObjList()
+        self.checkTaskErrors()
         if hasattr(self, 'dataChan'):
             self.dataChan.shutdown()
 
@@ -374,22 +376,27 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             jobIDstr = "{}-{}".format(jobName, hexStr)
         return jobIDstr
 
-    def createCluster(self, numWorkers):
+    def createCluster(self):
         """
-        If requested to do so, create an ECS cluster to run on. Requires kwArgs
-        for both ECS.Client.create_cluster() and EC2.Client.run_instances().
+        If requested to do so, create an ECS cluster to run on.
+        """
+        createCluster_kwArgs = self.extraParams.get('create_cluster')
+        if createCluster_kwArgs is not None:
+            self.clusterName = createCluster_kwArgs.get('clusterName')
+            self.ecsClient.create_cluster(**createCluster_kwArgs)
+            self.createdCluster = True
+
+    def runInstances(self, numWorkers):
+        """
+        If requested to do so, run the instances required to populate
+        the cluster
         """
         self.waitClusterInstanceCountTimeout = self.extraParams.get(
             'waitClusterInstanceCountTimeout',
             self.defaultWaitClusterInstanceCountTimeout)
 
-        createCluster_kwArgs = self.extraParams.get('create_cluster')
         runInstances_kwArgs = self.extraParams.get('run_instances')
-        if createCluster_kwArgs is not None and runInstances_kwArgs is not None:
-            self.clusterName = createCluster_kwArgs.get('clusterName')
-            self.ecsClient.create_cluster(**createCluster_kwArgs)
-            self.createdCluster = True
-
+        if runInstances_kwArgs is not None:
             self.ec2client = boto3.client('ec2')
 
             response = self.ec2client.run_instances(**runInstances_kwArgs)
@@ -442,11 +449,35 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             taskDefResponse = self.ecsClient.register_task_definition(**taskDef_kwArgs)
             self.taskDefArn = taskDefResponse['taskDefinition']['taskDefinitionArn']
 
+    def checkTaskErrors(self):
+        """
+        Check for errors in any of the worker tasks, and report to stderr.
+        """
+        taskList = self.runTaskResponse['tasks']
+        taskArnList = [taskResp['taskArn'] for taskResp in taskList]
+        numTasks = len(taskArnList)
+        # The describe_tasks call will only take this many at a time, so we
+        # have to page through.
+        TASKS_PER_PAGE = 100
+        i = 0
+        failures = []
+        while i < numTasks:
+            j = i + TASKS_PER_PAGE
+            descr = self.ecsClient.describe_tasks(cluster=self.clusterName,
+                tasks=taskArnList[i:j])
+            failures.extend(descr['failures'])
+            i = j
+
+        for f in failures:
+            print("Error in ECS task:", f['reason'], file=sys.stderr)
+            print("    ", f['details'], file=sys.stderr)
+            print(file=sys.stderr)
+
     @staticmethod
     def makeExtraParams_Fargate(jobName=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None, subnets=None,
             securityGroups=None, cpu='0.5 vCPU', memory='1GB',
-            cpuArchitecture=None, clusterName='default'):
+            cpuArchitecture=None):
         """
         Helper function to construct a minimal computeWorkerExtraParams
         dictionary suitable for using ECS with Fargate launchType, given
@@ -486,9 +517,6 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         cpuArchitecture: str
             If given, selects the CPU architecture of the hosts to run worker on.
             Can be 'ARM64', defaults to 'X86_64'.
-        clusterName: str
-            If given, Fargate will use this cluster name instead of the default,
-            which is called "default".
 
         Only certain combinations of cpu and memory are allowed, as these are used
         by Fargate to select a suitable VM instance type. See ESC.Client.run_task()
@@ -498,6 +526,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
         containerName = 'RIOS_{}_container'.format(jobIDstr)
         taskFamily = "RIOS_{}_task".format(jobIDstr)
+        clusterName = "RIOS_{}_cluster".format(jobIDstr)
+
+        createClusterParams = {"clusterName": clusterName}
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
@@ -538,6 +569,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         extraParams = {
             'register_task_definition': taskDefParams,
+            'create_cluster': createClusterParams,
             'run_task': runTaskParams
         }
         return extraParams
