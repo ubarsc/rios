@@ -504,8 +504,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             descr = self.ecsClient.describe_tasks(cluster=self.clusterName,
                 tasks=self.taskArnList[i:j])
             failures.extend(descr['failures'])
-            # Grab all the container exit codes/reasons
-            ctrDescrList = [t['containers'] for t in descr['tasks']]
+            # Grab all the container exit codes/reasons. Note that we
+            # know we have only one container per task.
+            ctrDescrList = [t['containers'][0] for t in descr['tasks']]
             ecList = [(c['exitCode'], c['reason']) for c in ctrDescrList]
             exitCodeList.extend(ecList)
             i = j
