@@ -314,14 +314,17 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if self.createdCluster:
             runTask_kwArgs['cluster'] = self.clusterName
 
+        self.taskArnList = []
         for workerID in range(numWorkers):
             # Construct the command args entry with the current workerID
             workerCmdArgs = ['-i', str(workerID), '--channaddr', channAddr]
             containerOverrides['command'] = workerCmdArgs
 
-            self.runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
+            runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
+            taskResp = runTaskResponse['tasks'][0]
+            self.taskArnList.append(taskResp['taskArn'])
 
-            failuresList = self.runTaskResponse['failures']
+            failuresList = runTaskResponse['failures']
             if len(failuresList) > 0:
                 self.dataChan.shutdown()
                 msgList = []
@@ -489,9 +492,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         Check for errors in any of the worker tasks, and report to stderr.
         """
-        taskList = self.runTaskResponse['tasks']
-        taskArnList = [taskResp['taskArn'] for taskResp in taskList]
-        numTasks = len(taskArnList)
+        numTasks = len(self.taskArnList)
         # The describe_tasks call will only take this many at a time, so we
         # have to page through.
         TASKS_PER_PAGE = 100
@@ -500,7 +501,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         while i < numTasks:
             j = i + TASKS_PER_PAGE
             descr = self.ecsClient.describe_tasks(cluster=self.clusterName,
-                tasks=taskArnList[i:j])
+                tasks=self.taskArnList[i:j])
             failures.extend(descr['failures'])
             i = j
 
