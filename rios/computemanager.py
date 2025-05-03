@@ -405,8 +405,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
             response = self.ec2client.run_instances(**runInstances_kwArgs)
             self.instanceList = response['Instances']
+            numInstances = len(self.instanceList)
             self.createdInstances = True
-            self.waitClusterInstanceCount(self.clusterName, numWorkers)
+            self.waitClusterInstanceCount(self.clusterName, numInstances)
 
     def getClusterInstanceCount(self, clusterName):
         """
@@ -640,7 +641,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         numInstances: int
             Number of VM instances which will comprise the private ECS cluster.
             The RIOS compute workers will be distributed across these, so it
-            makes sense to have the same number of instances, i.e. one work
+            makes sense to have the same number of instances, i.e. one worker
             on each instance.
         ami: str
             Amazon Machine Image ID string. This should be for an ECS-Optimized
@@ -690,7 +691,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             "ImageId": ami,
             "InstanceType": instanceType,
             "MaxCount": numInstances,
-            "MinCount": numInstances,
+            "MinCount": 1,
             "SecurityGroupIds": securityGroups,
             "SubnetId": subnet,
             "IamInstanceProfile": {"Arn": instanceProfileArn},
