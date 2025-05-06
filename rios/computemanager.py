@@ -514,8 +514,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             i = j
 
         for f in failures:
-            print("Failure in ECS task:", f['reason'], file=sys.stderr)
-            print("    ", f['details'], file=sys.stderr)
+            print("Failure in ECS task:", f.get('reason'), file=sys.stderr)
+            print("    ", f.get('details'), file=sys.stderr)
         for (exitCode, reason) in exitCodeList:
             if exitCode != 0:
                 print("Error in ECS task container:", reason, file=sys.stderr)
