@@ -1114,7 +1114,9 @@ class TempfileManager:
 
 class ApplierReturn:
     """
-    Hold all objects returned by the applier.apply() function
+    Hold all objects returned by the applier.apply() function. Some fields
+    are useful operationally, while others are purely for information about
+    the inner workings of RIOS.
 
     Fields
         timings: an instance of :class:`rios.structures.Timers`
@@ -1128,6 +1130,14 @@ class ApplierReturn:
             finished, and the list of these is made available on this return
             object. The user is then free to merge these in whatever way is
             suitable.
+
+        workinggrid: an instance of :class:`rios.pixelgrid.PixelGridDefn`
+            The final working grid
+
+        singlepassMgr: an instance of :class:`rios.calcstats.SinglePassManager`
+            The object which manages the workings of single-pass output
+            operations for pyramids (overviews), basic statistics, and
+            histograms.
 
     """
     def __init__(self):
