@@ -26,6 +26,7 @@ thing being tested.
 from __future__ import print_function, division
 
 import platform
+import socket
 
 import numpy
 from osgeo import gdal
@@ -45,6 +46,27 @@ DEFAULT_YTOP = 7000000
 DEFAULT_EPSG = 28355
 
 platformName = platform.system()
+
+
+def checkBindSocket():
+    """
+    Check whether we can bind a socket. Needed because Github's server's
+    have stopped allowing this, so we need to disable tests which use
+    the NetworkDataChannel structure.
+
+    Return True if bind() works, false otherwise.
+    """
+    hostname = socket.gethostname()
+    canBind = True
+    with socket.socket(socket.AF_INET) as sock:
+        try:
+            sock.bind((hostname, 0))
+        except OSError:
+            canBind = False
+    return canBind
+
+
+CAN_BIND_SOCKET = checkBindSocket()
 
 
 def createTestFile(filename, numRows=DEFAULT_ROWS, numCols=DEFAULT_COLS, 

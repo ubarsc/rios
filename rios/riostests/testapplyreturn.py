@@ -36,6 +36,9 @@ def run():
     if structures.cloudpickle is None:
         riostestutils.report(TESTNAME, "Skipped, as cloudpickle unavailable")
         return True
+    if not riostestutils.CAN_BIND_SOCKET:
+        riostestutils.report(TESTNAME, "Skipped, as cannot bind socket")
+        return True
     
     ramp1 = 'ramp1.img'
     riostestutils.genRampImageFile(ramp1)
