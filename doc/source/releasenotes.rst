@@ -1,6 +1,18 @@
 Release Notes
 =============
 
+Version 2.0.7 (2025-05-11)
+--------------------------
+New Features
+  * CW_ECS compute worker kind. Provides compute workers on AWS ECS, supporting
+    workers on Fargate or on special EC2 instances (https://github.com/ubarsc/rios/pull/130)
+  * Added controls.setCallBeforeClose() for special effects just before an
+    output file is closed (https://github.com/ubarsc/rios/pull/135)
+  * CW_PBS/CW_SLURM can now use the new computeWorkerExtraParams argument (https://github.com/ubarsc/rios/pull/134
+
+Bug Fixes
+  * Workaround for negative null bug in GDAL 3.9.0 & 3.9.1 (https://github.com/ubarsc/rios/pull/129)
+
 Version 2.0.6 (2025-02-17)
 --------------------------
 Bug Fixes

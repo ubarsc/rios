@@ -96,7 +96,8 @@ def run():
         riostestutils.genRampImageFile(fn, nullVal=nullval)
 
     numComputeWorkers = min(2, cpu_count())
-    if structures.cloudpickle is not None and numComputeWorkers > 1:
+    if (structures.cloudpickle is not None and numComputeWorkers > 1 and
+            riostestutils.CAN_BIND_SOCKET):
         # We want this to work across threads and processes
         conc = applier.ConcurrencyStyle(numReadWorkers=2,
             numComputeWorkers=numComputeWorkers,
@@ -114,8 +115,15 @@ def run():
             riostestutils.report(TESTNAME, msg)
         allOK = (ok and allOK)
     else:
-        riostestutils.report(TESTNAME,
-            "Skipping process test, as cloudpickle unavailable")
+        if structures.cloudpickle is None:
+            riostestutils.report(TESTNAME,
+                "Skipping process test, as cloudpickle unavailable")
+        if not riostestutils.CAN_BIND_SOCKET:
+            riostestutils.report(TESTNAME,
+                "Skipping process test, as cannot bind socket")
+        if numComputeWorkers == 1:
+            riostestutils.report(TESTNAME,
+                "Skipping process test, as only 1 cpu")
     
     # Clean up
     for fn in [filename, infiles.img1] + infiles.img2:
