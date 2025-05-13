@@ -532,38 +532,38 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         Returns a Python dictionary.
 
-        jobName: str
+        jobName : str
             Arbitrary string, optional. If given, this name will be incorporated
             into some AWS/ECS names for the compute workers, including the
             container name and the task family name.
-        containerImage: str
+        containerImage : str
             Required. URI of the container image to use for compute workers. This
             container must have RIOS installed. It can be the same container as
             used for the main script, as the entry point is over-written.
-        executionRoleArn: str
+        executionRoleArn : str
             Required. ARN for an AWS role. This allows ECS to use AWS services on
             your behalf. A good start is a role including
             AmazonECSTaskExecutionRolePolicy, which allows access to ECR
             container registries and CloudWatch logs.
-        taskRoleArn: str
+        taskRoleArn : str
             Required. ARN for an AWS role. This allows your code to use AWS
             services. This role should include policies such as AmazonS3FullAccess,
             covering any AWS services your compute workers will need.
-        subnets: list of str
+        subnets : list of str
             Required. List of subnet ID strings associated with the VPC in which
             workers will run.
-        securityGroups: list of str
+        securityGroups : list of str
             Required. List of security group IDs associated with the VPC.
-        cpu: str
+        cpu : str
             Number of CPU units requested for each compute worker, expressed in
             AWS's own units. For example, '0.5 vCPU', or '1024' (which
             corresponds to the same thing). Both must be strings. This helps
             Fargate to select a suitable VM instance type (see below).
-        memory: str
+        memory : str
             Amount of memory requested for each compute worker, expressed in MiB,
             or with a units suffix. For example, '1024' or its equivalent '1GB'.
             This helps Fargate to select a suitable VM instance type (see below).
-        cpuArchitecture: str
+        cpuArchitecture : str
             If given, selects the CPU architecture of the hosts to run worker on.
             Can be 'ARM64', defaults to 'X86_64'.
 
@@ -636,47 +636,47 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         Returns a Python dictionary.
 
-        jobName: str
+        jobName : str
             Arbitrary string, optional. If given, this name will be incorporated
             into some AWS/ECS names for the compute workers, including the
             container name and the task family name.
-        numInstances: int
+        numInstances : int
             Number of VM instances which will comprise the private ECS cluster.
             The RIOS compute workers will be distributed across these, so it
             makes sense to have the same number of instances, i.e. one worker
             on each instance.
-        ami: str
+        ami : str
             Amazon Machine Image ID string. This should be for an ECS-Optimized
             machine image, either as supplied by AWS, or custom-built, but it must
             have the ECS Agent installed. An example would
             be "ami-00065bb22bcbffde0", which is an AWS-supplied ECS-Optimized
             image.
-        instanceType: str
+        instanceType : str
             The string identifying the instance type for the VM instances which
             will make up the ECS cluster. An example would be "a1.medium".
-        containerImage: str
+        containerImage : str
             Required. URI of the container image to use for compute workers. This
             container must have RIOS installed. It can be the same container as
             used for the main script, as the entry point is over-written.
-        executionRoleArn: str
+        executionRoleArn : str
             Required. ARN for an AWS role. This allows ECS to use AWS services on
             your behalf. A good start is a role including
             AmazonECSTaskExecutionRolePolicy, which allows access to ECR
             container registries and CloudWatch logs.
-        taskRoleArn: str
+        taskRoleArn : str
             Required. ARN for an AWS role. This allows your code to use AWS
             services. This role should include policies such as AmazonS3FullAccess,
             covering any AWS services your compute workers will need.
-        subnets: list of str
+        subnets : list of str
             Required. List of subnet ID strings associated with the VPC in which
             workers will run.
-        securityGroups: list of str
+        securityGroups : list of str
             Required. List of security group IDs associated with the VPC.
-        instanceProfileArn: str
+        instanceProfileArn : str
             The IamInstanceProfile ARN to use for the VM instances. This should
             include AmazonEC2ContainerServiceforEC2Role policy, which allows the
             instances to be part of an ECS cluster.
-        memoryReservation: int
+        memoryReservation : int
             Optional. Memory (in MiB) reserved for the containers in each
             compute worker.
 
