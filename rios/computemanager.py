@@ -537,7 +537,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             into some AWS/ECS names for the compute workers, including the
             container name and the task family name.
         containerImage: str
-            Required. URI of the container image to use for compute workers
+            Required. URI of the container image to use for compute workers. This
+            container must have RIOS installed. It can be the same container as
+            used for the main script, as the entry point is over-written.
         executionRoleArn: str
             Required. ARN for an AWS role. This allows ECS to use AWS services on
             your behalf. A good start is a role including
@@ -653,7 +655,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             The string identifying the instance type for the VM instances which
             will make up the ECS cluster. An example would be "a1.medium".
         containerImage: str
-            Required. URI of the container image to use for compute workers
+            Required. URI of the container image to use for compute workers. This
+            container must have RIOS installed. It can be the same container as
+            used for the main script, as the entry point is over-written.
         executionRoleArn: str
             Required. ARN for an AWS role. This allows ECS to use AWS services on
             your behalf. A good start is a role including
