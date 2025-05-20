@@ -261,7 +261,7 @@ and giving this to the controls object::
 
     from rios import applier
 
-    controls = applier.Controls()
+    controls = applier.ApplierControls()
     concurrency = applier.ConcurrencyStyle(numReadWorkers=3)
     controls.setConcurrencyStyle(concurrency)
 
