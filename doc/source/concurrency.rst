@@ -318,6 +318,9 @@ policy, which should include at least the following permissions
 * ecs:RunTask
 * iam:PassRole
 
+Note that these are separate from the permissions required by the compute
+workers themselves, as determined by the executionRole and taskRole.
+
 **CW_AWSBATCH**
 
 This should be regarded as obsolete, and will probably be deprecated in future.
