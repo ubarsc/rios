@@ -303,6 +303,21 @@ network socket in the range 30000-50000. This means that the machine which is
 running the main thread should be configured to allow connections on sockets in
 that range.
 
+The main script needs to run with sufficient permissions to access ECS systems.
+There is an AWS Managed Policy which provides very liberal permissions for this,
+`AmazonECS_FullAccess <https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonECS_FullAccess.html>`_.
+The more cautious system administrator may wish to provide a more restrictive
+policy, which should include at least the following permissions
+
+* ecs:CreateCluster
+* ecs:DeleteCluster
+* ecs:DescribeClusters
+* ecs:RegisterTaskDefinition
+* ecs:DeregisterTaskDefinition
+* ecs:DescribeTasks
+* ecs:RunTask
+* iam:PassRole
+
 **CW_AWSBATCH**
 
 This should be regarded as obsolete, and will probably be deprecated in future.
