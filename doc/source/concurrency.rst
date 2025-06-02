@@ -306,8 +306,10 @@ that range.
 The main script needs to run with sufficient permissions to access ECS systems.
 There is an AWS Managed Policy which provides very liberal permissions for this,
 `AmazonECS_FullAccess <https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AmazonECS_FullAccess.html>`_.
+
 The more cautious system administrator may wish to provide a more restrictive
-policy, which should include at least the following permissions
+policy. For Fargate-based use, this should include at least the following
+permissions
 
 * ecs:CreateCluster
 * ecs:DeleteCluster
@@ -318,8 +320,19 @@ policy, which should include at least the following permissions
 * ecs:RunTask
 * iam:PassRole
 
-Note that these are separate from the permissions required by the compute
-workers themselves, as determined by the executionRole and taskRole.
+For a more general EC2 private cluster, one would also need
+
+* ec2:RunInstances
+* ec2:TerminateInstances
+
+If desired, the `iam:PassRole` permission can be restricted to a minimal set
+of `Condition` clauses which should include
+`StringLike: iam:PassedToService: ecs-tasks.amazonaws.com`
+and `StringLike: iam:PassedToService: ec2.amazonaws.com`
+
+Note that all these permissions are separate from the permissions required
+by the compute workers themselves, as determined by the executionRole and
+taskRole.
 
 **CW_AWSBATCH**
 
