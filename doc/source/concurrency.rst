@@ -325,10 +325,10 @@ For a more general EC2 private cluster, one would also need
 * ec2:RunInstances
 * ec2:TerminateInstances
 
-If desired, the `iam:PassRole` permission can be restricted to a minimal set
-of `Condition` clauses which should include
-`StringLike: iam:PassedToService: ecs-tasks.amazonaws.com`
-and `StringLike: iam:PassedToService: ec2.amazonaws.com`
+If desired, the ``iam:PassRole`` permission can be restricted to a minimal set
+of ``Condition`` clauses which should include
+``StringLike: iam:PassedToService: ecs-tasks.amazonaws.com``
+and ``StringLike: iam:PassedToService: ec2.amazonaws.com``
 
 Note that all these permissions are separate from the permissions required
 by the compute workers themselves, as determined by the executionRole and
