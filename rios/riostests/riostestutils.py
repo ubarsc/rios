@@ -50,7 +50,7 @@ platformName = platform.system()
 
 def checkBindSocket():
     """
-    Check whether we can bind a socket. Needed because Github's server's
+    Check whether we can bind a socket. Needed because Github's servers
     have stopped allowing this, so we need to disable tests which use
     the NetworkDataChannel structure.
 

@@ -321,17 +321,20 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             containerOverrides['command'] = workerCmdArgs
 
             runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
-            taskResp = runTaskResponse['tasks'][0]
-            self.taskArnList.append(taskResp['taskArn'])
+            if len(runTaskResponse['tasks']) > 0:
+                taskResp = runTaskResponse['tasks'][0]
+                self.taskArnList.append(taskResp['taskArn'])
 
             failuresList = runTaskResponse['failures']
             if len(failuresList) > 0:
                 self.dataChan.shutdown()
                 msgList = []
                 for failure in failuresList:
-                    reason = failure['reason']
-                    detail = failure['detail']
-                    msg = "Worker {}: {}\n{}".format(workerID, reason, detail)
+                    reason = failure.get('reason', 'UnknownReason')
+                    detail = failure.get('detail')
+                    msg = "Worker {}: Reason: {}".format(workerID, reason)
+                    if detail is not None:
+                        msg += "\nDetail: {}".format(detail)
                     msgList.append(msg)
                 fullMsg = '\n'.join(msgList)
                 raise rioserrors.ECSError(fullMsg)
@@ -509,8 +512,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             # know we have only one container per task.
             ctrDescrList = [t['containers'][0] for t in descr['tasks']]
             for c in ctrDescrList:
-                if 'exitCode' in c and 'reason' in c:
-                    exitCodeList.append((c['exitCode'], c['reason']))
+                if 'exitCode' in c:
+                    exitCode = c['exitCode']
+                    if exitCode != 0:
+                        reason = c.get('reason', "UnknownReason")
+                        exitCodeList.append((exitCode, reason))
             i = j
 
         for f in failures:
@@ -518,13 +524,14 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             print("    ", f.get('details'), file=sys.stderr)
         for (exitCode, reason) in exitCodeList:
             if exitCode != 0:
-                print("Error in ECS task container:", reason, file=sys.stderr)
+                print("Exit code {} from ECS task container: {}".format(
+                    exitCode, reason), file=sys.stderr)
 
     @staticmethod
     def makeExtraParams_Fargate(jobName=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None, subnets=None,
             securityGroups=None, cpu='0.5 vCPU', memory='1GB',
-            cpuArchitecture=None):
+            cpuArchitecture=None, cloudwatchLogGroup=None):
         """
         Helper function to construct a minimal computeWorkerExtraParams
         dictionary suitable for using ECS with Fargate launchType, given
@@ -566,6 +573,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         cpuArchitecture : str
             If given, selects the CPU architecture of the hosts to run worker on.
             Can be 'ARM64', defaults to 'X86_64'.
+        cloudwatchLogGroup : str or None
+            Optional. Name of CloudWatch log group. If not None, each worker
+            sends a log stream of its stdout & stderr to this log group. The
+            group should already exist. If None, no CloudWatch logging is done.
+            Intended for tracking obscure problems, rather than to use permanently.
 
         Only certain combinations of cpu and memory are allowed, as these are used
         by Fargate to select a suitable VM instance type. See ESC.Client.run_task()
@@ -582,6 +594,19 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         containerDefs = [{'name': containerName,
                           'image': containerImage,
                           'entryPoint': ['/usr/bin/env', 'rios_computeworker']}]
+        if cloudwatchLogGroup is not None:
+            # We are using the default session, so ask it what region
+            session = boto3._get_default_session()
+            regionName = session.region_name
+            # Set up the cloudwatch log configuration
+            containerDefs[0]['logConfiguration'] = {
+                'logDriver': 'awslogs',
+                'options': {
+                    'awslogs-group': cloudwatchLogGroup,
+                    'awslogs-stream-prefix': f'/RIOS_{jobIDstr}',
+                    'awslogs-region': regionName
+                }
+            }
 
         networkConf = {
             'awsvpcConfiguration': {
@@ -628,7 +653,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             ami=None, instanceType=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None,
             subnet=None, securityGroups=None, instanceProfileArn=None,
-            memoryReservation=1024):
+            memoryReservation=1024, cloudwatchLogGroup=None):
         """
         Helper function to construct a basic computeWorkerExtraParams
         dictionary suitable for using ECS with a private per-job cluster,
@@ -678,7 +703,14 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             instances to be part of an ECS cluster.
         memoryReservation : int
             Optional. Memory (in MiB) reserved for the containers in each
-            compute worker.
+            compute worker. This should be small enough to fit well inside the
+            memory of the VM on which it is running. Often best to leave this
+            as default until out-of-memory errors occur, then increase.
+        cloudwatchLogGroup : str or None
+            Optional. Name of CloudWatch log group. If not None, each worker
+            sends a log stream of its stdout & stderr to this log group. The
+            group should already exist. If None, no CloudWatch logging is done.
+            Intended for tracking obscure problems, rather than to use permanently.
 
         """
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
@@ -706,6 +738,19 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                           'image': containerImage,
                           'memoryReservation': memoryReservation,
                           'entryPoint': ['/usr/bin/env', 'rios_computeworker']}]
+        if cloudwatchLogGroup is not None:
+            # We are using the default session, so ask it what region
+            session = boto3._get_default_session()
+            regionName = session.region_name
+            # Set up the cloudwatch log configuration
+            containerDefs[0]['logConfiguration'] = {
+                'logDriver': 'awslogs',
+                'options': {
+                    'awslogs-group': cloudwatchLogGroup,
+                    'awslogs-stream-prefix': f'/RIOS_{jobIDstr}',
+                    'awslogs-region': regionName
+                }
+            }
 
         networkConf = {
             'awsvpcConfiguration': {
