@@ -524,7 +524,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             print("    ", f.get('details'), file=sys.stderr)
         for (exitCode, reason) in exitCodeList:
             if exitCode != 0:
-                print("Error in ECS task container:", reason, file=sys.stderr)
+                print("Error ({}) in ECS task container:", exitCode,
+                    reason, file=sys.stderr)
 
     @staticmethod
     def makeExtraParams_Fargate(jobName=None, containerImage=None,
