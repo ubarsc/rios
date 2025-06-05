@@ -321,17 +321,20 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             containerOverrides['command'] = workerCmdArgs
 
             runTaskResponse = ecsClient.run_task(**runTask_kwArgs)
-            taskResp = runTaskResponse['tasks'][0]
-            self.taskArnList.append(taskResp['taskArn'])
+            if len(runTaskResponse['tasks']) > 0:
+                taskResp = runTaskResponse['tasks'][0]
+                self.taskArnList.append(taskResp['taskArn'])
 
             failuresList = runTaskResponse['failures']
             if len(failuresList) > 0:
                 self.dataChan.shutdown()
                 msgList = []
                 for failure in failuresList:
-                    reason = failure['reason']
-                    detail = failure['detail']
-                    msg = "Worker {}: {}\n{}".format(workerID, reason, detail)
+                    reason = failure.get('reason', 'UnknownReason')
+                    detail = failure.get('detail')
+                    msg = "Worker {}: Reason: {}".format(workerID, reason)
+                    if detail is not None:
+                        msg += "\nDetail: {}".format(detail)
                     msgList.append(msg)
                 fullMsg = '\n'.join(msgList)
                 raise rioserrors.ECSError(fullMsg)
@@ -509,8 +512,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             # know we have only one container per task.
             ctrDescrList = [t['containers'][0] for t in descr['tasks']]
             for c in ctrDescrList:
-                if 'exitCode' in c and 'reason' in c:
-                    exitCodeList.append((c['exitCode'], c['reason']))
+                if 'exitCode' in c:
+                    exitCode = c['exitCode']
+                    if exitCode != 0:
+                        reason = c.get('reason', "UnknownReason")
+                        exitCodeList.append((exitCode, reason))
             i = j
 
         for f in failures:
