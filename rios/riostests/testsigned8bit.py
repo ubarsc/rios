@@ -43,27 +43,26 @@ def run():
     allOK = True
 
     if not hasattr(gdal, 'GDT_Int8'):
-        msg = "GDT_Int8 support only available with GDAL >= 3.7"
+        msg = "Skipped. GDT_Int8 support only available with GDAL >= 3.7"
         riostestutils.report(TESTNAME, msg)
-        allOK = False
+    else:
+        (nRows, nCols) = (1, 256)
+        if allOK:
+            inimg = "int8.tif"
+            outimg = "int8_2.tif"
+            ok = readAndWrite(inimg, outimg, nRows, nCols)
+            allOK = ok
 
-    (nRows, nCols) = (1, 256)
-    if allOK:
-        inimg = "int8.tif"
-        outimg = "int8_2.tif"
-        ok = readAndWrite(inimg, outimg, nRows, nCols)
-        allOK = ok
+        if allOK:
+            ok = checkHistogram(outimg, nCols)
+            allOK = ok
 
-    if allOK:
-        ok = checkHistogram(outimg, nCols)
-        allOK = ok
+        if allOK:
+            riostestutils.report(TESTNAME, "Passed")
 
-    if allOK:
-        riostestutils.report(TESTNAME, "Passed")
-
-    for fn in [inimg, outimg]:
-        if os.path.exists(fn):
-            riostestutils.removeRasterFile(fn)
+        for fn in [inimg, outimg]:
+            if os.path.exists(fn):
+                riostestutils.removeRasterFile(fn)
 
     return allOK
 
