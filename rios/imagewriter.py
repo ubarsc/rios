@@ -159,6 +159,9 @@ def openOutfile(symbolicName, filename, controls, arr, workinggrid):
 
     numBands = arr.shape[0]
     gdalDatatype = gdal_array.NumericTypeCodeToGDALTypeCode(arr.dtype)
+    if gdalDatatype is None:
+        msg = f"Array type {arr.dtype} has no corresponding GDAL data type"
+        raise rioserrors.ImageOpenError(msg)
     (nrows, ncols) = workinggrid.getDimensions()
     geotransform = workinggrid.makeGeoTransform()
     projWKT = workinggrid.projection
