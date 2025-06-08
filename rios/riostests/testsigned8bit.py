@@ -113,9 +113,13 @@ def readAndWrite(inimg, outimg, nRows, nCols):
         msg = f"Output file should be GDT_Int8, actually {band.DataType}"
         riostestutils.report(TESTNAME, msg)
         ok = False
-    arr = band.ReadAsArray()
-    if arr.dtype != numpy.int8:
-        msg = f"Output image data should be int8, actually {arr.dtype}"
+    newArr = band.ReadAsArray()
+    if newArr.dtype != numpy.int8:
+        msg = f"Output image data should be int8, actually {newArr.dtype}"
+        riostestutils.report(TESTNAME, msg)
+        ok = False
+    if (newArr != arr).any():
+        msg = "Output GDT_Int8 data not correctly returned"
         riostestutils.report(TESTNAME, msg)
         ok = False
 
