@@ -25,9 +25,8 @@ import traceback
 
 import numpy
 from osgeo import gdal
-from osgeo.gdal_array import GDALTypeCodeToNumericTypeCode
 
-from rios import applier, VersionObj
+from rios import applier
 
 from rios.riostests import riostestutils
 
