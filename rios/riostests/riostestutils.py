@@ -295,6 +295,11 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testsigned8bit
+    ok = testsigned8bit.run()
+    if not ok:
+        failureCount += 1
+
     from . import testpyramids
     ok = testpyramids.run()
     if not ok:
