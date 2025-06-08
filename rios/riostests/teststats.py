@@ -17,6 +17,7 @@ Test the calculation of statistics by rios.calcstats.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
+import traceback
 
 import numpy
 from osgeo import gdal
@@ -62,6 +63,8 @@ def run():
     if VersionObj(gdal.__version__) >= VersionObj('3.5.2'):
         dataTypesList.append((gdal.GDT_Int64, 30000))
         dataTypesList.append((gdal.GDT_UInt64, 30000))
+    if hasattr(gdal, 'GDT_Int8'):
+        dataTypesList.append((gdal.GDT_Int8, 1))
     
     # We repeat these tests on a number of different drivers, if they are
     # available, as some stats-related things may work fine on some drivers
@@ -203,66 +206,77 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
     controls.setSinglePassBasicStats(singlePass)
     controls.setSinglePassHistogram(singlePass)
 
-    rtn = applier.apply(doit, infiles, outfiles, otherargs, controls=controls)
-
-    # Check whether we actually did single-pass when supposed to
-    singlePassMgr = rtn.singlePassMgr
-    symbolicName = 'outimg'
-    if (singlePassMgr.directPyramidsSupported[symbolicName] and
-            (singlePass is True) and
-            not singlePassMgr.doSinglePassPyramids(symbolicName)):
-        ok = False
-        msg = "Iteration={}\nSingle-pass requested, but not done for pyramids"
+    try:
+        rtn = applier.apply(doit, infiles, outfiles, otherargs,
+            controls=controls)
+    except Exception as e:
+        tbStr = ''.join(traceback.format_exception(e))
+        msg = f"Exception raised\n{iterationName}\n{tbStr}"
         riostestutils.report(TESTNAME, msg)
-
-    if (singlePass is True and
-            not singlePassMgr.doSinglePassStatistics(symbolicName)):
-        ok = False
-        msg = "Iteration={}\nSingle-pass requested, but not done for basic stats"
-        riostestutils.report(TESTNAME, msg)
-
-    if (singlePass is True and
-            not singlePassMgr.doSinglePassHistogram(symbolicName)):
-        ok = False
-        msg = "Iteration={}\nSingle-pass requested, but not done for histogram"
-        riostestutils.report(TESTNAME, msg)
-
-    # Read back the written data as a numpy array
-    ds = gdal.Open(outfiles.outimg)
-    band = ds.GetRasterBand(1)
-    outarr = band.ReadAsArray()
-
-    # Get stats from file, and from array, and compare
-    stats1 = getStatsFromBand(band)
-    if stats1 is not None:
-        stats2 = getStatsFromArray(outarr, nullVal)
-
-        # This relative tolerance is used for comparing the median and mode, 
-        # because those are approximate only, and the likely error depends on the 
-        # size of the numbers in question (thus it depends on the scalefactor). 
-        # Please do not make it any larger unless you have a really solid reason. 
-        relativeTolerance = 0.3 * scalefactor
-        statsOK = compareStats(stats1, stats2, iterationName, relativeTolerance)
-        ok = ok and statsOK
-    elif not omit:
-        msg = "Stats missing, even though not omitting them"
-        riostestutils.report(TESTNAME, 
-            'Iteration={}\n{}'.format(iterationName, msg))
+        rtn = None
         ok = False
 
-    if omit and stats1 is not None:
-        msg = "Stats present, even though directed to omit"
-        riostestutils.report(TESTNAME, 
-            'Iteration={}\n{}'.format(iterationName, msg))
-        ok = False
+    if rtn is not None:
+        # Check whether we actually did single-pass when supposed to
+        singlePassMgr = rtn.singlePassMgr
+        symbolicName = 'outimg'
+        if (singlePassMgr.directPyramidsSupported[symbolicName] and
+                (singlePass is True) and
+                not singlePassMgr.doSinglePassPyramids(symbolicName)):
+            ok = False
+            msg = f"Iteration={iterationName}\nSingle-pass requested, but not done for pyramids"
+            riostestutils.report(TESTNAME, msg)
 
-    if not omit:
-        histOK = checkHistogram(band, outarr, nullVal, iterationName)
-        ok = ok and histOK
+        if (singlePass is True and
+                not singlePassMgr.doSinglePassStatistics(symbolicName)):
+            ok = False
+            msg = f"Iteration={iterationName}\nSingle-pass requested, but not done for basic stats"
+            riostestutils.report(TESTNAME, msg)
 
-    del ds
+        if (singlePass is True and
+                not singlePassMgr.doSinglePassHistogram(symbolicName)):
+            ok = False
+            msg = f"Iteration={iterationName}\nSingle-pass requested, but not done for histogram"
+            riostestutils.report(TESTNAME, msg)
+
+        # Read back the written data as a numpy array
+        ds = gdal.Open(outfiles.outimg)
+        band = ds.GetRasterBand(1)
+        outarr = band.ReadAsArray()
+
+        # Get stats from file, and from array, and compare
+        stats1 = getStatsFromBand(band)
+        if stats1 is not None:
+            stats2 = getStatsFromArray(outarr, nullVal)
+
+            # This relative tolerance is used for comparing the median and mode, 
+            # because those are approximate only, and the likely error depends on the 
+            # size of the numbers in question (thus it depends on the scalefactor). 
+            # Please do not make it any larger unless you have a really solid reason. 
+            relativeTolerance = 0.3 * scalefactor
+            statsOK = compareStats(stats1, stats2, iterationName, relativeTolerance)
+            ok = ok and statsOK
+        elif not omit:
+            msg = "Stats missing, even though not omitting them"
+            riostestutils.report(TESTNAME, 
+                'Iteration={}\n{}'.format(iterationName, msg))
+            ok = False
+
+        if omit and stats1 is not None:
+            msg = "Stats present, even though directed to omit"
+            riostestutils.report(TESTNAME, 
+                'Iteration={}\n{}'.format(iterationName, msg))
+            ok = False
+
+        if not omit:
+            histOK = checkHistogram(band, outarr, nullVal, iterationName)
+            ok = ok and histOK
+
+        del ds
+
     if os.path.exists(outfiles.outimg):
         riostestutils.removeRasterFile(outfiles.outimg)
+
     return ok
 
 
