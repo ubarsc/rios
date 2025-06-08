@@ -249,22 +249,22 @@ def runOneTest(driverName, creationOptions, fileDtype, scalefactor, offset,
         if stats1 is not None:
             stats2 = getStatsFromArray(outarr, nullVal)
 
-            # This relative tolerance is used for comparing the median and mode, 
-            # because those are approximate only, and the likely error depends on the 
-            # size of the numbers in question (thus it depends on the scalefactor). 
-            # Please do not make it any larger unless you have a really solid reason. 
+            # This relative tolerance is used for comparing the median and mode,
+            # because those are approximate only, and the likely error depends on the
+            # size of the numbers in question (thus it depends on the scalefactor).
+            # Please do not make it any larger unless you have a really solid reason.
             relativeTolerance = 0.3 * scalefactor
             statsOK = compareStats(stats1, stats2, iterationName, relativeTolerance)
             ok = ok and statsOK
         elif not omit:
             msg = "Stats missing, even though not omitting them"
-            riostestutils.report(TESTNAME, 
+            riostestutils.report(TESTNAME,
                 'Iteration={}\n{}'.format(iterationName, msg))
             ok = False
 
         if omit and stats1 is not None:
             msg = "Stats present, even though directed to omit"
-            riostestutils.report(TESTNAME, 
+            riostestutils.report(TESTNAME,
                 'Iteration={}\n{}'.format(iterationName, msg))
             ok = False
 
