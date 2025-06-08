@@ -47,11 +47,10 @@ def run():
         riostestutils.report(TESTNAME, msg)
     else:
         (nRows, nCols) = (1, 256)
-        if allOK:
-            inimg = "int8.tif"
-            outimg = "int8_2.tif"
-            ok = readAndWrite(inimg, outimg, nRows, nCols)
-            allOK = ok
+        inimg = "int8.tif"
+        outimg = "int8_2.tif"
+        ok = readAndWrite(inimg, outimg, nRows, nCols)
+        allOK = ok
 
         if allOK:
             ok = checkHistogram(outimg, nCols)
