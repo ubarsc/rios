@@ -107,6 +107,18 @@ def readAndWrite(inimg, outimg, nRows, nCols):
         riostestutils.report(TESTNAME, msg)
         ok = False
 
+    ds = gdal.Open(outimg)
+    band = ds.GetRasterBand(1)
+    if band.DataType != gdal.GDT_Int8:
+        msg = f"Output file should be GDT_Int8, actually {band.DataType}"
+        riostestutils.report(TESTNAME, msg)
+        ok = False
+    arr = band.ReadAsArray()
+    if arr.dtype != numpy.int8:
+        msg = f"Output image data should be int8, actually {arr.dtype}"
+        riostestutils.report(TESTNAME, msg)
+        ok = False
+
     return ok
 
 
