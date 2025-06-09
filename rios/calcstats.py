@@ -124,7 +124,11 @@ def findOrCreateColumn(ratObj, usage, name, dtype):
 
 
 gdalLargeIntTypes = set([gdal.GDT_Int16, gdal.GDT_UInt16, gdal.GDT_Int32, gdal.GDT_UInt32])
-# hack for GDAL 3.5 and later which suppport 64 bit ints
+# For GDAL 3.7 and later. Not exactly "large int", but we want signed 8-bit
+# to be handled the same way as the large int types
+if hasattr(gdal, 'GDT_Int8'):
+    gdalLargeIntTypes.add(gdal.GDT_Int8)
+# hack for GDAL 3.5 and later which support 64 bit ints
 if hasattr(gdal, 'GDT_Int64'):
     gdalLargeIntTypes.add(gdal.GDT_Int64)
     gdalLargeIntTypes.add(gdal.GDT_UInt64)
@@ -633,6 +637,14 @@ class SinglePassAccumulator:
             self.hist_pos = None
             self.hist_neg = None
 
+        # Corresponding unsigned dtypes to use for negating negative values
+        self.absNegDtype = {
+            numpy.dtype(numpy.int8): numpy.uint8,
+            numpy.dtype(numpy.int16): numpy.uint16,
+            numpy.dtype(numpy.int32): numpy.uint32,
+            numpy.dtype(numpy.int64): numpy.uint64
+        }
+
     def doStatsAccum(self, arr):
         """
         Accumulate basic stats for the given array
@@ -695,7 +707,8 @@ class SinglePassAccumulator:
             self.updateHist(counts, positive=True)
 
             # Counts for (arr < 0)
-            counts = numpy.bincount(-arr[arr < 0])
+            utype = self.absNegDtype[arr.dtype]
+            counts = numpy.bincount(-arr[arr < 0].astype(utype))
             # bincount() always includes zero, but we already count that in
             # the positives, so trim it off
             counts = counts[1:]
