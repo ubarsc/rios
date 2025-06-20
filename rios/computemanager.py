@@ -692,8 +692,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             Required. ARN for an AWS role. This allows your code to use AWS
             services. This role should include policies such as AmazonS3FullAccess,
             covering any AWS services your compute workers will need.
-        subnets : list of str
-            Required. List of subnet ID strings associated with the VPC in which
+        subnet : str
+            A subnet ID string associated with the VPC in which
             workers will run.
         securityGroups : list of str
             Required. List of security group IDs associated with the VPC.
