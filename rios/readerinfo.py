@@ -125,7 +125,9 @@ class ReaderInfo(object):
         self.blockwidth = None
         self.blockheight = None
         
+        #: top left coordinate of current block as a :class:`rios.imageio.Coord`
         self.blocktl = None
+        #: bottom right coordinate of current block as a :class:`rios.imageio.Coord`
         self.blockbr = None
         
         self.xblock = None
@@ -243,7 +245,7 @@ class ReaderInfo(object):
         be what one wants. 
         
         """
-        (tl, _) = (self.blocktl, self.blockbr)
+        tl = self.blocktl
         (nCols, nRows) = self.getBlockSize()
         nCols += 2 * self.overlap
         nRows += 2 * self.overlap
