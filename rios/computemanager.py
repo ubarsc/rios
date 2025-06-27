@@ -709,7 +709,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             services. This role should include policies such as AmazonS3FullAccess,
             covering any AWS services your compute workers will need.
         subnet : str
-            A subnet ID string associated with the VPC in which
+            Required. A subnet ID string associated with the VPC in which
             workers will run.
         securityGroups : list of str
             Required. List of security group IDs associated with the VPC.
