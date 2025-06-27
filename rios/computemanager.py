@@ -530,7 +530,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     @staticmethod
     def makeExtraParams_Fargate(jobName=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None, subnets=None,
-            securityGroups=None, cpu='0.5 vCPU', memory='1GB',
+            subnet=None, securityGroups=None, cpu='0.5 vCPU', memory='1GB',
             cpuArchitecture=None, cloudwatchLogGroup=None):
         """
         Helper function to construct a minimal computeWorkerExtraParams
@@ -556,9 +556,14 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             Required. ARN for an AWS role. This allows your code to use AWS
             services. This role should include policies such as AmazonS3FullAccess,
             covering any AWS services your compute workers will need.
-        subnets : list of str
-            Required. List of subnet ID strings associated with the VPC in which
+        subnet : str
+            Required. Subnet ID string associated with the VPC in which
             workers will run.
+        subnets : list of str
+            Deprecated. List of subnet ID strings associated with the VPC in which
+            workers will run. This is an alternative to specifying a single
+            subnet, but is deprecated, and should not be used. As far as we know,
+            there is no good reason to spread workers across multiple subnets.
         securityGroups : list of str
             Required. List of security group IDs associated with the VPC.
         cpu : str
@@ -607,6 +612,17 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                     'awslogs-region': regionName
                 }
             }
+
+        # Cope with the deprecated list of subnet IDs
+        if subnets is not None and subnet is not None:
+            msg = "makeExtraParams_Fargate cannot use both subnet & subnets"
+            raise ValueError(msg)
+        elif subnet is not None:
+            subnets = [subnet]
+        elif subnets is not None:
+            msg = ("List of subnets is deprecated in makeExtraParams_Fargate. " +
+                   "Use single 'subnet' parameter instead")
+            rioserrors.deprecationWarning(msg)
 
         networkConf = {
             'awsvpcConfiguration': {
@@ -693,7 +709,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             services. This role should include policies such as AmazonS3FullAccess,
             covering any AWS services your compute workers will need.
         subnet : str
-            A subnet ID string associated with the VPC in which
+            Required. A subnet ID string associated with the VPC in which
             workers will run.
         securityGroups : list of str
             Required. List of security group IDs associated with the VPC.
