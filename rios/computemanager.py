@@ -615,12 +615,13 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         # Cope with the deprecated list of subnet IDs
         if subnets is not None and subnet is not None:
-            raise ValueError("Cannot use both subnet & subnets")
+            msg = "makeExtraParams_Fargate cannot use both subnet & subnets"
+            raise ValueError(msg)
         elif subnet is not None:
             subnets = [subnet]
         elif subnets is not None:
-            msg = ("List of subnets is deprecated. Use single 'subnet' " +
-                   "parameter instead")
+            msg = ("List of subnets is deprecated in makeExtraParams_Fargate. " +
+                   "Use single 'subnet' parameter instead")
             rioserrors.deprecationWarning(msg)
 
         networkConf = {
