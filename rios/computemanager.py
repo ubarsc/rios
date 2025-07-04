@@ -468,19 +468,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         Poll the given cluster until the number of tasks reaches zero
         """
         taskCount = self.getClusterTaskCount()
-        startTime = time.time()
-        timeout = 20
-        timeExceeded = False
-        while ((taskCount > 0) and (not timeExceeded)):
+        while (taskCount > 0):
             time.sleep(5)
             taskCount = self.getClusterTaskCount()
-            timeExceeded = (time.time() > (startTime + timeout))
-
-        # If we exceeded timeout without reaching zero,
-        # raise an exception
-        if timeExceeded and (taskCount > 0):
-            msg = ("Cluster task count timeout ({} seconds). ".format(timeout))
-            raise rioserrors.TimeoutError(msg)
 
     def createTaskDef(self):
         """
