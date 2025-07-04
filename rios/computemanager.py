@@ -468,9 +468,13 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         Poll the given cluster until the number of tasks reaches zero
         """
         taskCount = self.getClusterTaskCount()
-        while (taskCount > 0):
+        startTime = time.time()
+        timeout = 50
+        timeExceeded = False
+        while ((taskCount > 0) and (not timeExceeded)):
             time.sleep(5)
             taskCount = self.getClusterTaskCount()
+            timeExceeded = (time.time() > (startTime + timeout))
 
     def createTaskDef(self):
         """
