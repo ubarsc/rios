@@ -347,6 +347,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         Shut down the workers
         """
+        # The order in which the various parts are shut down is critical. Please
+        # do not change this unless you are really sure.
+        # It is also important that all of it happen, so please avoid having
+        # any exceptions raised from within this routine.
         self.forceExit.set()
         self.makeOutObjList()
         self.waitClusterTasksFinished()
@@ -468,6 +472,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             time.sleep(5)
             taskCount = self.getClusterTaskCount()
             timeExceeded = (time.time() > (startTime + timeout))
+
+        # If timeExceeded, then one or more tasks is probably stopped but
+        # not exited. In this case, it is safe to proceed to delete_cluster.
 
     def createTaskDef(self):
         """
