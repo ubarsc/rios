@@ -347,6 +347,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         Shut down the workers
         """
+        # The order in which the various parts are shut down is critical. Please
+        # do not change this unless you are really sure.
+        # It is also important that all of it happen, so please avoid having
+        # any exceptions raised from within this routine.
         self.forceExit.set()
         self.makeOutObjList()
         self.waitClusterTasksFinished()
@@ -456,31 +460,21 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             instanceCount = self.getClusterInstanceCount(clusterName)
             timeExceeded = (time.time() > (startTime + timeout))
 
-        # If we exceeded timeout without reaching endInstanceCount,
-        # raise an exception
-        if timeExceeded and (instanceCount != endInstanceCount):
-            msg = ("Cluster instance count timeout ({} seconds). ".format(timeout) +
-                   "See extraParams['waitClusterInstanceCountTimeout']")
-            raise rioserrors.TimeoutError(msg)
-
     def waitClusterTasksFinished(self):
         """
         Poll the given cluster until the number of tasks reaches zero
         """
         taskCount = self.getClusterTaskCount()
         startTime = time.time()
-        timeout = 20
+        timeout = 50
         timeExceeded = False
         while ((taskCount > 0) and (not timeExceeded)):
             time.sleep(5)
             taskCount = self.getClusterTaskCount()
             timeExceeded = (time.time() > (startTime + timeout))
 
-        # If we exceeded timeout without reaching zero,
-        # raise an exception
-        if timeExceeded and (taskCount > 0):
-            msg = ("Cluster task count timeout ({} seconds). ".format(timeout))
-            raise rioserrors.TimeoutError(msg)
+        # If timeExceeded, then one or more tasks is probably stopped but
+        # not exited. In this case, it is safe to proceed to delete_cluster.
 
     def createTaskDef(self):
         """
