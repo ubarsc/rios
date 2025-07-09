@@ -443,8 +443,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         regionName = self.session.region_name
 
         for instanceId in instanceIdList:
+            # NB AlarmName must be unique, so we include instanceId
             cloudwatchClient.put_metric_alarm(
-                AlarmName="RIOS-idleinstancefailsafe",
+                AlarmName=f"RIOS-idleinstancefailsafe-{instanceId}",
                 AlarmDescription="Fail-safe to terminate orphaned instance",
                 ActionsEnabled=True,
                 AlarmActions=[f"arn:aws:automate:{regionName}:ec2:terminate"],
