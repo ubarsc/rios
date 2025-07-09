@@ -444,8 +444,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 
         for instanceId in instanceIdList:
             cloudwatchClient.put_metric_alarm(
-                AlarmName=f"RIOS-idleinstancefailsafe-{instanceId}",
-                AlarmDescription="Fail-safe to kill orphaned instance",
+                AlarmName="RIOS-idleinstancefailsafe",
+                AlarmDescription="Fail-safe to terminate orphaned instance",
                 ActionsEnabled=True,
                 AlarmActions=[f"arn:aws:automate:{regionName}:ec2:terminate"],
                 MetricName="CPUUtilization",
