@@ -770,7 +770,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             Intended for tracking obscure problems, rather than to use permanently.
         terminateIdleInstances : bool
             Optional. If True (the default), a CloudWatch Alarm is added to each
-            EC2 instances as it is started, to terminate the instance if it
+            EC2 instance as it is started, to terminate the instance if it
             falls idle. Currently, this is defined as CPUUtilization < 1% for 24
             consecutive hours. This is a fail-safe to prevent uncaught errors
             from leaving orphaned instances running for weeks. It is hoped that
