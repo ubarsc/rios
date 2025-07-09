@@ -443,7 +443,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         regionName = self.session.region_name
 
         for instanceId in instanceIdList:
-            # NB AlarmName must be unique, so we include instanceId
+            # NB. AlarmName must be unique, so we include instanceId
             cloudwatchClient.put_metric_alarm(
                 AlarmName=f"RIOS-idleinstancefailsafe-{instanceId}",
                 AlarmDescription="Fail-safe to terminate orphaned instance",
