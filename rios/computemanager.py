@@ -252,6 +252,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     """
     Manage compute workers using Amazon AWS ECS
 
+    New in version 2.0.7
+
     Requires some extra parameters in the ConcurrencyStyle constructor
     (computeWorkerExtraParams), in order to configure the AWS infrastructure.
     This class provides some helper functions for creating these for
