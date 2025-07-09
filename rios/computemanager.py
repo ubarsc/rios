@@ -287,6 +287,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         self.createdCluster = False
         self.createdInstances = False
         self.instanceList = None
+        self.taskArnList = None
 
         ecsClient = boto3.client("ecs")
         self.ecsClient = ecsClient
@@ -490,6 +491,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         Check for errors in any of the worker tasks, and report to stderr.
         """
+        if self.taskArnList is None:
+            return
+
         numTasks = len(self.taskArnList)
         # The describe_tasks call will only take this many at a time, so we
         # have to page through.
