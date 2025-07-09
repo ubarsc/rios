@@ -252,6 +252,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     """
     Manage compute workers using Amazon AWS ECS
 
+    New in version 2.0.7
+
     Requires some extra parameters in the ConcurrencyStyle constructor
     (computeWorkerExtraParams), in order to configure the AWS infrastructure.
     This class provides some helper functions for creating these for
@@ -272,6 +274,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if boto3 is None:
             raise rioserrors.UnavailableError("boto3 is unavailable")
 
+        # We use the default session, but hang onto it, in case we need it
+        self.session = boto3._get_default_session()
+
         self.forceExit = threading.Event()
         self.workerBarrier = threading.Barrier(numWorkers + 1)
 
@@ -287,6 +292,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         self.createdCluster = False
         self.createdInstances = False
         self.instanceList = None
+        self.taskArnList = None
 
         ecsClient = boto3.client("ecs")
         self.ecsClient = ecsClient
@@ -416,6 +422,45 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             self.createdInstances = True
             self.waitClusterInstanceCount(self.clusterName, numInstances)
 
+            terminateIdleInstances = self.extraParams.get(
+                'terminateIdleInstances', True)
+            instIdList = [inst['InstanceId'] for inst in self.instanceList]
+            if terminateIdleInstances:
+                self.addIdleInstanceAlarms(instIdList)
+
+    def addIdleInstanceAlarms(self, instanceIdList):
+        """
+        Add Cloudwatch Alarms to the EC2 instances given by instanceIdList.
+        The alarms added are to terminate the instances if they fall idle
+        for a long time. This is a fail-safe strategy to guard against any
+        orphaned instances being left running for weeks without anyone noticing.
+        """
+        # Timing of how to check for idle. These should probably come from
+        # configurable parameters, but it is just a failsafe, so maybe not.
+        idleInstancePeriodLen = 3600    # Each period is 1 hour
+        idleInstanceNumPeriods = 24     # For 24 periods
+        idleInstanceThreshold = 1       # CPU <1% for all periods
+
+        cloudwatchClient = boto3.client('cloudwatch')
+        regionName = self.session.region_name
+
+        for instanceId in instanceIdList:
+            # NB. AlarmName must be unique, so we include instanceId
+            cloudwatchClient.put_metric_alarm(
+                AlarmName=f"RIOS-idleinstancefailsafe-{instanceId}",
+                AlarmDescription="Fail-safe to terminate orphaned instance",
+                ActionsEnabled=True,
+                AlarmActions=[f"arn:aws:automate:{regionName}:ec2:terminate"],
+                MetricName="CPUUtilization",
+                Namespace="AWS/EC2",
+                Period=idleInstancePeriodLen,
+                EvaluationPeriods=idleInstanceNumPeriods,
+                Statistic="Average",
+                Threshold=idleInstanceThreshold,
+                ComparisonOperator="LessThanThreshold",
+                Dimensions=[{"Name": "InstanceId", "Value": instanceId}],
+            )
+
     def getClusterInstanceCount(self, clusterName):
         """
         Query the given cluster, and return the number of instances it has. If the
@@ -490,6 +535,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         Check for errors in any of the worker tasks, and report to stderr.
         """
+        if self.taskArnList is None:
+            return
+
         numTasks = len(self.taskArnList)
         # The describe_tasks call will only take this many at a time, so we
         # have to page through.
@@ -679,7 +727,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             ami=None, instanceType=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None,
             subnet=None, securityGroups=None, instanceProfileArn=None,
-            memoryReservation=1024, cloudwatchLogGroup=None, tags=None):
+            memoryReservation=1024, cloudwatchLogGroup=None,
+            terminateIdleInstances=True, tags=None):
         """
         Helper function to construct a basic computeWorkerExtraParams
         dictionary suitable for using ECS with a private per-job cluster,
@@ -737,6 +786,15 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             sends a log stream of its stdout & stderr to this log group. The
             group should already exist. If None, no CloudWatch logging is done.
             Intended for tracking obscure problems, rather than to use permanently.
+        terminateIdleInstances : bool
+            Optional. If True (the default), a CloudWatch Alarm is added to each
+            EC2 instance as it is started, to terminate the instance if it
+            falls idle. Currently, this is defined as CPUUtilization < 1% for 24
+            consecutive hours. This is a fail-safe to prevent uncaught errors
+            from leaving orphaned instances running for weeks. It is hoped that
+            all errors will be caught and these alarms are never actually
+            triggered, but this should only be disabled if it is causing some
+            other problem.
         tags: dict or None
             Optional. If specified this needs to be a dictionary which has the
             keys and values converted into the format that AWS accepts.
@@ -826,6 +884,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         extraParams = {
             'waitClusterInstanceCountTimeout':
                 ECSComputeWorkerMgr.defaultWaitClusterInstanceCountTimeout,
+            'terminateIdleInstances': terminateIdleInstances,
             'create_cluster': createClusterParams,
             'run_instances': runInstancesParams,
             'register_task_definition': taskDefParams,
