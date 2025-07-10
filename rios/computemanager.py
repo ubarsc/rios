@@ -416,6 +416,18 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if runInstances_kwArgs is not None:
             self.ec2client = boto3.client('ec2')
 
+            # Always add some RIOS-specific tags to the instances
+            if 'TagSpecifications' not in runInstances_kwArgs:
+                runInstances_kwArgs['TagSpecifications'] = []
+            tagSpec = {
+                'ResourceType': 'instance',
+                'Tags': [
+                    {'Key': 'RIOS-computeworkerinstance', 'Value': ''},
+                    {'Key': 'RIOS-clustername', 'Value': self.clusterName}
+                ]
+            }
+            runInstances_kwArgs['TagSpecifications'].append(tagSpec)
+
             response = self.ec2client.run_instances(**runInstances_kwArgs)
             self.instanceList = response['Instances']
             numInstances = len(self.instanceList)
@@ -587,8 +599,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             group should already exist. If None, no CloudWatch logging is done.
             Intended for tracking obscure problems, rather than to use permanently.
         tags: dict or None
-            Optional. If specified this needs to be a dictionary which has the
-            keys and values converted into the format that AWS accepts.
+            Optional. If specified this needs to be a dictionary of key/value
+            pairs which will be turned into AWS tags. These will be added to
+            the ECS cluster, task definition and tasks. The keys and values
+            must all be strings.
 
         Only certain combinations of cpu and memory are allowed, as these are used
         by Fargate to select a suitable VM instance type. See ESC.Client.run_task()
@@ -747,8 +761,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             group should already exist. If None, no CloudWatch logging is done.
             Intended for tracking obscure problems, rather than to use permanently.
         tags: dict or None
-            Optional. If specified this needs to be a dictionary which has the
-            keys and values converted into the format that AWS accepts.
+            Optional. If specified this needs to be a dictionary of key/value
+            pairs which will be turned into AWS tags. These will be added to
+            the ECS cluster, task definition and tasks, and to the EC2 instances.
+            The keys and values must all be strings.
 
         """
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
