@@ -799,8 +799,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if tags is not None:
             # Add the generic user tags to the instances, too.
             runInstancesParams['TagSpecifications'] = [
-                'ResourceType': 'instance',
-                'Tags': []
+                {
+                    'ResourceType': 'instance',
+                    'Tags': []
+                }
             ]
             for (key, value) in tags.items():
                 obj = {'Key': key, 'Value': value}
