@@ -806,7 +806,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             ]
             for (key, value) in tags.items():
                 obj = {'Key': key, 'Value': value}
-                runInstancesParams['TagSpecifications']['Tags'].append(obj)
+                runInstancesParams['TagSpecifications'][0]['Tags'].append(obj)
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
