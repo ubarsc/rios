@@ -416,18 +416,6 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if runInstances_kwArgs is not None:
             self.ec2client = boto3.client('ec2')
 
-            # Always add some RIOS-specific tags to the instances
-            if 'TagSpecifications' not in runInstances_kwArgs:
-                runInstances_kwArgs['TagSpecifications'] = []
-            tagSpec = {
-                'ResourceType': 'instance',
-                'Tags': [
-                    {'Key': 'RIOS-computeworkerinstance', 'Value': ''},
-                    {'Key': 'RIOS-clustername', 'Value': self.clusterName}
-                ]
-            }
-            runInstances_kwArgs['TagSpecifications'].append(tagSpec)
-
             response = self.ec2client.run_instances(**runInstances_kwArgs)
             self.instanceList = response['Instances']
             numInstances = len(self.instanceList)
@@ -763,8 +751,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         tags: dict or None
             Optional. If specified this needs to be a dictionary of key/value
             pairs which will be turned into AWS tags. These will be added to
-            the ECS cluster, task definition and tasks. The keys and values
-            must all be strings.
+            the ECS cluster, task definition and tasks, and the EC2 instances.
+            The keys and values must all be strings.
 
         """
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
@@ -786,6 +774,21 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             "#!/bin/bash",
             f"echo ECS_CLUSTER={clusterName} >> /etc/ecs/ecs.config"
         ])
+
+        # Set up RIOS-specific instance tags.
+        instanceTags = {
+            'ResourceType': 'instance',
+            'Tags': [
+                {'Key': 'RIOS-computeworkerinstance', 'Value': ''},
+                {'Key': 'RIOS-clustername', 'Value': clusterName}
+            ]
+        }
+        #  If user tags are also given, then add them as well.
+        if tags is not None:
+            for (key, value) in tags.items():
+                obj = {'Key': key, 'Value': value}
+                instanceTags['Tags'].append(obj)
+
         runInstancesParams = {
             "ImageId": ami,
             "InstanceType": instanceType,
@@ -794,7 +797,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             "SecurityGroupIds": securityGroups,
             "SubnetId": subnet,
             "IamInstanceProfile": {"Arn": instanceProfileArn},
-            "UserData": userData
+            "UserData": userData,
+            "TagSpecifications": [instanceTags]
         }
 
         containerDefs = [{'name': containerName,
