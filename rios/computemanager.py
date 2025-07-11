@@ -763,8 +763,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         tags: dict or None
             Optional. If specified this needs to be a dictionary of key/value
             pairs which will be turned into AWS tags. These will be added to
-            the ECS cluster, task definition and tasks, and to the EC2 instances.
-            The keys and values must all be strings.
+            the ECS cluster, task definition and tasks. The keys and values
+            must all be strings.
 
         """
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
@@ -796,17 +796,6 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             "IamInstanceProfile": {"Arn": instanceProfileArn},
             "UserData": userData
         }
-        if tags is not None:
-            # Add the generic user tags to the instances, too.
-            runInstancesParams['TagSpecifications'] = [
-                {
-                    'ResourceType': 'instance',
-                    'Tags': []
-                }
-            ]
-            for (key, value) in tags.items():
-                obj = {'Key': key, 'Value': value}
-                runInstancesParams['TagSpecifications'][0]['Tags'].append(obj)
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
