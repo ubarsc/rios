@@ -796,6 +796,15 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             "IamInstanceProfile": {"Arn": instanceProfileArn},
             "UserData": userData
         }
+        if tags is not None:
+            # Add the generic user tags to the instances, too.
+            runInstancesParams['TagSpecifications'] = [
+                'ResourceType': 'instance',
+                'Tags': []
+            ]
+            for (key, value) in tags.items():
+                obj = {'Key': key, 'Value': value}
+                runInstancesParams['TagSpecifications']['Tags'].append(obj)
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
