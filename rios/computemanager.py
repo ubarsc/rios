@@ -258,6 +258,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     (computeWorkerExtraParams), in order to configure the AWS infrastructure.
     This class provides some helper functions for creating these for
     various use cases.
+
+    When creating a private cluster of EC2 instances, these are automatically
+    tagged with some AWS tags. See `Concurrency <concurrency.html>`_ doc page
+    for details.
+
     """
     computeWorkerKind = CW_ECS
     defaultWaitClusterInstanceCountTimeout = 300
@@ -534,7 +539,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     def makeExtraParams_Fargate(jobName=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None, subnets=None,
             subnet=None, securityGroups=None, cpu='0.5 vCPU', memory='1GB',
-            cpuArchitecture=None, cloudwatchLogGroup=None):
+            cpuArchitecture=None, cloudwatchLogGroup=None, tags=None):
         """
         Helper function to construct a minimal computeWorkerExtraParams
         dictionary suitable for using ECS with Fargate launchType, given
@@ -586,6 +591,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             sends a log stream of its stdout & stderr to this log group. The
             group should already exist. If None, no CloudWatch logging is done.
             Intended for tracking obscure problems, rather than to use permanently.
+        tags: dict or None
+            Optional. If specified this needs to be a dictionary of key/value
+            pairs which will be turned into AWS tags. These will be added to
+            the ECS cluster, task definition and tasks. The keys and values
+            must all be strings. Requires ``ecs:TagResource`` permission.
 
         Only certain combinations of cpu and memory are allowed, as these are used
         by Fargate to select a suitable VM instance type. See ESC.Client.run_task()
@@ -596,8 +606,17 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         containerName = 'RIOS_{}_container'.format(jobIDstr)
         taskFamily = "RIOS_{}_task".format(jobIDstr)
         clusterName = "RIOS_{}_cluster".format(jobIDstr)
+        aws_tags = None
+        if tags is not None:
+            # covert to AWS format
+            aws_tags = []
+            for key, value in tags.items():
+                obj = {'key': key, 'value': value}
+                aws_tags.append(obj)
 
         createClusterParams = {"clusterName": clusterName}
+        if aws_tags is not None:
+            createClusterParams['tags'] = aws_tags
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
@@ -649,6 +668,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             taskDefParams['executionRoleArn'] = executionRoleArn
         if cpuArchitecture is not None:
             taskDefParams['runtimePlatform'] = {'cpuArchitecture': cpuArchitecture}
+        if aws_tags is not None:
+            taskDefParams['tags'] = aws_tags
 
         runTaskParams = {
             'launchType': 'FARGATE',
@@ -659,6 +680,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                 "command": 'Dummy, to be over-written within RIOS',
                 'name': containerName}]}
         }
+        if aws_tags is not None:
+            runTaskParams['tags'] = aws_tags
 
         extraParams = {
             'register_task_definition': taskDefParams,
@@ -672,7 +695,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             ami=None, instanceType=None, containerImage=None,
             taskRoleArn=None, executionRoleArn=None,
             subnet=None, securityGroups=None, instanceProfileArn=None,
-            memoryReservation=1024, cloudwatchLogGroup=None):
+            memoryReservation=1024, cloudwatchLogGroup=None, tags=None):
         """
         Helper function to construct a basic computeWorkerExtraParams
         dictionary suitable for using ECS with a private per-job cluster,
@@ -730,18 +753,48 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             sends a log stream of its stdout & stderr to this log group. The
             group should already exist. If None, no CloudWatch logging is done.
             Intended for tracking obscure problems, rather than to use permanently.
+        tags: dict or None
+            Optional. If specified this needs to be a dictionary of key/value
+            pairs which will be turned into AWS tags. These will be added to
+            the ECS cluster, task definition and tasks, and the EC2 instances.
+            The keys and values must all be strings. Requires ``ecs:TagResource``
+            permission.
 
         """
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
         containerName = 'RIOS_{}_container'.format(jobIDstr)
         taskFamily = "RIOS_{}_task".format(jobIDstr)
         clusterName = "RIOS_{}_cluster".format(jobIDstr)
+        aws_tags = None
+        if tags is not None:
+            # covert to AWS format
+            aws_tags = []
+            for key, value in tags.items():
+                obj = {'key': key, 'value': value}
+                aws_tags.append(obj)
 
         createClusterParams = {"clusterName": clusterName}
+        if aws_tags is not None:
+            createClusterParams['tags'] = aws_tags
         userData = '\n'.join([
             "#!/bin/bash",
             f"echo ECS_CLUSTER={clusterName} >> /etc/ecs/ecs.config"
         ])
+
+        # Set up RIOS-specific instance tags.
+        instanceTags = {
+            'ResourceType': 'instance',
+            'Tags': [
+                {'Key': 'RIOS-computeworkerinstance', 'Value': ''},
+                {'Key': 'RIOS-clustername', 'Value': clusterName}
+            ]
+        }
+        #  If user tags are also given, then add them as well.
+        if tags is not None:
+            for (key, value) in tags.items():
+                obj = {'Key': key, 'Value': value}
+                instanceTags['Tags'].append(obj)
+
         runInstancesParams = {
             "ImageId": ami,
             "InstanceType": instanceType,
@@ -750,7 +803,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             "SecurityGroupIds": securityGroups,
             "SubnetId": subnet,
             "IamInstanceProfile": {"Arn": instanceProfileArn},
-            "UserData": userData
+            "UserData": userData,
+            "TagSpecifications": [instanceTags]
         }
 
         containerDefs = [{'name': containerName,
@@ -789,6 +843,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             taskDefParams['taskRoleArn'] = taskRoleArn
         if executionRoleArn is not None:
             taskDefParams['executionRoleArn'] = executionRoleArn
+        if aws_tags is not None:
+            taskDefParams['tags'] = aws_tags
 
         runTaskParams = {
             'launchType': 'EC2',
@@ -799,7 +855,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                 "command": 'Dummy, to be over-written within RIOS',
                 'name': containerName}]}
         }
-
+        if aws_tags is not None:
+            runTaskParams['tags'] = aws_tags
+            
         extraParams = {
             'waitClusterInstanceCountTimeout':
                 ECSComputeWorkerMgr.defaultWaitClusterInstanceCountTimeout,
@@ -814,6 +872,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
     """
     Manage compute workers using AWS Batch.
+
+    Obsolete, and likely to be deprecated. See ECSComputeWorkerMgr instead.
+
     """
     computeWorkerKind = CW_AWSBATCH
     computeWorkersRead_default = True
