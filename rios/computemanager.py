@@ -258,6 +258,11 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
     (computeWorkerExtraParams), in order to configure the AWS infrastructure.
     This class provides some helper functions for creating these for
     various use cases.
+
+    When creating a private cluster of EC2 instances, these are automatically
+    tagged with some AWS tags. See `Concurrency <concurrency.html>`_ doc page
+    for details.
+
     """
     computeWorkerKind = CW_ECS
     defaultWaitClusterInstanceCountTimeout = 300
@@ -590,7 +595,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             Optional. If specified this needs to be a dictionary of key/value
             pairs which will be turned into AWS tags. These will be added to
             the ECS cluster, task definition and tasks. The keys and values
-            must all be strings.
+            must all be strings. Requires ``ecs:TagResource`` permission.
 
         Only certain combinations of cpu and memory are allowed, as these are used
         by Fargate to select a suitable VM instance type. See ESC.Client.run_task()
@@ -752,7 +757,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             Optional. If specified this needs to be a dictionary of key/value
             pairs which will be turned into AWS tags. These will be added to
             the ECS cluster, task definition and tasks, and the EC2 instances.
-            The keys and values must all be strings.
+            The keys and values must all be strings. Requires ``ecs:TagResource``
+            permission.
 
         """
         jobIDstr = ECSComputeWorkerMgr.makeJobIDstr(jobName)
@@ -866,6 +872,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
 class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
     """
     Manage compute workers using AWS Batch.
+
+    Obsolete, and likely to be deprecated. See ECSComputeWorkerMgr instead.
+
     """
     computeWorkerKind = CW_AWSBATCH
     computeWorkersRead_default = True

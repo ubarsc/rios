@@ -269,7 +269,10 @@ the extra params dictionary for the most obvious configurations. In particular,
 there is :func:`rios.computemanager.ECSComputeWorkerMgr.makeExtraParams_Fargate`, to
 support using Fargate ECS cluster launch type, and
 :func:`rios.computemanager.ECSComputeWorkerMgr.makeExtraParams_PrivateCluster`
-for a more general per-job private cluster using EC2 launch type.
+for a more general per-job private cluster using EC2 launch type. If EC2 instances
+are used, each instance is tagged with ``RIOS-computeworkerinstance`` to help
+identify them, and also ``RIOS-clustername`` to identify which ECS cluster it
+belongs to.
 
 The typical Fargate-based example would look something like this
 ::
@@ -324,6 +327,7 @@ For a more general EC2 private cluster, one would also need
 
 * ec2:RunInstances
 * ec2:TerminateInstances
+* ec2:CreateTags
 
 If desired, the ``iam:PassRole`` permission can be restricted to a minimal set
 of ``Condition`` clauses which should include
