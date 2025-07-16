@@ -477,15 +477,20 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         taskCount = self.getClusterTaskCount()
         startTime = time.time()
-        timeout = 50
+        timeout = 180
         timeExceeded = False
         while ((taskCount > 0) and (not timeExceeded)):
             time.sleep(5)
             taskCount = self.getClusterTaskCount()
             timeExceeded = (time.time() > (startTime + timeout))
 
-        # If timeExceeded, then one or more tasks is probably stopped but
-        # not exited. In this case, it is safe to proceed to delete_cluster.
+        # If timeExceeded, then we are somehow in shutdown even though
+        # some tasks are still running. In this case, we still want to
+        # shut down, so kill off any remaining tasks, so we can still
+        # delete the cluster
+        if timeExceeded:
+            for taskArn in self.taskArnList:
+                self.ecsClient.stop_task(cluster=self.clusterName, task=taskArn)
 
     def createTaskDef(self):
         """
