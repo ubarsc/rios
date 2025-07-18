@@ -424,8 +424,8 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             response = self.ec2client.run_instances(**runInstances_kwArgs)
             self.instanceList = response['Instances']
             numInstances = len(self.instanceList)
-            self.createdInstances = True
             self.waitClusterInstanceCount(self.clusterName, numInstances)
+            self.createdInstances = True
 
     def getClusterInstanceCount(self, clusterName):
         """
@@ -498,9 +498,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         taskDef_kwArgs = self.extraParams.get('register_task_definition')
         if taskDef_kwArgs is not None:
-            self.createdTaskDef = True
             taskDefResponse = self.ecsClient.register_task_definition(**taskDef_kwArgs)
             self.taskDefArn = taskDefResponse['taskDefinition']['taskDefinitionArn']
+            self.createdTaskDef = True
 
     def checkTaskErrors(self):
         """
