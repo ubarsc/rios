@@ -892,6 +892,10 @@ class AWSBatchComputeWorkerMgr(ComputeWorkerManager):
         """
         Start <numWorkers> AWS Batch jobs to process blocks of data
         """
+        msg = ("Use of CW_AWSBATCH is deprecated, and will be removed " +
+            "in a future version. Please see CW_ECS instead")
+        rioserrors.deprecationWarning(msg)
+
         self.forceExit = threading.Event()
         self.workerBarrier = threading.Barrier(numWorkers + 1)
         if boto3 is None:
