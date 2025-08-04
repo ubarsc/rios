@@ -138,7 +138,7 @@ class LogProgressBar(object):
     only terminals. This saves unecessary info being put
     into the log but does make it difficult to monitor a 
     job from the logs.
-    So save too much information being saved to the log
+    To avoid too much information being saved to the log
     only unique percentages are printed.
     """
     def __init__(self):
