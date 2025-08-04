@@ -130,3 +130,49 @@ class SilentProgress(object):
     def displayInfo(self, text):
         pass
 
+
+class LogProgressBar(object):
+    """
+    A progress object specifically for printing to logs.
+    The other progress objects here don't print to logs - 
+    only terminals. This saves unecessary info being put
+    into the log but does make it difficult to monitor a 
+    job from the logs.
+    To avoid too much information being saved to the log
+    only unique percentages are printed.
+    """
+    def __init__(self):
+        self.totalsteps = 100
+        self.last_percent = -1
+
+    def setTotalSteps(self, steps):
+        self.totalsteps = steps
+        self.last_percent = -1
+
+    def setProgress(self, progress):
+        progress = int(float(progress) / self.totalsteps * 100)
+        if progress != self.last_percent:
+            sys.stdout.write('%d%%\n' % progress)
+            self.last_percent = progress
+
+    def reset(self):
+        sys.stdout.write('\n')
+        self.last_percent = -1
+
+    def setLabelText(self, text):
+        sys.stdout.write('\n%s\n' % text)
+
+    def wasCancelled(self):
+        return False
+
+    def displayException(self, trace):
+        sys.stdout.write(trace)
+
+    def displayWarning(self, text):
+        sys.stdout.write("Warning: %s\n" % text)
+
+    def displayError(self, text):
+        sys.stdout.write("Error: %s\n" % text)
+
+    def displayInfo(self, text):
+        sys.stdout.write("Info: %s\n" % text)
