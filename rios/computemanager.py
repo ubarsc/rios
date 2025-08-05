@@ -620,7 +620,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                 aws_tags.append(obj)
 
         createClusterParams = {"clusterName": clusterName,
-            'tags': [{'Key': 'RIOS-cluster', 'Value': ''}]}
+            'tags': [{'key': 'RIOS-cluster', 'value': ''}]}
         if aws_tags is not None:
             createClusterParams['tags'].extend(aws_tags)
 
@@ -780,7 +780,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                 aws_tags.append(obj)
 
         createClusterParams = {"clusterName": clusterName,
-            'tags': [{'Key': 'RIOS-cluster', 'Value': ''}]}
+            'tags': [{'key': 'RIOS-cluster', 'value': ''}]}
         if aws_tags is not None:
             createClusterParams['tags'].extend(aws_tags)
         userData = '\n'.join([
