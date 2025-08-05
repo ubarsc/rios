@@ -782,7 +782,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         createClusterParams = {"clusterName": clusterName,
             'tags': [{'Key': 'RIOS-cluster', 'Value': ''}]}
         if aws_tags is not None:
-            createClusterParams['tags'].append(aws_tags)
+            createClusterParams['tags'].extend(aws_tags)
         userData = '\n'.join([
             "#!/bin/bash",
             f"echo ECS_CLUSTER={clusterName} >> /etc/ecs/ecs.config"
