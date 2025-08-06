@@ -619,9 +619,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                 obj = {'key': key, 'value': value}
                 aws_tags.append(obj)
 
-        createClusterParams = {"clusterName": clusterName}
+        createClusterParams = {"clusterName": clusterName,
+            'tags': [{'key': 'RIOS-cluster', 'value': ''}]}
         if aws_tags is not None:
-            createClusterParams['tags'] = aws_tags
+            createClusterParams['tags'].extend(aws_tags)
 
         containerDefs = [{'name': containerName,
                           'image': containerImage,
@@ -778,9 +779,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                 obj = {'key': key, 'value': value}
                 aws_tags.append(obj)
 
-        createClusterParams = {"clusterName": clusterName}
+        createClusterParams = {"clusterName": clusterName,
+            'tags': [{'key': 'RIOS-cluster', 'value': ''}]}
         if aws_tags is not None:
-            createClusterParams['tags'] = aws_tags
+            createClusterParams['tags'].extend(aws_tags)
         userData = '\n'.join([
             "#!/bin/bash",
             f"echo ECS_CLUSTER={clusterName} >> /etc/ecs/ecs.config"
