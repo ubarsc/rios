@@ -1162,6 +1162,7 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     # install a signal handler for SIGTERM to gracefully
     # shutdown the workers. Needed on AWS Batch and maybe other systems
     old_sigterm = signal.getsignal(signal.SIGTERM)
+    
     def sigterm_handler(signum, frame):
         print('Handling SIGTERM')
         computeMgr.shutdown()
