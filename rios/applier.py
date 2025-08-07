@@ -1165,11 +1165,10 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     
     def sigterm_handler(signum, frame):
         print('Handling SIGTERM')
-        computeMgr.shutdown()
-        if readWorkerMgr is not None:
-            readWorkerMgr.shutdown()
-        # now exit (?)
+        # now exit and rely on SystemExit being raised and 
+        # triggering the finally clause
         sys.exit(signum)
+        
     signal.signal(signal.SIGTERM, sigterm_handler)
 
     try:
