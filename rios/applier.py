@@ -23,6 +23,7 @@ point of entry in this module.
 import os
 import sys
 import queue
+import signal
 
 import numpy
 from osgeo import gdal
@@ -1158,6 +1159,18 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
             controls, tmpfileMgr, rasterizeMgr, workinggrid,
             inBlockBuffer, timings, exceptionQue)
 
+    # install a signal handler for SIGTERM to gracefully
+    # shutdown the workers. Needed on AWS Batch and maybe other systems
+    old_sigterm = signal.getsignal(signal.SIGTERM)
+    def sigterm_handler(signum, frame):
+        print('Handling SIGTERM')
+        computeMgr.shutdown()
+        if readWorkerMgr is not None:
+            readWorkerMgr.shutdown()
+        # now exit (?)
+        sys.exit(signum)
+    signal.signal(signal.SIGTERM, sigterm_handler)
+
     try:
         with timings.interval('startcomputeworkers'):
             computeMgr.startWorkers(numWorkers=concurrency.numComputeWorkers,
@@ -1209,6 +1222,9 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         computeMgr.shutdown()
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
+
+    # uninstall signal handler
+    signal.signal(signal.SIGTERM, old_sigterm)
 
     # Assemble the return object
     rtn = ApplierReturn()
