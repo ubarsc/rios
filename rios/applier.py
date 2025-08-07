@@ -1162,7 +1162,6 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
     # install a signal handler for SIGTERM to gracefully
     # shutdown the workers. Needed on AWS Batch and maybe other systems
     old_sigterm = signal.getsignal(signal.SIGTERM)
-    old_sigint = signal.getsignal(signal.SIGINT)
     
     def signal_handler(signum, frame):
         print('Handling signal', signum)
@@ -1171,7 +1170,6 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         sys.exit(signum)
         
     signal.signal(signal.SIGTERM, signal_handler)
-    signal.signal(signal.SIGINT, signal_handler)
 
     try:
         with timings.interval('startcomputeworkers'):
@@ -1225,9 +1223,8 @@ def apply_multipleCompute(userFunction, infiles, outfiles, otherArgs,
         if readWorkerMgr is not None:
             readWorkerMgr.shutdown()
 
-    # uninstall signal handlers
+    # uninstall signal handler
     signal.signal(signal.SIGTERM, old_sigterm)
-    signal.signal(signal.SIGINT, old_sigint)
 
     # Assemble the return object
     rtn = ApplierReturn()
