@@ -9,13 +9,13 @@ New Features
 
 Improvements
   * Significant improvements in error handling for CW_ECS (
-    `#149 <https://github.com/ubarsc/rios/pull/149>`_
-    `#154 <https://github.com/ubarsc/rios/pull/154>`_
-    `#155 <https://github.com/ubarsc/rios/pull/155>`_
-    `#161 <https://github.com/ubarsc/rios/pull/161>`_
+    `#149 <https://github.com/ubarsc/rios/pull/149>`_,
+    `#154 <https://github.com/ubarsc/rios/pull/154>`_,
+    `#155 <https://github.com/ubarsc/rios/pull/155>`_,
+    `#161 <https://github.com/ubarsc/rios/pull/161>`_,
     `#162 <https://github.com/ubarsc/rios/pull/162>`_)
   * Better consistency in Fargate helper functions for CW_ECS
-    `#153 <https://github.com/ubarsc/rios/pull/153>`_)
+    `#153 <https://github.com/ubarsc/rios/pull/153>`_
   * Allow AWS tags in CW_ECS, for better AWS resource management (
     `#159 <https://github.com/ubarsc/rios/pull/159>`_
     `#165 <https://github.com/ubarsc/rios/pull/165>`_)
