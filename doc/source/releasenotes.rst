@@ -19,7 +19,7 @@ Improvements
   * Allow AWS tags in CW_ECS, for better AWS resource management (
     `#159 <https://github.com/ubarsc/rios/pull/159>`_
     `#165 <https://github.com/ubarsc/rios/pull/165>`_)
-  * Signal handler for SIGTERM, ensuring better cleanup
+  * Signal handler for SIGTERM, ensuring better cleanup of compute workers
     `#167 <https://github.com/ubarsc/rios/pull/167>`_
   * Add LogProgressBar subclass, allowing progress metering to go into
     output logfiles `#164 <https://github.com/ubarsc/rios/pull/164>`_
