@@ -1,6 +1,33 @@
 Release Notes
 =============
 
+Version 2.0.8 (2025-08-29)
+--------------------------
+New Features
+  * Full support for gdal.GDT_Int8 output rasters
+    `#150 <https://github.com/ubarsc/rios/pull/150)>`_
+
+Improvements
+  * Significant improvements in error handling for CW_ECS (
+    `#149 <https://github.com/ubarsc/rios/pull/149>`_,
+    `#154 <https://github.com/ubarsc/rios/pull/154>`_,
+    `#155 <https://github.com/ubarsc/rios/pull/155>`_,
+    `#161 <https://github.com/ubarsc/rios/pull/161>`_,
+    `#162 <https://github.com/ubarsc/rios/pull/162>`_)
+  * Better consistency in Fargate helper functions for CW_ECS
+    `#153 <https://github.com/ubarsc/rios/pull/153>`_
+  * Allow AWS tags in CW_ECS, for better AWS resource management (
+    `#159 <https://github.com/ubarsc/rios/pull/159>`_,
+    `#165 <https://github.com/ubarsc/rios/pull/165>`_)
+  * Signal handler for SIGTERM, ensuring better cleanup of compute workers
+    `#167 <https://github.com/ubarsc/rios/pull/167>`_
+  * Add LogProgressBar subclass, allowing progress metering to go into
+    output logfiles `#164 <https://github.com/ubarsc/rios/pull/164>`_
+
+Deprecations
+  * CW_AWSBATCH now formally deprecated. Use CW_ECS instead.
+    `#163 <https://github.com/ubarsc/rios/pull/163>`_
+
 Version 2.0.7 (2025-05-11)
 --------------------------
 New Features
