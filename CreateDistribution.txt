@@ -20,17 +20,14 @@ installed ("conda install build" or "pip install build").
        python -m build .
    This creates a tar.gz, under a subdirectory called dist/,
        e.g. dist/rios-1.2.3.tar.gz
-7. Create a checksum of this, e.g.
-       cd dist
-       sha256sum rios-1.2.3.tar.gz > rios-1.2.3.tar.gz.sha256
-8. Go to the https://github.com/ubarsc/rios/releases page, and create a 
+7. Go to the https://github.com/ubarsc/rios/releases page, and create a 
    new release by pressing "Draft a new release". 
    You should fill in the following:
        Tag version: rios-A.B.C
        Release Title: Version A.B.C
        Description: Add a brief description (a few lines at most) explaining
                     the key points about this release.
-       Upload files: Add the tar.gz, and its sha256 checksum file.
+       Upload files: Add the tar.gz.
        Click "Publish release"
        
 
