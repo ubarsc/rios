@@ -5,7 +5,7 @@ Version 2.0.8 (2025-08-29)
 --------------------------
 New Features
   * Full support for gdal.GDT_Int8 output rasters
-    `#150 <https://github.com/ubarsc/rios/pull/150)>`_
+    (`#150 <https://github.com/ubarsc/rios/pull/150)>`_)
 
 Improvements
   * Significant improvements in error handling for CW_ECS (
@@ -15,36 +15,36 @@ Improvements
     `#161 <https://github.com/ubarsc/rios/pull/161>`_,
     `#162 <https://github.com/ubarsc/rios/pull/162>`_)
   * Better consistency in Fargate helper functions for CW_ECS
-    `#153 <https://github.com/ubarsc/rios/pull/153>`_
+    (`#153 <https://github.com/ubarsc/rios/pull/153>`_)
   * Allow AWS tags in CW_ECS, for better AWS resource management (
     `#159 <https://github.com/ubarsc/rios/pull/159>`_,
     `#165 <https://github.com/ubarsc/rios/pull/165>`_)
   * Signal handler for SIGTERM, ensuring better cleanup of compute workers
-    `#167 <https://github.com/ubarsc/rios/pull/167>`_
+    (`#167 <https://github.com/ubarsc/rios/pull/167>`_)
   * Add LogProgressBar subclass, allowing progress metering to go into
-    output logfiles `#164 <https://github.com/ubarsc/rios/pull/164>`_
+    output logfiles (`#164 <https://github.com/ubarsc/rios/pull/164>`_)
 
 Deprecations
   * CW_AWSBATCH now formally deprecated. Use CW_ECS instead.
-    `#163 <https://github.com/ubarsc/rios/pull/163>`_
+    (`#163 <https://github.com/ubarsc/rios/pull/163>`_)
 
 Version 2.0.7 (2025-05-11)
 --------------------------
 New Features
   * CW_ECS compute worker kind. Provides compute workers on AWS ECS, supporting
-    workers on Fargate or on special EC2 instances (https://github.com/ubarsc/rios/pull/130)
+    workers on Fargate or on special EC2 instances (`#130 <https://github.com/ubarsc/rios/pull/130>`_)
   * Added controls.setCallBeforeClose() for special effects just before an
-    output file is closed (https://github.com/ubarsc/rios/pull/135)
-  * CW_PBS/CW_SLURM can now use the new computeWorkerExtraParams argument (https://github.com/ubarsc/rios/pull/134
+    output file is closed (`#135 <https://github.com/ubarsc/rios/pull/135>`_)
+  * CW_PBS/CW_SLURM can now use the new computeWorkerExtraParams argument (`#134 <https://github.com/ubarsc/rios/pull/134>`_)
 
 Bug Fixes
-  * Workaround for negative null bug in GDAL 3.9.0 & 3.9.1 (https://github.com/ubarsc/rios/pull/129)
+  * Workaround for negative null bug in GDAL 3.9.0 & 3.9.1 (`#129 <https://github.com/ubarsc/rios/pull/129>`_)
 
 Version 2.0.6 (2025-02-17)
 --------------------------
 Bug Fixes
-  * Rigorous iterable protocol required for python-3.13.1 (https://github.com/ubarsc/rios/pull/122)
-  * Proper handling when output NoDataValue is NaN (https://github.com/ubarsc/rios/pull/126)
+  * Rigorous iterable protocol required for python-3.13.1 (`#122 <https://github.com/ubarsc/rios/pull/122>`_)
+  * Proper handling when output NoDataValue is NaN (`#126 <https://github.com/ubarsc/rios/pull/126>`_)
 
 Version 2.0.5 (2024-11-18)
 --------------------------
@@ -56,50 +56,55 @@ Improvements
     to the application script. Note that the GDAL KEA driver required a fix to
     support this, so for KEA outputs, best results require GDAL version 3.9.3.
     New methods are added to the controls object to fully control this new
-    behaviour (https://github.com/ubarsc/rios/pull/116).
+    behaviour (`#116 <https://github.com/ubarsc/rios/pull/116>`_).
   * Better disk space management when using CW_AWSBATCH compute workers
-    (https://github.com/ubarsc/rios/pull/112)
+    (`#112 <https://github.com/ubarsc/rios/pull/112>`_)
   * Added controls.setJobName(), to support better tracking of multiple
-    jobs and compute workers. (https://github.com/ubarsc/rios/pull/113)
+    jobs and compute workers. (`#113 <https://github.com/ubarsc/rios/pull/113>`_)
 
 Bug Fixes
   * When using CW_AWSBATCH compute workers, ensure consistency between the
     install location of RIOS and the Dockerfile being used
-    (https://github.com/ubarsc/rios/pull/109).
+    (`#109 <https://github.com/ubarsc/rios/pull/109>`_).
 
 Version 2.0.4 (2024-07-16)
 --------------------------
 Bug Fixes
   * Ensure all GDAL files are closed before exit, to avoid Panasas disk array
-    file deletion problems.
+    file deletion problems (`#98 <https://github.com/ubarsc/rios/pull/98>`_,
+    `#99 <https://github.com/ubarsc/rios/pull/99>`_)
   * Exceptions from read workers in single compute worker case must also
-    go into the exception queue.
+    go into the exception queue (`#101 <https://github.com/ubarsc/rios/pull/101>`_)
   * Check consistency of per-image calls to methods of ApplierControls
+    (`#102 <https://github.com/ubarsc/rios/pull/102>`_)
 
 Version 2.0.3 (2024-06-25)
 --------------------------
 Bug Fixes
   * Fix problems with vector inputs in different projection to working grid,
-    introduced in 2.0.0. (https://github.com/ubarsc/rios/pull/94)
+    introduced in 2.0.0. (`#94 <https://github.com/ubarsc/rios/pull/94>`_)
 
 Version 2.0.2 (2024-06-19)
 --------------------------
 
 Bug Fixes
-  * Cope with numpy-2.0 changes in scalar handling (https://github.com/ubarsc/rios/pull/90).
+  * Cope with numpy-2.0 changes in scalar handling (`#90 <https://github.com/ubarsc/rios/pull/90>`_).
   * Fix the now-deprecated ImageReader class so it does not depend on the
-    now-deprecated ReaderInfo.setBlockDataset (https://github.com/ubarsc/rios/pull/89).
+    now-deprecated ReaderInfo.setBlockDataset (`#89 <https://github.com/ubarsc/rios/pull/89>`_).
     The ImageReader class should be avoided in future.
 
 Version 2.0.1 (2024-06-12)
 --------------------------
 
 Bug Fixes
-  * Updated one incompatibility with numpy-2
+  * Updated one incompatibility with numpy-2 (`#81 <https://github.com/ubarsc/rios/pull/81>`_)
   * Test suite guards more gracefully against unavailable tests
+    (`#79 <https://github.com/ubarsc/rios/pull/79>`_)
 
 Improvements
   * Setup is now fully controlled by pyproject.toml, with no setup.py
+    (`#82 <https://github.com/ubarsc/rios/pull/82>`_,
+    `#83 <https://github.com/ubarsc/rios/pull/83>`_)
 
 Version 2.0.0 (2024-05-23)
 --------------------------
@@ -179,34 +184,34 @@ Version 1.4.17 (2024-03-01)
 ---------------------------
 
 Bug Fixes:
-  * Workaround for float images that are all the same value https://github.com/ubarsc/rios/pull/72
+  * Workaround for float images that are all the same value (`#72 <https://github.com/ubarsc/rios/pull/72>`_)
 
 Improvements:
-  * add section about command line programs in the docs https://github.com/ubarsc/rios/pull/71
-  * Improve doc for examples of controlling reading/writing https://github.com/ubarsc/rios/pull/73
-  * add new controls method 'setWindowSize' which allows X and Y window sizes to be set at once https://github.com/ubarsc/rios/pull/74
-  * use GDAL's type conversion functions instead https://github.com/ubarsc/rios/pull/75
+  * add section about command line programs in the docs (`#71 <https://github.com/ubarsc/rios/pull/71>`_)
+  * Improve doc for examples of controlling reading/writing (`#73 <https://github.com/ubarsc/rios/pull/73>`_)
+  * add new controls method 'setWindowSize' which allows X and Y window sizes to be set at once (`#74 <https://github.com/ubarsc/rios/pull/74>`_)
+  * use GDAL's type conversion functions instead (`#75 <https://github.com/ubarsc/rios/pull/75>`_)
 
 Version 1.4.16 (2023-09-28)
 ---------------------------
 
 Bug Fixes:
-  * Add missing FlushCache call when doing statistics https://github.com/ubarsc/rios/pull/66
-  * Suppress GDAL warning when running testsuite with recent GDAL. https://github.com/ubarsc/rios/pull/65
+  * Add missing FlushCache call when doing statistics (`#66 <https://github.com/ubarsc/rios/pull/66>`_)
+  * Suppress GDAL warning when running testsuite with recent GDAL. (`#65 <https://github.com/ubarsc/rios/pull/65>`_)
 
 Improvements:
   * Remove old stats caching code from readerinfo and RAT writing code from imagewriter.
     These were both inherited from the original PyModeller code and are no longer
-    needed. https://github.com/ubarsc/rios/pull/57 and https://github.com/ubarsc/rios/pull/58
-  * Improvements to ReadTheDocs formating. https://github.com/ubarsc/rios/pull/59
-    and https://github.com/ubarsc/rios/pull/60
-  * Implement parallel processing with AWS Batch https://github.com/ubarsc/rios/pull/61
-    and https://github.com/ubarsc/rios/pull/67
+    needed. (`#57 <https://github.com/ubarsc/rios/pull/57>`_, `#58 <https://github.com/ubarsc/rios/pull/58>`_)
+  * Improvements to ReadTheDocs formating. (`#59 <https://github.com/ubarsc/rios/pull/59>`_,
+    `#60 <https://github.com/ubarsc/rios/pull/60>`_)
+  * Implement parallel processing with AWS Batch (`#61 <https://github.com/ubarsc/rios/pull/61>`_,
+    `#67 <https://github.com/ubarsc/rios/pull/67>`_)
   * Remove vendored cloudpickle. This standalone package now must be present before
-    using the parallel processing functionality. https://github.com/ubarsc/rios/pull/63,
-    https://github.com/ubarsc/rios/pull/68 and https://github.com/ubarsc/rios/pull/69.
+    using the parallel processing functionality. (`#63 <https://github.com/ubarsc/rios/pull/63>`_,
+    `#68 <https://github.com/ubarsc/rios/pull/68>`_, `#69 <https://github.com/ubarsc/rios/pull/69>`_).
   * Add new entry points without extensions. This should help Windows users.
-    https://github.com/ubarsc/rios/pull/64
+    (`#64 <https://github.com/ubarsc/rios/pull/64>`_)
 
 
 Version 1.4.15 (2023-01-25)
@@ -220,12 +225,12 @@ Bug Fixes:
     "direct". The GDAL bug should be fixed, but this prevents it from
     affecting RIOS. The bug only affected 16 & 32 bit athematic images,
     when displaying in ERDAS Imagine.
-    https://github.com/ubarsc/rios/pull/54
+    (`#54 <https://github.com/ubarsc/rios/pull/54>`_)
   * Fix a minor problem with the final histogram bin of 16 and 32 bit
     athematic images. The last bin was being omitted. Has very little
     visible effect, as on athematic images that bin usually contains
     only a few pixels.
-    https://github.com/ubarsc/rios/pull/55
+    (`#55 <https://github.com/ubarsc/rios/pull/55>`_)
 
 Version 1.4.14 (2022-12-22)
 ---------------------------
