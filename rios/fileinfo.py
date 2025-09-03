@@ -508,7 +508,7 @@ class RatStats(object):
     Normal usage is via the RatStats class, e.g.::
 
         columnsOfInterest = ['col1', 'col4']
-        ratStatsObj = ratstats.RatStats('file.img', columnlist=columnsOfInterest)
+        ratStatsObj = RatStats('file.img', columnlist=columnsOfInterest)
     
         print ratStatsObj.col1.mean, ratStatsObj.col4.mean
 
