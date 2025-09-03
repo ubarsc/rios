@@ -521,6 +521,10 @@ class RatBlockAssociation(object):
             # Check if the column needs to be created
             if columnName not in self.Z__gdalHandles.columnNdxByName:
                 columnType = rat.inferColumnType(dataBlock)
+                if columnType is None:
+                    msg = "Can't infer GFT type from {} for column '{}'".format(
+                        type(dataBlock[0]), columnName)
+                    raise rioserrors.AttributeTableTypeError(msg)
                 columnUsage = self.getUsage(columnName)
                 gdalRat.CreateColumn(columnName, columnType, columnUsage)
                 # Work out the new column index
