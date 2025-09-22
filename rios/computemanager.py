@@ -477,7 +477,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         taskCount = self.getClusterTaskCount()
         startTime = time.time()
-        timeout = 180
+        timeout = 600
         timeExceeded = False
         while ((taskCount > 0) and (not timeExceeded)):
             time.sleep(5)
