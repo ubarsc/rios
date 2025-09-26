@@ -494,7 +494,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
                 # shutdown, so trap all of them.
                 try:
                     self.ecsClient.stop_task(cluster=self.clusterName,
-                        task=taskArn)
+                        task=taskArn, reason="Stopped by shutdown")
                 except Exception as e:
                     # I am unsure if I should just silently ignore any exception
                     # raised here, but for now I am going to print it to stderr.
