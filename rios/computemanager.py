@@ -477,7 +477,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         """
         taskCount = self.getClusterTaskCount()
         startTime = time.time()
-        timeout = 180
+        timeout = 600
         timeExceeded = False
         while ((taskCount > 0) and (not timeExceeded)):
             time.sleep(5)
@@ -490,7 +490,16 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         # delete the cluster
         if timeExceeded:
             for taskArn in self.taskArnList:
-                self.ecsClient.stop_task(cluster=self.clusterName, task=taskArn)
+                # We are trying to avoid any exceptions raised from within
+                # shutdown, so trap all of them.
+                try:
+                    self.ecsClient.stop_task(cluster=self.clusterName,
+                        task=taskArn)
+                except Exception as e:
+                    # I am unsure if I should just silently ignore any exception
+                    # raised here, but for now I am going to print it to stderr.
+                    msg = f"Exception '{e}' raised while stopping ECS task"
+                    print(msg, file=sys.stderr)
 
     def createTaskDef(self):
         """
