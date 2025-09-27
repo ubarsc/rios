@@ -518,6 +518,7 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         if self.taskArnList is None:
             return
 
+        normalStopCodes = set(['EssentialContainerExited'])
         numTasks = len(self.taskArnList)
         # The describe_tasks call will only take this many at a time, so we
         # have to page through.
@@ -549,8 +550,9 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
             print("    ", f.get('details'), file=sys.stderr)
         for (stopCode, stoppedReason) in stoppedList:
             if stopCode is not None or stoppedReason is not None:
-                msg = f"Task stopped: {stopCode}. Reason: {stoppedReason}"
-                print(msg, file=sys.stderr)
+                if stopCode not in normalStopCodes:
+                    msg = f"Task stopped: {stopCode}. Reason: {stoppedReason}"
+                    print(msg, file=sys.stderr)
         for (exitCode, reason) in exitCodeList:
             if exitCode != 0:
                 print("Exit code {} from ECS task container: {}".format(
