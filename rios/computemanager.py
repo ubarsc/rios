@@ -525,11 +525,14 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         i = 0
         failures = []
         exitCodeList = []
+        stoppedList = []
         while i < numTasks:
             j = i + TASKS_PER_PAGE
             descr = self.ecsClient.describe_tasks(cluster=self.clusterName,
                 tasks=self.taskArnList[i:j])
             failures.extend(descr['failures'])
+            for t in descr['tasks']:
+                stoppedList.append((t.get('stopCode'), t.get('stoppedReason')))
             # Grab all the container exit codes/reasons. Note that we
             # know we have only one container per task.
             ctrDescrList = [t['containers'][0] for t in descr['tasks']]
@@ -544,6 +547,10 @@ class ECSComputeWorkerMgr(ComputeWorkerManager):
         for f in failures:
             print("Failure in ECS task:", f.get('reason'), file=sys.stderr)
             print("    ", f.get('details'), file=sys.stderr)
+        for (stopCode, stoppedReason) in stoppedList:
+            if stopCode is not None or stoppedReason is not None:
+                msg = f"Task stopped: {stopCode}. Reason: {stoppedReason}"
+                print(msg, file=sys.stderr)
         for (exitCode, reason) in exitCodeList:
             if exitCode != 0:
                 print("Exit code {} from ECS task container: {}".format(
