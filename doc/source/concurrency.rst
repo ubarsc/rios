@@ -200,11 +200,16 @@ This section describes the details of each of the different kinds of
 compute worker. The simplest compute worker kind is CW_THREADS, and is likely
 to be the most useful for the majority of users.
 
-The other compute worker kinds should be regarded as somewhat experimental.
-They are all intended to provide ways of making greater use of a larger
+For users of Amazon AWS cloud computing, CW_ECS supports ECS clusters in
+various configurations.
+
+The CW_PBS & CW_SLURM kinds should be regarded as somewhat experimental.
+They are intended to provide ways of making greater use of a larger
 cluster of machines, which is managed by some kind of batch system, but
 the complexities of this may mean they are more trouble than they are worth.
 Feedback is welcome.
+
+Suggestions to support other compute worker kinds are welcome.
 
 The degree of speed-up achieved by using multiple compute workers follows a
 theoretical 1/N curve. So, if the number of compute workers is N, the total
@@ -340,8 +345,8 @@ taskRole.
 
 **CW_AWSBATCH**
 
-This should be regarded as obsolete, and will probably be deprecated in future.
-Its use is not recommended.
+This should be regarded as obsolete. It is deprecated and will probably be
+removed in future. Its use is not recommended.
 
 Each compute worker runs as a separate AWS Batch job. Specific AWS infrastructure
 needs to be available. See :doc:`awsbatch` for more information. Note that no
@@ -354,6 +359,8 @@ expect. This network socket will use a port number in the range 30000-50000,
 so the batch nodes should be configured to allow this.
 
 **CW_PBS**
+
+Please note that this is somewhat experimental.
 
 Each compute worker runs as a separate job on a PBS batch queue. This is one
 way to make effective use of a large cluster which is only accessible through
@@ -429,6 +436,8 @@ this should be a dictionary, with one or more of the following entries
      - As for cmdPrefix, but appended to the end of the command.
 
 **CW_SLURM**
+
+Please note that this is somewhat experimental.
 
 This behaves exactly like the CW_PBS compute workers, but using the SLURM
 batch queue system instead. See the PBS description.
