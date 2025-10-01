@@ -5,13 +5,12 @@ Raster data is read from input files and presented to the user as numpy arrays f
 
 These [simple examples](https://www.rioshome.org/en/latest/applierexamples.html) demonstrate the main ideas.
 
-## Features
+## Major Features
 - Handles the details of opening/closing raster files and reading/writing of raster data.
 - Checks agreement of projection and raster grid alignment and extent across the set of input files, reprojecting and/or resampling automatically as required
 - Steps through the raster in small blocks to reduce memory requirements, allowing processing of very large rasters
 - Raster data is presented to the user as numpy arrays, passed to a user-supplied function which performs all processing computation
 - Strong, flexible support for concurrency in reading/computation/writing for efficient use of available hardware (e.g. multiple CPU cores, AWS Fargate/ECS, and others).
-- *and more...*
 
 This allows the programmer to concentrate on the processing involved.
 
