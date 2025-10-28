@@ -10,7 +10,7 @@ in both reading and computation. With suitable hardware configurations,
 reading of input files can be divided between a number of read worker threads,
 and can read ahead of the simultaneous computation of results. 
 Computation can be spread across multiple worker threads (or processes or 
-batch jobs), and all of this can be simultaneous with writing of output files. 
+machines, etc.), and all of this can be simultaneous with writing of output files. 
 The default behaviour has no concurrency, but options available through the
 controls object can turn on some or all of these features, without
 requiring changes to the code in the user function.
