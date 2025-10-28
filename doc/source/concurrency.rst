@@ -148,18 +148,21 @@ during the run. ::
 
 This will show a simple report like the following::
 
-    Wall clock elapsed time: 10.6 seconds
+    Wall clock elapsed time: 9.9 seconds
 
-    Timer                Total (sec)
-    -------------------------------
-    reading                6.4
-    userfunction          34.1
-    writing                1.3
-    closing                1.8
-    add_inbuffer           2.3
-    pop_inbuffer           0.5
-    add_outbuffer          0.0
-    pop_outbuffer          7.5
+    Timer                      Total (sec)
+    --------------------------------
+    reading                      1.5
+    startcomputeworkers          0.0
+    userfunction                35.1
+    writing                      1.1
+    pyramids                     0.1
+    basicstats                   0.7
+    histogram                    0.7
+    insert_readbuffer            7.4
+    pop_readbuffer               0.2
+    insert_computebuffer         0.0
+    pop_computebuffer            7.0
 
 This example was run with 4 compute workers and 1 read worker (it was a
 very compute-intensive task). The total amount
@@ -169,14 +172,16 @@ than the elapsed wall clock time shown at the top.
 For comparison, when run with no concurrency, the same task has the following
 timings::
 
-    Wall clock elapsed time: 35.1 seconds
+    Wall clock elapsed time: 30.2 seconds
 
-    Timer                Total (sec)
-    -------------------------------
-    reading                4.4
-    userfunction          27.7
-    writing                1.2
-    closing                1.7
+    Timer                      Total (sec)
+    --------------------------------
+    reading                      0.6
+    userfunction                27.7
+    writing                      0.9
+    pyramids                     0.0
+    basicstats                   0.3
+    histogram                    0.3
 
 The time spent waiting for the various buffers can provide important clues.
 If a lot of time is being spent waiting to add to the input buffer, this may 
