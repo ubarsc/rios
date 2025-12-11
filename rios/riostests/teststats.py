@@ -29,6 +29,10 @@ from rios.riostests import riostestutils
 
 TESTNAME = 'TESTSTATS'
 
+# Work-around, see https://github.com/OSGeo/gdal/issues/13543
+if gdal.__version__ == "3.12.0":
+    os.environ['GDAL_STATS_USE_FLOAT64_OPTIM'] = 'NO'
+
 
 def run():
     """
