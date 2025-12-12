@@ -52,11 +52,15 @@ def isColorColFromUsage(usage):
     return colorCol
 
 
-def readColumnFromBand(gdalBand, colName):
+def readColumnFromBand(gdalBand, colName, useStringDType=False):
     """
     Given a GDAL Band, extract the Raster Attribute with the
-    given name. Returns an array of ints or floats for numeric
-    data types, or a list of strings.
+    given name. Returns a numpy array of the appropriate dtype. For
+    GFT_Integer or GFT_Float columns, this is as returned by GDAL's
+    ReadAsArray routine. For GFT_String columns, the default is to
+    return the array of bytes as given by ReadAsArray, but if the
+    useStringDType parameter is True, the array is converted to
+    numpy's StringDType, i.e. an array of variable-length Unicode strings.
     
     """
     # get the RAT for this band
@@ -91,17 +95,27 @@ def readColumnFromBand(gdalBand, colName):
     if colArray is None:
         msg = "Unable to find column named '%s'" % colName
         raise rioserrors.AttributeTableColumnError(msg)
-    
+
+    # If this is a string column, and we have been asked to use StringDType,
+    # then cast it
+    if (useStringDType and hasattr(numpy.dtypes, 'StringDType') and
+            isinstance(colArray.dtype, numpy.dtypes.BytesDType)):
+        colArray = colArray.astype(numpy.dtypes.StringDType)
+
     # return the lookup array to the caller
     return colArray
 
 
-def readColumn(imgFile, colName, bandNumber=1):
+def readColumn(imgFile, colName, bandNumber=1, useStringDType=False):
     """
     Given either an open gdal dataset, or a filename,
     extract the Raster Attribute with the
-    given name. Returns an array of ints or floats for numeric
-    data types, or a list of strings.
+    given name. Returns a numpy array of the appropriate dtype. For
+    GFT_Integer or GFT_Float columns, this is as returned by GDAL's
+    ReadAsArray routine. For GFT_String columns, the default is to
+    return the array of bytes as given by ReadAsArray, but if the
+    useStringDType parameter is True, the array is converted to
+    numpy's StringDType, i.e. an array of variable-length Unicode strings.
     """
     if isinstance(imgFile, basestring):
         ds = gdal.Open(str(imgFile))
@@ -110,7 +124,7 @@ def readColumn(imgFile, colName, bandNumber=1):
 
     gdalBand = ds.GetRasterBand(bandNumber) 
 
-    return readColumnFromBand(gdalBand, colName)
+    return readColumnFromBand(gdalBand, colName, useStringDType=useStringDType)
 
 
 def getColumnNamesFromBand(gdalBand):
@@ -179,10 +193,20 @@ def writeColumnToBand(gdalBand, colName, sequence, colType=None,
         msg = "Can't infer type of column for sequence of %s" % type(sequence[0])
         raise rioserrors.AttributeTableTypeError(msg)
 
-    # check it is acually a valid type
+    # check it is actually a valid type
     elif colType not in (gdal.GFT_Integer, gdal.GFT_Real, gdal.GFT_String):
         msg = "coltype must be a valid gdal column type"
         raise rioserrors.AttributeTableTypeError(msg)
+
+    # If we have been given a StringDType array, convert to fixed-width strings
+    # before giving to GDAL
+    if ((colType == gdal.GFT_String) and
+            hasattr(numpy.dtypes, 'StringDType') and
+            isinstance(sequence, numpy.ndarray) and
+            isinstance(sequence.dtype, numpy.dtypes.StringDType)):
+        maxLen = numpy.strings.str_len(sequence).max()
+        dt = "|S{}".format(maxLen)
+        sequence = sequence.astype(dt)
 
     attrTbl = gdalBand.GetDefaultRAT()
     if attrTbl is None:
