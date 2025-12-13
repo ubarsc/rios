@@ -19,7 +19,6 @@
 Test the rios.rat functionality
 """
 import os
-import sys
 import numpy
 
 from rios import rat
@@ -42,11 +41,12 @@ def run():
     columnList = [
         ("Int32", numpy.int32),
         ("Float32", numpy.float32),
-        ("Unicode", numpy.dtype('U10'))
+        ("Unicode", numpy.dtype('U10')),
+        ("String", numpy.dtype('S10'))
     ]
-    # Only test old string type for python 2
-    if sys.version_info.major < 3:
-        columnList.append(("String", numpy.dtype('S10')))
+    haveStringDType = hasattr(numpy.dtypes, 'StringDType')
+    if haveStringDType:
+        columnList.append(("StringDType", numpy.dtypes.StringDType))
     
     allOK = True
     for (colName, arrayDtype) in columnList:
@@ -55,9 +55,21 @@ def run():
         rat.writeColumn(imgfile, colName, ratValues_type)
         
         # Read it back, and check that the values are the same
-        ratValues_fromFile = rat.readColumn(imgfile, colName)[:nValues].astype(ratValues.dtype)
-        if not (ratValues_fromFile == ratValues).all():
+        ratValues_fromFile = rat.readColumn(imgfile, colName)[:nValues]
+        if not (ratValues_fromFile.astype(ratValues.dtype) == ratValues).all():
             riostestutils.report(TESTNAME, "Value mis-match for column %s"%(colName))
+            allOK = False
+
+    # Proper test of StringDType handling
+    if haveStringDType:
+        ratValues_bytes = ratValues.astype(numpy.dtype("|S10"))
+        rat.writeColumn(imgfile, 'Bstring', ratValues_bytes)
+        ratValues_vstring = rat.readColumn(imgfile, colName, useStringDType=True)[:nValues]
+        if not isinstance(ratValues_vstring.dtype, numpy.dtypes.StringDType):
+            riostestutils.report(TESTNAME, "Failed to read GFT_String as StringDType")
+            allOK = False
+        if (ratValues_vstring.astype(numpy.dtype("|S10")) != ratValues_bytes).any():
+            riostestutils.report(TESTNAME, "RAT StringDType conversion corrupted values")
             allOK = False
     
     if os.path.exists(imgfile):
