@@ -49,7 +49,8 @@ from osgeo import gdal
 from . import rat
 from . import rioserrors
 
-# Some constants relating to how we control the length of the output RAT (RCM = Row Count Method)
+# Some constants relating to how we control the length of the
+# output RAT (RCM = Row Count Method)
 RCM_EQUALS_INPUT = 0
 "Same as input"
 RCM_FIXED = 1
@@ -136,8 +137,8 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     # we progress through the table(s)
     state = RatApplierState(rowCount)
     
-    inBlocks = BlockCollection(inRats, state, allGdalHandles)
-    outBlocks = BlockCollection(outRats, state, allGdalHandles)
+    inBlocks = BlockCollection(inRats, state, allGdalHandles, controls)
+    outBlocks = BlockCollection(outRats, state, allGdalHandles, controls)
     
     # A list of the names for those RATs which are output
     outputRatHandleNameList = list(outRats.__dict__.keys())
@@ -292,6 +293,7 @@ class RatApplierControls(object):
         self.fixedOutRowCount = None
         self.rowCountIncrementSize = None
         self.progress = None
+        self.useStringDType = False
     
     def setBlockLength(self, blockLen):
         "Change the number of rows used per block"
@@ -345,6 +347,22 @@ class RatApplierControls(object):
         """
         self.progress = progress
 
+    def setUseStringDType(self, useStringDType):
+        """
+        Set whether to use the numpy-2.x StringDType when reading GFT_String
+        columns. If this is True, then when data is read from a GFT_String
+        column, it will be converted to StringDType (i.e. an array of
+        variable-length strings) before presenting it to the user.
+
+        The default is the old behaviour, i.e. the returned string arrays
+        are fixed-width bytes string arrays.
+
+        If StringDType is unavailable (numpy < 2.0), this flag is
+        always False.
+        """
+        if hasattr(numpy.dtypes, 'StringDType'):
+            self.useStringDType = useStringDType
+
 
 class OtherArguments(object):
     """
@@ -360,14 +378,15 @@ class BlockCollection(object):
     """
     Hold a set of RatBlockAssociation objects, for all currently open RATs
     """
-    def __init__(self, ratAssoc, state, allGdalHandles):
+    def __init__(self, ratAssoc, state, allGdalHandles, controls):
         """
         Create a RatBlockAssociation entry for every RatHandle in ratAssoc
         """
         for ratHandleName in ratAssoc.getRatList():
             ratHandle = getattr(ratAssoc, ratHandleName)
             gdalHandles = allGdalHandles.gdalHandlesDict[ratHandle]
-            setattr(self, ratHandleName, RatBlockAssociation(state, gdalHandles))
+            ratBlockAssoc = RatBlockAssociation(state, gdalHandles, controls)
+            setattr(self, ratHandleName, ratBlockAssoc)
         
     def clearCache(self):
         """
@@ -419,7 +438,7 @@ class RatBlockAssociation(object):
     use __setattr__ to handle the data the same way. 
     
     """
-    def __init__(self, state, gdalHandles):
+    def __init__(self, state, gdalHandles, controls):
         """
         Pass in the RatApplierState object, so we can always see where we 
         are up to, and the associated GdalHandles object, so we can get to 
@@ -432,6 +451,7 @@ class RatBlockAssociation(object):
         object.__setattr__(self, 'Z__state', state)
         object.__setattr__(self, 'Z__cache', {})
         object.__setattr__(self, 'Z__gdalHandles', gdalHandles)
+        object.__setattr__(self, 'Z__controls', controls)
         object.__setattr__(self, 'Z__outputRowCount', 0)
             
         # Column usage in a form which the user function can change. 
@@ -472,6 +492,8 @@ class RatBlockAssociation(object):
             colNdx = self.Z__gdalHandles.columnNdxByName[columnName]
             dataBlock = gdalRat.ReadAsArray(colNdx, start=self.Z__state.startrow, 
                     length=self.Z__state.blockLen)
+            if self.Z__controls.useStringDType:
+                dataBlock = dataBlock.astype(numpy.dtypes.StringDType)
             self.Z__cache[key] = dataBlock
         value = self.Z__cache[key]
         return value
@@ -538,11 +560,20 @@ class RatBlockAssociation(object):
                     newOutputRowCount = self.guessNewRowCount(rowsToWrite, controls, state)
                     gdalRat.SetRowCount(newOutputRowCount)
 
+                # If they have given a StringDType, convert to bytes for GDAL
+                if (hasattr(numpy.dtypes, 'StringDType') and
+                        isinstance(dataBlock.dtype, numpy.dtypes.StringDType)):
+                    maxLen = numpy.strings.str_len(dataBlock).max()
+                    dt = "|S{}".format(maxLen)
+                    dataBlock = dataBlock.astype(dt)
+
                 gdalRat.WriteArray(dataBlock, columnNdx, self.Z__outputRowCount)
             # There may be a problem with HFA Byte arrays, if we don't end up writing 256 rows....
         
-        # Increment Z__outputRowCount, without triggering __setattr__. 
-        object.__setattr__(self, 'Z__outputRowCount', self.Z__outputRowCount + rowsToWrite)
+        # Increment Z__outputRowCount, without triggering __setattr__.
+        if rowsToWrite is not None:
+            object.__setattr__(self, 'Z__outputRowCount',
+                self.Z__outputRowCount + rowsToWrite)
     
     def guessNewRowCount(self, rowsToWrite, controls, state):
         """
