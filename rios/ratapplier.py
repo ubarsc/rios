@@ -490,9 +490,10 @@ class RatBlockAssociation(object):
         if key not in self.Z__cache:
             gdalRat = self.Z__gdalHandles.gdalRat
             colNdx = self.Z__gdalHandles.columnNdxByName[columnName]
+            colType = gdalRat.GetTypeOfCol(colNdx)
             dataBlock = gdalRat.ReadAsArray(colNdx, start=self.Z__state.startrow, 
                     length=self.Z__state.blockLen)
-            if self.Z__controls.useStringDType:
+            if self.Z__controls.useStringDType and (colType == gdal.GFT_String):
                 dataBlock = dataBlock.astype(numpy.dtypes.StringDType)
             self.Z__cache[key] = dataBlock
         value = self.Z__cache[key]
