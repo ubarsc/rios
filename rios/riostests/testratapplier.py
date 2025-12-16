@@ -244,11 +244,13 @@ def myStringDTypeFunc(info, inputs, outputs):
 
 
 def myStringDTypeReadFunc(info, inputs, outputs, otherArgs):
-    valAsStr = inputs.img.Value.astype(numpy.dtypes.StringDType)
+    val = inputs.img.Value
+    valAsStr = val.astype(numpy.dtypes.StringDType)
     strVal = inputs.img.StrValue
+    strAsVal = strVal.astype(numpy.int32)
 
     typeCheck = isinstance(strVal.dtype, numpy.dtypes.StringDType)
-    valCheck = (strVal == valAsStr).all()
+    valCheck = ((strVal == valAsStr) & (strAsVal == val)).all()
     otherArgs.typeCheck = otherArgs.typeCheck and typeCheck
     otherArgs.valCheck = otherArgs.valCheck and valCheck
 
