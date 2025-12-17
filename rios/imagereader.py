@@ -217,14 +217,21 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         vecName = fileInfo[vecNdx].name
 
         vecLyrInfo = fileInfo[vecNdx]
+
+        wgSpatialRef = osr.SpatialReference()
+        wgSpatialRef.ImportFromWkt(workinggrid.projection)
+
+        # Make sure axis mapping strategies are the same between spatial ref
+        # systems (if not, this can cause x,y order to flip)
+        axisMappingStrategy = wgSpatialRef.GetAxisMappingStrategy()
+        vecLyrInfo.spatialRef.SetAxisMappingStrategy(axisMappingStrategy)
+        
         projection = vecLyrInfo.spatialRef.ExportToWkt()
         wgXmin = workinggrid.xMin
         wgYmin = workinggrid.yMin
 
         # Work out a resolution for the rasterized vector. Try to keep it
         # the same (or similar) to the working grid resolution
-        wgSpatialRef = osr.SpatialReference()
-        wgSpatialRef.ImportFromWkt(workinggrid.projection)
         (nrows, ncols) = workinggrid.getDimensions()
         wgCtrX = wgXmin + xRes * (ncols // 2)   # Rough centre of grid
         wgCtrY = wgYmin + yRes * (nrows // 2)
