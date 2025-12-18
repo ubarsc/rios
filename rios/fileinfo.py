@@ -366,6 +366,7 @@ class VectorLayerInfo(object):
         self.fieldTypeNames = [fd.GetTypeName() for fd in fieldDefnList]
         
         self.spatialRef = lyr.GetSpatialRef()
+        preventGdal3axisSwap(self.spatialRef)
 
     def __str__(self):
         valueList = []

@@ -36,7 +36,7 @@ from . import readerinfo
 from . import rioserrors
 from . import VersionObj
 from .structures import BlockAssociations, WorkerErrorRecord
-from .fileinfo import ImageInfo, VectorFileInfo
+from .fileinfo import ImageInfo, VectorFileInfo, preventGdal3axisSwap
 from .pixelgrid import PixelGridDefn, findCommonRegion
 
 if sys.version_info[0] > 2:
@@ -225,6 +225,7 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         # the same (or similar) to the working grid resolution
         wgSpatialRef = osr.SpatialReference()
         wgSpatialRef.ImportFromWkt(workinggrid.projection)
+        preventGdal3axisSwap(wgSpatialRef)
         (nrows, ncols) = workinggrid.getDimensions()
         wgCtrX = wgXmin + xRes * (ncols // 2)   # Rough centre of grid
         wgCtrY = wgYmin + yRes * (nrows // 2)
