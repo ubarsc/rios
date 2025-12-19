@@ -59,6 +59,11 @@ def run():
     ok = testNewRat(imgfile4)
     if not ok:
         allOK = False
+
+    imgfile = "test.img"
+    ok = testStringDType(imgfile)
+    if not ok:
+        allOK = False
     
     for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4]:
         riostestutils.removeRasterFile(tmpfile)
@@ -190,6 +195,64 @@ def testNewRat(imgfile4):
 
 def myFuncNewRat(info, inputs, outputs):
     outputs.outimg.newCol = numpy.arange(info.blockLen, dtype=numpy.uint32) + info.startrow
+
+
+def testStringDType(imgfile):
+    """
+    Test the use of GFT_String columns with numpy's StringDType
+    """
+    if not hasattr(numpy.dtypes, 'StringDType'):
+        return True
+
+    inRats = ratapplier.RatAssociations()
+    outRats = ratapplier.RatAssociations()
+    controls = ratapplier.RatApplierControls()
+    
+    inRats.img = ratapplier.RatHandle(imgfile)
+    outRats.img = inRats.img
+    controls.setBlockLength(5)
+    
+    ratapplier.apply(myStringDTypeFunc, inRats, outRats, controls=controls)
+    
+    col = rat.readColumn(imgfile, 'Value')
+    colStr = rat.readColumn(imgfile, 'StrValue', useStringDType=True)
+    ok = True
+    if (col.astype(numpy.dtypes.StringDType) != colStr).any():
+        riostestutils.report(TESTNAME, "StringDType values unequal")
+        ok = False
+
+    # Test reading into StringDType
+    controls.setUseStringDType(True)
+    otherArgs = ratapplier.OtherArguments()
+    otherArgs.typeCheck = True
+    otherArgs.valCheck = True
+
+    ratapplier.apply(myStringDTypeReadFunc, inRats, outRats, controls=controls,
+        otherargs=otherArgs)
+    if not otherArgs.typeCheck:
+        riostestutils.report(TESTNAME, "ratapplier did not read as StringDType")
+        ok = False
+    if not otherArgs.valCheck:
+        riostestutils.report(TESTNAME, "ratapplier StringDType read corrupted values")
+        ok = False
+    
+    return ok
+
+
+def myStringDTypeFunc(info, inputs, outputs):
+    outputs.img.StrValue = inputs.img.Value.astype(numpy.dtypes.StringDType)
+
+
+def myStringDTypeReadFunc(info, inputs, outputs, otherArgs):
+    val = inputs.img.Value
+    valAsStr = val.astype(numpy.dtypes.StringDType)
+    strVal = inputs.img.StrValue
+    strAsVal = strVal.astype(numpy.int32)
+
+    typeCheck = isinstance(strVal.dtype, numpy.dtypes.StringDType)
+    valCheck = ((strVal == valAsStr) & (strAsVal == val)).all()
+    otherArgs.typeCheck = otherArgs.typeCheck and typeCheck
+    otherArgs.valCheck = otherArgs.valCheck and valCheck
 
 
 def makeTestFile(imgfile, withRat=True):
