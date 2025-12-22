@@ -204,7 +204,6 @@ def copyRAT(input, output, progress=None, omitHistogram=False):
             otherArgs.colNames.remove('Histogram')
         except ValueError:
             pass
-    print(otherArgs.colNames)
     if len(otherArgs.colNames) > 0:
         apply(internalCopyRAT, inRats, outRats, otherArgs, controls)
 
