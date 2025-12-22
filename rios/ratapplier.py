@@ -181,12 +181,13 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         controls.progress.setProgress(100)
 
 
-def copyRAT(input, output, progress=None):
+def copyRAT(input, output, progress=None, omitHistogram=False):
     """
     Given an input and output filenames copies the RAT from 
     the input and writes it to the output.
+
+    if omitHistogram is set to True then 
     """
-    from .rat import getColumnNames
     inRats = RatAssociations()
     outRats = RatAssociations()
         
@@ -197,7 +198,13 @@ def copyRAT(input, output, progress=None):
     controls.progress = progress
 
     otherArgs = OtherArguments()
-    otherArgs.colNames = getColumnNames(input)
+    otherArgs.colNames = rat.getColumnNames(input)
+    if omitHistogram:
+        try:
+            otherArgs.colNames.remove('Histogram')
+        except ValueError:
+            pass
+    print(otherArgs.colNames)
     if len(otherArgs.colNames) > 0:
         apply(internalCopyRAT, inRats, outRats, otherArgs, controls)
 
