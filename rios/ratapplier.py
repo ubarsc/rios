@@ -188,6 +188,9 @@ def copyRAT(input, output, progress=None, omitColumns=None):
 
     if omitColumns is set, then it should be a sequence of
     columns names that are to be omitted from the copying.
+    For example, the 'Histogram' column may need to be omitted
+    so that the pixel counts stay the correct values in the output
+    image.
     """
     inRats = RatAssociations()
     outRats = RatAssociations()
