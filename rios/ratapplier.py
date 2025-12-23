@@ -181,12 +181,17 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         controls.progress.setProgress(100)
 
 
-def copyRAT(input, output, progress=None):
+def copyRAT(input, output, progress=None, omitColumns=None):
     """
     Given an input and output filenames copies the RAT from 
     the input and writes it to the output.
+
+    if omitColumns is set, then it should be a sequence of
+    columns names that are to be omitted from the copying.
+    For example, the 'Histogram' column may need to be omitted
+    so that the pixel counts stay the correct values in the output
+    image.
     """
-    from .rat import getColumnNames
     inRats = RatAssociations()
     outRats = RatAssociations()
         
@@ -197,7 +202,10 @@ def copyRAT(input, output, progress=None):
     controls.progress = progress
 
     otherArgs = OtherArguments()
-    otherArgs.colNames = getColumnNames(input)
+    otherArgs.colNames = rat.getColumnNames(input)
+    if omitColumns is not None:
+        for colName in omitColumns:
+            otherArgs.colNames.remove(colName)
     if len(otherArgs.colNames) > 0:
         apply(internalCopyRAT, inRats, outRats, otherArgs, controls)
 
@@ -430,7 +438,7 @@ class RatBlockAssociation(object):
     number of genuine attributes which also need to be present, for internal 
     use, and it is obviously important that their names not be the same as 
     any columns. Since we obviously cannot guarantee this, we have named them 
-    beginning with "Z\_\_", in the hope that no-one ever has a column with
+    beginning with "Z\\_\\_", in the hope that no-one ever has a column with
     a name like this. These are all created within the __init__ method. 
     
     The main purpose of using __getattr__ is to avoid reading columns which 
