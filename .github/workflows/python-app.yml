@@ -30,7 +30,7 @@ jobs:
       shell: bash -l {0}
       run: |
         conda install gdal libgdal-kea cloudpickle scipy
-        sudo pip install git+https://github.com/ubarsc/ratzarr.git
+        pip install --user git+https://github.com/ubarsc/ratzarr.git
     - name: Test with testrios
       shell: bash -l {0}
       run: |
@@ -48,8 +48,8 @@ jobs:
         sudo apt-get update -y
         sudo apt-get install -y --no-install-recommends \
           python3-gdal python3-cloudpickle python3-scipy python3-pip
-        sudo pip install --upgrade pip
-        sudo pip install git+https://github.com/ubarsc/ratzarr.git
+        pip install --upgrade pip
+        pip install --user git+https://github.com/ubarsc/ratzarr.git
     - name: Test with testrios
       shell: bash -l {0}
       run: |
