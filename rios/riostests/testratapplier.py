@@ -297,18 +297,18 @@ def testZarrOutput(imgfile, zarrfile):
 
     ratapplier.apply(myFuncZarrFile, inRats, outRats, controls=controls)
 
-#    col = rat.readColumn(imgfile, 'Value')
-#    rz = ratzarr.RatZarr(zarrfile, readOnly=True)
-#    colPlus10= rz.readBlock('plus10', 0, rz.getRowCount())
+    col = rat.readColumn(imgfile, 'Value')
+    rz = ratzarr.RatZarr(zarrfile, readOnly=True)
+    colPlus10= rz.readBlock('plus10', 0, rz.getRowCount())
     ok = True
-#    if ((col + 10) != colPlus10).any():
-#        riostestutils.report(TESTNAME, "plus10 incorrect, in zarrFile output")
-#        ok = False
-#    chunkSize = rz.getRATChunkSize()
-#    if (blockLen % chunkSize) != 0:
-#        msg = f"Zarr chunkSize {chunkSize} does not divide block size {blockLen}"
-#        riostestutils.report(TESTNAME, msg)
-#        ok = False
+    if ((col + 10) != colPlus10).any():
+        riostestutils.report(TESTNAME, "plus10 incorrect, in zarrFile output")
+        ok = False
+    chunkSize = rz.getRATChunkSize()
+    if (blockLen % chunkSize) != 0:
+        msg = f"Zarr chunkSize {chunkSize} does not divide block size {blockLen}"
+        riostestutils.report(TESTNAME, msg)
+        ok = False
     return ok
 
 
