@@ -32,6 +32,7 @@ jobs:
         conda install gdal libgdal-kea cloudpickle scipy
         conda info --envs
         pip install git+https://github.com/ubarsc/ratzarr.git
+        python -c "import ratzarr; print(ratzarr.__file__)"
     - name: Test with testrios
       shell: bash -l {0}
       run: |
