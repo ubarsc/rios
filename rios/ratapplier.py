@@ -198,6 +198,7 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
                 lastpercent = percent                
     
     outBlocks.finaliseRowCount(outputRatHandleNameList)
+    allFileHandles.close()
 
     if controls.progress is not None:
         controls.progress.setProgress(100)
@@ -811,6 +812,16 @@ class FileHandles(object):
         elif self.rz is not None:
             self.rz.setRowCount(rowCount)
 
+    def close(self):
+        """
+        Close any open file handles
+        """
+        if self.ds is not None:
+            self.ds.FlushCache()
+            self.ds = None
+        if self.rz is not None:
+            self.rz = None
+
 
 class FileHandlesCollection(object):
     """
@@ -898,3 +909,10 @@ class FileHandlesCollection(object):
                 if sharedDS is None:
                     sharedDS = fileHandles.rz
         return sharedDS
+
+    def close(self):
+        """
+        Close all file handles
+        """
+        for (k, fh) in self.fileHandlesDict.items():
+            fh.close()
