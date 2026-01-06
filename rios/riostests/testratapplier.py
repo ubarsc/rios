@@ -386,6 +386,8 @@ def makeTestFile(imgfile, withRat=True, nRatRows=100, gdalType=gdal.GDT_Byte,
     ratValues[0] = 500
     if withRat:
         rat.writeColumnToBand(band, columnName, ratValues)
+    ds.FlushCache()
+    del band
     del ds
 
     
