@@ -133,7 +133,8 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
     RatZarrHandle class to associate with a Zarr file. This has a very specific
     internal structure, and is intended for use in writing columns outside
     of the GDAL raster file, if it cannot be written for some reason. The main
-    use case is to read and/or write a RAT stored on AWS S3.
+    use case is to read and/or write a RAT stored on AWS S3, but it also works
+    the same if the file is on local disk.
 
     Example::
 
