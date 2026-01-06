@@ -68,16 +68,16 @@ def run():
     if not ok:
         allOK = False
 
-    imgfile = "test.img"
+    imgfile5 = "test5.img"
     ok = testStringDType(imgfile)
     if not ok:
         allOK = False
 
-    keafile1 = "test1.kea"
+    imgfile6 = "test1.img"
     zarrfile1 = "test1.zarr"
     zarrfile2 = "test2.zarr"
     if ratzarr is not None:
-        ok = testZarrOutput(keafile1, zarrfile1)
+        ok = testZarrOutput(imgfile6, zarrfile1)
         if not ok:
             allOK = False
 
@@ -87,7 +87,7 @@ def run():
     else:
         riostestutils.report(TESTNAME, 'Skipped ratzarr tests')
     
-    for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4, keafile1]:
+    for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4, imgfile5, imgfile6]:
         riostestutils.removeRasterFile(tmpfile)
     for zf in [zarrfile1, zarrfile2]:
         if os.path.exists(zf):
@@ -284,8 +284,7 @@ def testZarrOutput(imgfile, zarrfile):
     """
     Test output to a Zarr RAT
     """
-    makeTestFile(imgfile, nRatRows=5000000, gdalType=gdal.GDT_Int32,
-        driverName='KEA')
+    makeTestFile(imgfile, nRatRows=5000000, gdalType=gdal.GDT_Int32)
 
     inRats = ratapplier.RatAssociations()
     outRats = ratapplier.RatAssociations()
