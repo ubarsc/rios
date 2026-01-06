@@ -18,7 +18,15 @@
 """
 Test the ratapplier functionality
 """
+import os
+import shutil
+
 import numpy
+from osgeo import gdal, gdal_array
+try:
+    import ratzarr
+except ImportError:
+    ratzarr = None
 
 from rios import rat
 from rios import calcstats
@@ -60,13 +68,30 @@ def run():
     if not ok:
         allOK = False
 
-    imgfile = "test.img"
+    imgfile5 = "test5.img"
     ok = testStringDType(imgfile)
     if not ok:
         allOK = False
+
+    imgfile6 = "test6.img"
+    zarrfile1 = "test1.zarr"
+    zarrfile2 = "test2.zarr"
+    if ratzarr is not None:
+        ok = testZarrOutput(imgfile6, zarrfile1)
+        if not ok:
+            allOK = False
+
+        ok = testZarrInputOutput(zarrfile2)
+        if not ok:
+            allOK = False
+    else:
+        riostestutils.report(TESTNAME, 'Skipped ratzarr tests')
     
-    for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4]:
+    for tmpfile in [imgfile, imgfile2, imgfile3, imgfile4, imgfile5, imgfile6]:
         riostestutils.removeRasterFile(tmpfile)
+    for zf in [zarrfile1, zarrfile2]:
+        if os.path.exists(zf):
+            shutil.rmtree(zf)
 
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
@@ -255,26 +280,114 @@ def myStringDTypeReadFunc(info, inputs, outputs, otherArgs):
     otherArgs.valCheck = otherArgs.valCheck and valCheck
 
 
-def makeTestFile(imgfile, withRat=True):
+def testZarrOutput(imgfile, zarrfile):
+    """
+    Test output to a Zarr RAT
+    """
+    makeTestFile(imgfile, nRatRows=5000000, gdalType=gdal.GDT_Int32)
+
+    inRats = ratapplier.RatAssociations()
+    outRats = ratapplier.RatAssociations()
+    controls = ratapplier.RatApplierControls()
+
+    inRats.img = ratapplier.RatHandle(imgfile)
+    outRats.outimg = ratapplier.RatZarrHandle(zarrfile)
+    blockLen = 1000000
+    controls.setBlockLength(blockLen)
+
+    ratapplier.apply(myFuncZarrFile, inRats, outRats, controls=controls)
+
+    col = rat.readColumn(imgfile, 'Value')
+    rz = ratzarr.RatZarr(zarrfile, readOnly=True)
+    colPlus10= rz.readBlock('plus10', 0, rz.getRowCount())
+    ok = True
+    if ((col + 10) != colPlus10).any():
+        riostestutils.report(TESTNAME, "plus10 incorrect, in zarrFile output")
+        ok = False
+    chunkSize = rz.getRATChunkSize()
+    if (blockLen % chunkSize) != 0:
+        msg = f"Zarr chunkSize {chunkSize} does not divide block size {blockLen}"
+        riostestutils.report(TESTNAME, msg)
+        ok = False
+    return ok
+
+
+def myFuncZarrFile(info, inputs, outputs):
+    outputs.outimg.plus10 = inputs.img.Value + 10
+
+
+def testZarrInputOutput(zarrfile):
+    """
+    Test reading and writing in the same Zarr file
+    """
+    if os.path.exists(zarrfile):
+        shutil.rmtree(zarrfile)
+
+    rowCount = 5000000
+    blockLen = 500000
+    valueCol = numpy.arange(rowCount, dtype=numpy.int32)
+
+    # Create a Zarr RAT with one column
+    rz = ratzarr.RatZarr(zarrfile)
+    rz.setChunkSize(blockLen)
+    rz.setRowCount(rowCount)
+    rz.createColumn('Value', valueCol.dtype)
+    rz.writeBlock('Value', valueCol, 0)
+
+    # Use ratapplier to copy it to another column in the same RAT
+    inRats = ratapplier.RatAssociations()
+    outRats = ratapplier.RatAssociations()
+    controls = ratapplier.RatApplierControls()
+    controls.setBlockLength(blockLen)
+
+    inRats.therat = ratapplier.RatZarrHandle(zarrfile)
+    outRats.therat = ratapplier.RatZarrHandle(zarrfile)
+
+    ratapplier.apply(myFuncCopyCol, inRats, outRats, controls=controls)
+
+    # Check the copied column against the original
+    value2 = rz.readBlock('Value2', 0, rz.rowCount)
+
+    ok = True
+    if (value2 != valueCol).any():
+        msg = "Value column changed in copy"
+        riostestutils.report(TESTNAME, msg)
+        ok = False
+    return ok
+
+
+def myFuncCopyCol(info, inputs, outputs):
+    outputs.therat.Value2 = inputs.therat.Value
+
+
+def makeTestFile(imgfile, withRat=True, nRatRows=100, gdalType=gdal.GDT_Byte,
+        driverName='HFA'):
     # Make a test image with a simple RAT
     nRows = 100
     nCols = 1
-    ds = riostestutils.createTestFile(imgfile, numRows=nRows, numCols=nCols)
-    imgArray = numpy.ones((nRows, nCols), dtype=numpy.uint8)
+    crOpt = ['COMPRESS=YES']
+    if driverName == 'KEA':
+        crOpt = []
+    ds = riostestutils.createTestFile(imgfile, numRows=nRows, numCols=nCols,
+        dtype=gdalType, driverName=driverName, creationOptions=crOpt)
+    npDtype = gdal_array.GDALTypeCodeToNumericTypeCode(gdalType)
+    imgArray = numpy.ones((nRows, nCols), dtype=npDtype)
     imgArray[1:10, 0] = numpy.arange(1, 10)
     imgArray[50:, 0] = 0
     band = ds.GetRasterBand(1)
     band.WriteArray(imgArray)
+    band.SetMetadataItem('LAYER_TYPE', 'thematic')
 
     nullDN = 0
     calcstats.calcStats(ds, ignore=nullDN, progress=cuiprogress.SilentProgress())
     columnName = 'Value'
     # Note that the RAT has a row for lots of values which have no corresponding pixel
-    ratValues = (numpy.mgrid[0:nRows] + 10).astype(numpy.int32)
+    ratValues = (numpy.mgrid[0:nRatRows] + 10).astype(numpy.int32)
     ratValues[0] = 500
     if withRat:
         rat.writeColumnToBand(band, columnName, ratValues)
-    band.SetMetadataItem('LAYER_TYPE', 'thematic')
+    ds.FlushCache()
+    del band
     del ds
 
     

@@ -45,6 +45,10 @@ from __future__ import division, print_function
 
 import numpy
 from osgeo import gdal
+try:
+    import ratzarr
+except ImportError:
+    ratzarr = None
 
 from . import rat
 from . import rioserrors
@@ -121,24 +125,43 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
 
     Each column attribute is an instance of :class:`rios.fileinfo.ColumnStats` and is intended to be 
     passed through the apply function via the otherargs mechanism.
+
+    **Non-GDAL RATs**
+
+    An alternative form of RAT is supported, based on Zarr arrays. Instead of
+    using the RatHandle class to connect to a RAT in a GDAL file, use the
+    RatZarrHandle class to associate with a Zarr file. This has a very specific
+    internal structure, and is intended for use in writing columns outside
+    of the GDAL raster file, if it cannot be written for some reason. The main
+    use case is to read and/or write a RAT stored on AWS S3, but it also works
+    the same if the file is on local disk.
+
+    Example::
+
+        inRats.vegclass = ratapplier.RatHandle('vegclass.kea')
+        outRats.extra = ratapplier.RatZarrHandle('s3://mybucket/extra.zarr')
+
+    This can then used in the same way as a GDAL-based RAT.
+    
+    It requires the ratzarr package (https://github.com/ubarsc/ratzarr).
     """
     # Get a default controls object if we have not been given one
     if controls is None:
         controls = RatApplierControls()
     
     # Open all files. 
-    allGdalHandles = GdalHandlesCollection(inRats, outRats)
-    allGdalHandles.checkConsistency()
+    allFileHandles = FileHandlesCollection(inRats, outRats)
+    allFileHandles.checkConsistency()
     rowCount = controls.rowCount
     if rowCount is None:
-        rowCount = allGdalHandles.getRowCount()
+        rowCount = allFileHandles.getRowCount()
 
     # The current state of processing, i.e. where are we up to as 
     # we progress through the table(s)
     state = RatApplierState(rowCount)
     
-    inBlocks = BlockCollection(inRats, state, allGdalHandles, controls)
-    outBlocks = BlockCollection(outRats, state, allGdalHandles, controls)
+    inBlocks = BlockCollection(inRats, state, allFileHandles, controls)
+    outBlocks = BlockCollection(outRats, state, allFileHandles, controls)
     
     # A list of the names for those RATs which are output
     outputRatHandleNameList = list(outRats.__dict__.keys())
@@ -176,6 +199,7 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
                 lastpercent = percent                
     
     outBlocks.finaliseRowCount(outputRatHandleNameList)
+    allFileHandles.close()
 
     if controls.progress is not None:
         controls.progress.setProgress(100)
@@ -229,6 +253,8 @@ class RatHandle(object):
     """
     def __init__(self, filename, layernum=1):
         """
+        This is how the user specifies a RAT stored in a GDAL file.
+
         filename is a string, layernum is an integer (first layer is 1)
         """
         self.filename = filename
@@ -238,6 +264,37 @@ class RatHandle(object):
         "Hash a tuple of (filename, layernum)"
         return hash((self.filename, self.layernum))
     
+
+class RatZarrHandle:
+    """
+    Equivalent of RatHandle, but for a RAT stored in a Zarr file
+
+    New in version 2.0.9
+    """
+    def __init__(self, filename):
+        """
+        This is how the user specifies a RAT stored in a Zarr file.
+
+        filename is a string. For local files, should be just a path string,
+        for AWS S3 files it should have the form s3://bucket/path
+
+        New in version 2.0.9
+        """
+        if ratzarr is None:
+            msg = "Using RatZarrHandle, but ratzarr module is unavailable"
+            raise ValueError(msg)
+
+        self.filename = filename
+
+    def __hash__(self):
+        """
+        Just hash the filename field
+        """
+        return hash(self.filename)
+
+    def __eq__(self, other):
+        return (self.filename == other.filename)
+
 
 class RatAssociations(object):
     """
@@ -386,14 +443,14 @@ class BlockCollection(object):
     """
     Hold a set of RatBlockAssociation objects, for all currently open RATs
     """
-    def __init__(self, ratAssoc, state, allGdalHandles, controls):
+    def __init__(self, ratAssoc, state, allFileHandles, controls):
         """
         Create a RatBlockAssociation entry for every RatHandle in ratAssoc
         """
         for ratHandleName in ratAssoc.getRatList():
             ratHandle = getattr(ratAssoc, ratHandleName)
-            gdalHandles = allGdalHandles.gdalHandlesDict[ratHandle]
-            ratBlockAssoc = RatBlockAssociation(state, gdalHandles, controls)
+            fileHandles = allFileHandles.fileHandlesDict[ratHandle]
+            ratBlockAssoc = RatBlockAssociation(state, fileHandles, controls)
             setattr(self, ratHandleName, ratBlockAssoc)
         
     def clearCache(self):
@@ -446,10 +503,10 @@ class RatBlockAssociation(object):
     use __setattr__ to handle the data the same way. 
     
     """
-    def __init__(self, state, gdalHandles, controls):
+    def __init__(self, state, fileHandles, controls):
         """
         Pass in the RatApplierState object, so we can always see where we 
-        are up to, and the associated GdalHandles object, so we can get to 
+        are up to, and the associated FileHandles object, so we can get to 
         the file.
         
         Note the use of object.__setattr__() to create the normal attributes
@@ -458,15 +515,16 @@ class RatBlockAssociation(object):
         """
         object.__setattr__(self, 'Z__state', state)
         object.__setattr__(self, 'Z__cache', {})
-        object.__setattr__(self, 'Z__gdalHandles', gdalHandles)
+        object.__setattr__(self, 'Z__fileHandles', fileHandles)
         object.__setattr__(self, 'Z__controls', controls)
         object.__setattr__(self, 'Z__outputRowCount', 0)
             
-        # Column usage in a form which the user function can change. 
-        object.__setattr__(self, 'Z__columnUsage', {})
-        for name in self.Z__gdalHandles.columnNdxByName:
-            ndx = self.Z__gdalHandles.columnNdxByName[name]
-            self.Z__columnUsage[name] = self.Z__gdalHandles.gdalRat.GetUsageOfCol(ndx)
+        # Column usage in a form which the user function can change.
+        if fileHandles.gdalRat is not None:
+            object.__setattr__(self, 'Z__columnUsage', {})
+            for name in self.Z__fileHandles.columnNdxByName:
+                ndx = self.Z__fileHandles.columnNdxByName[name]
+                self.Z__columnUsage[name] = self.Z__fileHandles.gdalRat.GetUsageOfCol(ndx)
         
         # The attributes which we should consider to be column names
         object.__setattr__(self, 'Z__columnNameSet', set())
@@ -475,15 +533,17 @@ class RatBlockAssociation(object):
         """
         Set the usage of the given column. 
         """
-        self.Z__columnUsage[columnName] = usage
+        if self.Z__fileHandles.gdalRat is not None:
+            self.Z__columnUsage[columnName] = usage
     
     def getUsage(self, columnName):
         """
         Return the usage of the given column
         """
         usage = gdal.GFU_Generic
-        if columnName in self.Z__columnUsage:
-            usage = self.Z__columnUsage[columnName]
+        if self.Z__fileHandles.gdalRat is not None:
+            if columnName in self.Z__columnUsage:
+                usage = self.Z__columnUsage[columnName]
         return usage
         
     def __getattr__(self, columnName):
@@ -496,13 +556,17 @@ class RatBlockAssociation(object):
         key = self.__makeKey(columnName)
 
         if key not in self.Z__cache:
-            gdalRat = self.Z__gdalHandles.gdalRat
-            colNdx = self.Z__gdalHandles.columnNdxByName[columnName]
-            colType = gdalRat.GetTypeOfCol(colNdx)
-            dataBlock = gdalRat.ReadAsArray(colNdx, start=self.Z__state.startrow, 
-                    length=self.Z__state.blockLen)
-            if self.Z__controls.useStringDType and (colType == gdal.GFT_String):
-                dataBlock = dataBlock.astype(numpy.dtypes.StringDType)
+            ratObj = self.Z__fileHandles.getRatObj()
+            if isinstance(ratObj, gdal.RasterAttributeTable):
+                colNdx = self.Z__fileHandles.columnNdxByName[columnName]
+                colType = ratObj.GetTypeOfCol(colNdx)
+                dataBlock = ratObj.ReadAsArray(colNdx, start=self.Z__state.startrow, 
+                        length=self.Z__state.blockLen)
+                if self.Z__controls.useStringDType and (colType == gdal.GFT_String):
+                    dataBlock = dataBlock.astype(numpy.dtypes.StringDType)
+            elif isinstance(ratObj, ratzarr.RatZarr):
+                dataBlock = ratObj.readBlock(columnName, self.Z__state.startrow, 
+                                 self.Z__state.blockLen)
             self.Z__cache[key] = dataBlock
         value = self.Z__cache[key]
         return value
@@ -537,7 +601,8 @@ class RatBlockAssociation(object):
         rowsToWrite = None
         # Loop over all columns names which have been set on this object
         for columnName in self.Z__columnNameSet:
-            gdalRat = self.Z__gdalHandles.gdalRat
+            fileHandles = self.Z__fileHandles
+            ratObj = fileHandles.getRatObj()
             key = self.__makeKey(columnName)
             dataBlock = self.Z__cache[key]
             if rowsToWrite is None:
@@ -549,25 +614,33 @@ class RatBlockAssociation(object):
                     len(dataBlock), rowsToWrite)
                 raise rioserrors.RatBlockLengthError(msg)
 
+            isGdalRat = isinstance(ratObj, gdal.RasterAttributeTable)
+            isZarrRat = (ratzarr is not None and
+                         isinstance(ratObj, ratzarr.RatZarr))
+
             # Check if the column needs to be created
-            if columnName not in self.Z__gdalHandles.columnNdxByName:
+            if (isGdalRat and
+                    columnName not in fileHandles.columnNdxByName):
                 columnType = rat.inferColumnType(dataBlock)
                 if columnType is None:
                     msg = "Can't infer GFT type from {} for column '{}'".format(
                         type(dataBlock[0]), columnName)
                     raise rioserrors.AttributeTableTypeError(msg)
                 columnUsage = self.getUsage(columnName)
-                gdalRat.CreateColumn(columnName, columnType, columnUsage)
+                ratObj.CreateColumn(columnName, columnType, columnUsage)
                 # Work out the new column index
-                columnNdx = gdalRat.GetColumnCount() - 1
-                self.Z__gdalHandles.columnNdxByName[columnName] = columnNdx
+                columnNdx = ratObj.GetColumnCount() - 1
+                fileHandles.columnNdxByName[columnName] = columnNdx
+            elif isZarrRat and not ratObj.colExists(columnName):
+                self.checkZarrfileParams()
+                ratObj.createColumn(columnName, dataBlock.dtype)
 
             # Write the block of data into the RAT column
-            columnNdx = self.Z__gdalHandles.columnNdxByName[columnName]
             if len(dataBlock) > 0:
-                if gdalRat.GetRowCount() < (self.Z__outputRowCount + rowsToWrite):
+                if (fileHandles.getRowCount() <
+                        (self.Z__outputRowCount + rowsToWrite)):
                     newOutputRowCount = self.guessNewRowCount(rowsToWrite, controls, state)
-                    gdalRat.SetRowCount(newOutputRowCount)
+                    fileHandles.setRowCount(newOutputRowCount)
 
                 # If they have given a StringDType, convert to bytes for GDAL
                 if (hasattr(numpy.dtypes, 'StringDType') and
@@ -576,7 +649,13 @@ class RatBlockAssociation(object):
                     dt = "|S{}".format(maxLen)
                     dataBlock = dataBlock.astype(dt)
 
-                gdalRat.WriteArray(dataBlock, columnNdx, self.Z__outputRowCount)
+                if isGdalRat:
+                    columnNdx = self.Z__fileHandles.columnNdxByName[columnName]
+                    ratObj.WriteArray(dataBlock, columnNdx,
+                                      self.Z__outputRowCount)
+                elif isZarrRat:
+                    ratObj.writeBlock(columnName, dataBlock,
+                                      self.Z__outputRowCount)
             # There may be a problem with HFA Byte arrays, if we don't end up writing 256 rows....
         
         # Increment Z__outputRowCount, without triggering __setattr__.
@@ -607,21 +686,65 @@ class RatBlockAssociation(object):
         If the row count for this RAT has been over-allocated, reset it back
         to the actual number of rows we wrote. 
         """
-        gdalRat = self.Z__gdalHandles.gdalRat
+        fileHandles = self.Z__fileHandles
         trueRowCount = self.Z__outputRowCount
-        if gdalRat.GetRowCount() != trueRowCount:
-            gdalRat.SetRowCount(trueRowCount)
+        rowCount = fileHandles.getRowCount()
+        if rowCount != trueRowCount:
+            if fileHandles.gdalRat is not None:
+                fileHandles.gdalRat.SetRowCount(trueRowCount)
+            elif fileHandles.rz is not None:
+                fileHandles.rz.setRowCount(trueRowCount)
+
+    def checkZarrfileParams(self):
+        """
+        Check if the Zarr file has only just been created. If so,
+        initialize it with suitable parameters
+        """
+        rz = self.Z__fileHandles.rz
+        if not isinstance(rz, ratzarr.RatZarr):
+            # We are not a RatZarr. Should this be an error?
+            return
+
+        state = self.Z__state
+        controls = self.Z__controls
+        colNames = rz.getColumnNames()
+        if len(colNames) == 0:
+            rowCount = state.rowCount
+            rz.setRowCount(rowCount)
+            blockLen = controls.blockLen
+
+            # Choose a suitable chunk size. We want something <= maxChunkSize,
+            # because it appears that much larger than this causes memory
+            # blowouts in zarr.
+            maxChunkSize = 999999
+            minChunkSize = 100000
+            if blockLen < minChunkSize:
+                chunkSize = blockLen
+            else:
+                j = int(numpy.ceil(blockLen / maxChunkSize))
+                while (blockLen % j) != 0 and (blockLen / j) > minChunkSize:
+                    j += 1
+                if blockLen % j != 0:
+                    msg = ("Cannot find Zarr chunk size as factor of " +
+                           f"block length {blockLen}")
+                    raise rioserrors.RatBlockLengthError(msg)
+                chunkSize = int(blockLen / j)
+            rz.setChunkSize(chunkSize)
 
 
-class GdalHandles(object):
+class FileHandles(object):
     """
-    Hang onto all the required GDAL objects relating to a given opened RAT.
+    Hang onto all the required file-related objects relating to a given
+    opened RAT. For a GDAL RAT, these are the GDAL objects, for a
+    Zarr-based RAT, just the RatZarr object. The unused objects are None.
+
     Attributes are:
 
         * **ds**                  The gdal.Dataset object
         * **band**                The gdal.Band object
         * **gdalRat**             The gdal.RasterAttributeTable object
         * **columnNdxByName**     A lookup table to get column index from column name
+        * **rz**                  The RatZarr object
         
     """
     def __init__(self, ratHandle, update=False, sharedDS=None):
@@ -630,33 +753,85 @@ class GdalHandles(object):
         If sharedDS is not None, this is used as the GDAL dataset, rather
         than opening a new one. 
         """
-        if sharedDS is None:
-            if update:
-                self.ds = gdal.Open(ratHandle.filename, gdal.GA_Update)
+        self.ds = None
+        self.band = None
+        self.gdalRat = None
+        self.rz = None
+        self.columnNdxByName = None
+
+        if isinstance(ratHandle, RatHandle):
+            if sharedDS is None:
+                if update:
+                    self.ds = gdal.Open(ratHandle.filename, gdal.GA_Update)
+                else:
+                    self.ds = gdal.Open(ratHandle.filename)
             else:
-                self.ds = gdal.Open(ratHandle.filename)
-        else:
-            self.ds = sharedDS
-        
-        self.band = self.ds.GetRasterBand(ratHandle.layernum)
-        self.gdalRat = self.band.GetDefaultRAT()
-        
-        # A lookup table so we can get column index from the name. GDAL does not
-        # currently provide this, although my feeling is perhaps it should. 
-        self.columnNdxByName = {}
-        for i in range(self.gdalRat.GetColumnCount()):
-            name = self.gdalRat.GetNameOfCol(i)
-            self.columnNdxByName[name] = i
+                self.ds = sharedDS
+
+            self.band = self.ds.GetRasterBand(ratHandle.layernum)
+            self.gdalRat = self.band.GetDefaultRAT()
+
+            # A lookup table so we can get column index from the name.
+            # GDAL does not currently provide this, although my feeling is
+            # perhaps it should. 
+            self.columnNdxByName = {}
+            for i in range(self.gdalRat.GetColumnCount()):
+                name = self.gdalRat.GetNameOfCol(i)
+                self.columnNdxByName[name] = i
+        elif isinstance(ratHandle, RatZarrHandle):
+            readOnly = not update
+            create = not readOnly
+            self.rz = ratzarr.RatZarr(ratHandle.filename, readOnly=readOnly,
+                                      create=create)
+
+    def getRatObj(self):
+        """
+        Return the RAT object. For Zarr, this is just the RatZarr object,
+        while for GDAL it is the RasterAttributeTable object
+        """
+        ratObj = self.gdalRat
+        if ratObj is None:
+            ratObj = self.rz
+        return ratObj
+
+    def getRowCount(self):
+        """
+        Return the current row count of the RAT object
+        """
+        if self.gdalRat is not None:
+            rowCount = self.gdalRat.GetRowCount()
+        elif self.rz is not None:
+            rowCount = self.rz.getRowCount()
+        return rowCount
+
+    def setRowCount(self, rowCount):
+        """
+        Set the row count on the appropriate RAT object
+        """
+        if self.gdalRat is not None:
+            self.gdalRat.SetRowCount(rowCount)
+        elif self.rz is not None:
+            self.rz.setRowCount(rowCount)
+
+    def close(self):
+        """
+        Close any open file handles
+        """
+        if self.ds is not None:
+            self.ds.FlushCache()
+            self.ds = None
+        if self.rz is not None:
+            self.rz = None
 
 
-class GdalHandlesCollection(object):
+class FileHandlesCollection(object):
     """
-    A set of all the GdalHandles objects
+    A set of all the FileHandles objects
     """
     def __init__(self, inRats, outRats):
         """
-        Open all the raster files, storing a dictionary of GdalHandles objects
-        as self.gdalHandlesDict. This is keyed by RatHandle objects. 
+        Open all the raster files, storing a dictionary of FileHandles objects
+        as self.fileHandlesDict. This is keyed by RatHandle objects. 
         
         Output files are opened first, with update=True. Any input files which
         are not open are then opened with update=False.
@@ -667,20 +842,20 @@ class GdalHandlesCollection(object):
         the same gdal.Dataset object. 
         
         """
-        self.gdalHandlesDict = {}
+        self.fileHandlesDict = {}
         self.inputRatList = []
         
         # Do the output files first, so they get opened with update=True
         for ratHandleName in outRats.getRatList():
             ratHandle = getattr(outRats, ratHandleName)
-            if ratHandle not in self.gdalHandlesDict:
+            if ratHandle not in self.fileHandlesDict:
                 sharedDS = self.checkExistingDS(ratHandle)
-                self.gdalHandlesDict[ratHandle] = GdalHandles(ratHandle, update=True, sharedDS=sharedDS)
+                self.fileHandlesDict[ratHandle] = FileHandles(ratHandle, update=True, sharedDS=sharedDS)
         for ratHandleName in inRats.getRatList():
             ratHandle = getattr(inRats, ratHandleName)
-            if ratHandle not in self.gdalHandlesDict:
+            if ratHandle not in self.fileHandlesDict:
                 sharedDS = self.checkExistingDS(ratHandle)
-                self.gdalHandlesDict[ratHandle] = GdalHandles(ratHandle, update=False, sharedDS=sharedDS)
+                self.fileHandlesDict[ratHandle] = FileHandles(ratHandle, update=False, sharedDS=sharedDS)
             # A list of those handles which are for input, and are thus expected to already
             # have rows in them. 
             self.inputRatList.append(ratHandle)
@@ -693,8 +868,8 @@ class GdalHandlesCollection(object):
         """
         if len(self.inputRatList) > 0:
             firstRatHandle = self.inputRatList[0]
-            gdalHandles = self.gdalHandlesDict[firstRatHandle]
-            rowCount = gdalHandles.gdalRat.GetRowCount()
+            fileHandles = self.fileHandlesDict[firstRatHandle]
+            rowCount = fileHandles.getRowCount()
         else:
             rowCount = None
         return rowCount
@@ -707,7 +882,8 @@ class GdalHandlesCollection(object):
         """
         rowCountList = []
         for ratHandle in self.inputRatList:
-            rowCount = self.gdalHandlesDict[ratHandle].gdalRat.GetRowCount()
+            fileHandles = self.fileHandlesDict[ratHandle]
+            rowCount = fileHandles.getRowCount()
             filename = ratHandle.filename
             rowCountList.append((filename, rowCount))
         
@@ -727,7 +903,17 @@ class GdalHandlesCollection(object):
         
         """
         sharedDS = None
-        for existingRatHandle in self.gdalHandlesDict:
+        for existingRatHandle in self.fileHandlesDict:
             if existingRatHandle.filename == ratHandle.filename:
-                sharedDS = self.gdalHandlesDict[existingRatHandle].ds
+                fileHandles = self.fileHandlesDict[existingRatHandle]
+                sharedDS = fileHandles.ds
+                if sharedDS is None:
+                    sharedDS = fileHandles.rz
         return sharedDS
+
+    def close(self):
+        """
+        Close all file handles
+        """
+        for (k, fh) in self.fileHandlesDict.items():
+            fh.close()
