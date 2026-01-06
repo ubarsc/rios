@@ -73,7 +73,7 @@ def run():
     if not ok:
         allOK = False
 
-    imgfile6 = "test1.img"
+    imgfile6 = "test6.img"
     zarrfile1 = "test1.zarr"
     zarrfile2 = "test2.zarr"
     if ratzarr is not None:
