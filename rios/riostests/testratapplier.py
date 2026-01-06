@@ -291,7 +291,7 @@ def testZarrOutput(imgfile, zarrfile):
     controls = ratapplier.RatApplierControls()
 
     inRats.img = ratapplier.RatHandle(imgfile)
-#    outRats.outimg = ratapplier.RatZarrHandle(zarrfile)
+    outRats.outimg = ratapplier.RatZarrHandle(zarrfile)
     blockLen = 1000000
     controls.setBlockLength(blockLen)
 
