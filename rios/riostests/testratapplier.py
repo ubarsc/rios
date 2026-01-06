@@ -295,7 +295,7 @@ def testZarrOutput(imgfile, zarrfile):
     blockLen = 1000000
     controls.setBlockLength(blockLen)
 
-#    ratapplier.apply(myFuncZarrFile, inRats, outRats, controls=controls)
+    ratapplier.apply(myFuncZarrFile, inRats, outRats, controls=controls)
 
 #    col = rat.readColumn(imgfile, 'Value')
 #    rz = ratzarr.RatZarr(zarrfile, readOnly=True)
