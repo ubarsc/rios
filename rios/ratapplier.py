@@ -205,28 +205,43 @@ def apply(userFunc, inRats, outRats, otherargs=None, controls=None):
         controls.progress.setProgress(100)
 
 
-def copyRAT(input, output, progress=None, omitColumns=None):
+def copyRAT(infile, outfile, progress=None, omitColumns=None):
     """
     Given an input and output filenames copies the RAT from 
     the input and writes it to the output.
 
-    if omitColumns is set, then it should be a sequence of
+    If omitColumns is set, then it should be a sequence of
     columns names that are to be omitted from the copying.
     For example, the 'Histogram' column may need to be omitted
     so that the pixel counts stay the correct values in the output
     image.
+
+    infile and outfile can both be RatZarr files. If the output file
+    does not exist, it will be created as a RatZarr file.
     """
     inRats = RatAssociations()
     outRats = RatAssociations()
-        
-    inRats.inclass = RatHandle(input)
-    outRats.outclass = RatHandle(output)
+
+    if ratzarr.RatZarr.isValidRatZarr(infile):
+        inRats.inclass = RatZarrHandle(infile)
+    else:
+        inRats.inclass = RatHandle(infile)
+    if (not ratzarr.RatZarr.exists(outfile) or
+            ratzarr.RatZarr.isValidRatZarr(outfile)):
+        outRats.outclass = RatZarrHandle(outfile)
+    else:
+        outRats.outclass = RatHandle(outfile)
 
     controls = RatApplierControls()
     controls.progress = progress
 
     otherArgs = OtherArguments()
-    otherArgs.colNames = rat.getColumnNames(input)
+    if isinstance(inRats.inclass, RatHandle):
+        otherArgs.colNames = rat.getColumnNames(infile)
+    elif isinstance(inRats.inclass, RatZarrHandle):
+        rz = ratzarr.RatZarr(infile, readOnly=True)
+        otherArgs.colNames = rz.getColumnNames()
+        del rz
     if omitColumns is not None:
         for colName in omitColumns:
             otherArgs.colNames.remove(colName)
