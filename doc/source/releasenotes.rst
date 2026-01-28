@@ -1,6 +1,31 @@
 Release Notes
 =============
 
+Version 2.0.9 (2026-01-28)
+--------------------------
+New Features
+  * Support in ratapplier to write RAT columns to RatZarr-format Zarr arrays.
+    This allows concurrent writing of columns to an S3 bucket store. (
+    `#186 <https://github.com/ubarsc/rios/pull/186>`_,
+    `#187 <https://github.com/ubarsc/rios/pull/187>`_)
+  * Support for numpy-2.x StringDType in rios.rat and rios.ratapplier,
+    for GFT_String columns (`#181 <https://github.com/ubarsc/rios/pull/181>`_)
+
+Improvements
+  * Improvements to error handling with CW_ECS compute workers (
+    `#173 <https://github.com/ubarsc/rios/pull/173>`_,
+    `#174 <https://github.com/ubarsc/rios/pull/174>`_,
+    `#175 <https://github.com/ubarsc/rios/pull/175>`_,
+    `#176 <https://github.com/ubarsc/rios/pull/176>`_)
+
+Bug Fixes
+  * Prevent GDAL-3 axis swap on vector SRS
+    (`#184 <https://github.com/ubarsc/rios/pull/184>`_)
+  * Guard against GDAL float64 stats bug (
+    `#180 <https://github.com/ubarsc/rios/pull/180>`_)
+  * Sensible error message for unknown column type
+    (`#172 <https://github.com/ubarsc/rios/pull/172>`_)
+
 Version 2.0.8 (2025-08-29)
 --------------------------
 New Features
