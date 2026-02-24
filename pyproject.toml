@@ -10,7 +10,7 @@
 # installed on the system by some other means.
 
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=77.0.3", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -22,7 +22,7 @@ authors = [
 ]
 description = "Raster Input/Output Simplification"
 readme = "README.md"
-license = {file = "LICENSE.txt"}
+license = "GPL-3.0-or-later"
 
 [project.optional-dependencies]
 # For those computeWorkerKinds which run across multiple machines
