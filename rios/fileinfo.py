@@ -64,7 +64,8 @@ class ImageInfo(object):
 
     """
     def __init__(self, filename, omitPerBand=False):
-        ds = gdal.Open(str(filename), gdal.GA_ReadOnly)
+        openFlags = (gdal.OF_READONLY | gdal.OF_RASTER)
+        ds = gdal.OpenEx(str(filename), openFlags)
         if ds is None:
             raise rioserrors.FileOpenError("Unable to open file %s"%filename)
 
