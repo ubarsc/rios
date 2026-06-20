@@ -29,9 +29,7 @@ In general, this module should be ignored.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from osgeo import gdal
-from osgeo import gdal_array
 
-from .rioserrors import deprecationWarning
 
 INTERSECTION = 0
 UNION = 1
@@ -56,38 +54,3 @@ def pix2wld(transform, x, y):
     """converts a set of pixels coords to map coords"""
     geox, geoy = gdal.ApplyGeoTransform(transform, x, y)
     return Coord(geox, geoy)
-
-
-# WARNING
-# WARNING
-# WARNING
-# WARNING
-# WARNING       All code below this point is deprecated (v2.0.0)
-# WARNING
-# WARNING
-# WARNING
-# WARNING
-
-
-def GDALTypeToNumpyType(gdaltype):
-    """
-    This function is deprecated.
-    Use gdal_array.GDALTypeCodeToNumericTypeCode instead.
-
-    Given a gdal data type returns the matching numpy data type
-    """
-    deprecationWarning("Future versions of RIOS may remove this function. " +
-        "Use gdal_array.GDALTypeCodeToNumericTypeCode instead")
-    return gdal_array.GDALTypeCodeToNumericTypeCode(gdaltype)
-
-
-def NumpyTypeToGDALType(numpytype):
-    """
-    This function is deprecated.
-    Use gdal_array.NumericTypeCodeToGDALTypeCode instead.
-
-    For a given numpy data type returns the matching GDAL data type
-    """
-    deprecationWarning("Future versions of RIOS may remove this function. " +
-        "Use gdal_array.NumericTypeCodeToGDALTypeCode instead")
-    return gdal_array.NumericTypeCodeToGDALTypeCode(numpytype)
