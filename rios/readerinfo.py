@@ -358,24 +358,6 @@ class ReaderInfo(object):
         """
         return self.filenameLookup[id(block)]
 
-    def getGDALDatasetFor(self, block):
-        """
-        Get the underlying GDAL handle of a dataset
-
-        This is no longer implemented, and raises an exception if called.
-        """
-        msg = "getGDALDatasetFor is obsolete, and no longer implemented"
-        raise NotImplementedError(msg)
-
-    def getGDALBandFor(self, block, band):
-        """
-        Get the underlying GDAL handle for a band of a dataset
-
-        This is no longer implemented, and raises an exception if called.
-        """
-        msg = "getGDALBandFor is obsolete, and no longer implemented"
-        raise NotImplementedError(msg)
-
     def getNoDataValueFor(self, block, band=1):
         """
         Returns the 'no data' value for the dataset underlying the block.
