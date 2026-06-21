@@ -353,7 +353,7 @@ class ReaderInfo(object):
 
     def getFilenameFor(self, block):
         """
-        Get the input filename of a dataset
+        Get the input filename of the dataset underlying the given block
 
         This is not the preferred method for accessing filename information
         within the user function. A more transparent approach is to make such
@@ -364,7 +364,7 @@ class ReaderInfo(object):
 
     def getNoDataValueFor(self, block, band=1):
         """
-        Returns the 'no data' value for the dataset underlying the block.
+        Returns the 'no data' value for the dataset underlying the given block.
         This should be the same as what was set for the stats ignore value
         when that dataset was created. The value is cast to the same data
         type as the dataset.
