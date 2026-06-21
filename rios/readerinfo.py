@@ -355,6 +355,10 @@ class ReaderInfo(object):
         """
         Get the input filename of a dataset
 
+        This is not the preferred method for accessing filename information
+        within the user function. A more transparent approach is to make such
+        information available on the otherArgs object. This function is
+        maintained for backward compatibility.
         """
         return self.filenameLookup[id(block)]
 
