@@ -20,8 +20,10 @@ Contains functions used to write output files from applier.apply.
 
 from __future__ import print_function, division
 
+import sys
 import os
 
+import numpy
 from osgeo import gdal
 from osgeo import gdal_array
 
@@ -125,6 +127,8 @@ def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
         ds = gdalOutObjCache[symbolicName, seqNum]
 
         with timings.interval('writing'):
+            checkForNanOrInf(arr, filename)
+
             # Write the base raster data
             ds.WriteArray(arr, blockDefn.left, blockDefn.top)
 
@@ -240,6 +244,8 @@ def closeOutfiles(gdalOutObjCache, outfiles, controls, singlePassMgr, timings):
         elif not omitHistogram:
             with timings.interval('histogram'):
                 calcstats.addHistogramsGDAL(ds, minMaxList, approxStats)
+
+        warnNanOrInf(filename)
 
         if callBeforeClose is not None and len(callBeforeClose) == 2:
             (beforeCloseFunc, beforeCloseArgs) = callBeforeClose
@@ -391,3 +397,41 @@ def addAutoColorTable(filename, autoColorTableType):
                 ratObj.WriteArray(clrTbl[:, 3], alphaIdx)
             if not ratObj.ChangesAreWrittenToFile():
                 band.SetDefaultRAT(ratObj)
+
+
+# Set of files which require a warning about NaN or Inf pixels
+nanWarningFiles = set()
+
+
+def checkForNanOrInf(arr, filename):
+    """
+    Check if the given array is float and contains any NaN or Inf elements.
+    If any non-finite is found, then the filename is added to the global
+    nanWarningFiles set.
+
+    If the array is not a float (or complex) dtype, then no check is done.
+    If it is float (or complex), then numpy.isfinite is used to check
+    all elements.
+
+    If the filename is already in nanWarningFiles, no further check is done.
+    """
+    if filename in nanWarningFiles:
+        return
+
+    isFloat = (arr.dtype.kind in ('f', 'c'))
+    ok = True
+    if isFloat:
+        ok = numpy.isfinite(arr).all()
+    if not ok:
+        nanWarningFiles.add(filename)
+
+
+def warnNanOrInf(filename):
+    """
+    Print a warning message if the given filename is a member
+    of nanWarningFiles set. Clears the filename once the warning is printed.
+    """
+    if filename in nanWarningFiles:
+        msg = f"WARNING: Output file {filename} contains NaN, Inf or -Inf"
+        print(msg, file=sys.stderr)
+        nanWarningFiles.remove(filename)
