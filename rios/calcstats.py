@@ -213,7 +213,7 @@ def addHistogramsGDAL(ds, minMaxList, approx_ok):
     for bandndx in range(ds.RasterCount):
         band = ds.GetRasterBand(bandndx + 1)
         (minval, maxval) = minMaxList[bandndx]
-        if minval is not None:
+        if minval is not None and numpy.isfinite(minval):
             histParams = HistogramParams(band, minval, maxval)
 
             # Get histogram and force GDAL to recalculate it. Note that we
