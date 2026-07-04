@@ -20,7 +20,6 @@ point of entry in this module.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import os
 import sys
 import queue
 import signal
@@ -45,7 +44,7 @@ from .rat import DEFAULT_AUTOCOLORTABLETYPE
 from .structures import FilenameAssociations, BlockAssociations, OtherInputs  # noqa: F401
 from .structures import BlockBuffer, Timers, TempfileManager, ApplierReturn
 from .structures import ApplierBlockDefn, RasterizationMgr, WorkerErrorRecord
-from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH
+from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH    # noqa: F401
 from .structures import CW_SUBPROC, CW_ECS                            # noqa: F401
 from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
@@ -101,8 +100,6 @@ class ApplierControls(object):
         * **singlePassHistogram**   Boolean to do histogram on outputs in a single pass
         * **tempdir**         Name of directory for temp files (resampling, etc.)
         * **resampleMethod**  String for resample method, when required (as per GDAL)
-        * **numThreads**      Deprecated. Number of parallel threads used for processing each image block
-        * **jobManagerType**  Deprecated. Which :class:`rios.parallel.jobmanager.JobManager` sub-class to use for parallel processing (by name)
         * **concurrency**     Instance of :class:`rios.structures.ConcurrencyStyle` (use instead of numThreads/jobManagerType)
         * **autoColorTableType** Type of color table to be automatically added to thematic output rasters
         * **allowOverviewsGdalwarp** Allow use of overviews in input resample (dangerous, do not use)
@@ -148,8 +145,6 @@ class ApplierControls(object):
         self.layernames = None
         self.tempdir = '.'
         self.resampleMethod = DEFAULT_RESAMPLEMETHOD
-        self.numThreads = 1
-        self.jobManagerType = os.getenv('RIOS_DFLT_JOBMGRTYPE', default=None)
         self.concurrency = ConcurrencyStyle()
         self.autoColorTableType = DEFAULT_AUTOCOLORTABLETYPE
         self.allowOverviewsGdalwarp = False
@@ -240,18 +235,6 @@ class ApplierControls(object):
                        "which have been omitted")
                 raise ValueError(msg)
 
-    def setLoggingStream(self, loggingstream):
-        """
-        Set the rios logging stream to the given file-like object.
-
-        This is now deprecated (v2.0.0), and has no effect. The loggingstream
-        is no longer used within RIOS.
-
-        """
-        msg = "The loggingstream is deprecated and ignored (v2.0.0)"
-        rioserrors.deprecationWarning(msg)
-        self.loggingstream = loggingstream
-        
     def setOverlap(self, overlap):
         """
         Set the overlap to the given value.
@@ -730,35 +713,6 @@ class ApplierControls(object):
 
         """
         self.setOptionForImagename('layerselection', imagename, layerselection)
-    
-    def setNumThreads(self, numThreads):
-        """
-        This is now deprecated (version 2.0.0).
-        Please see setConcurrencyStyle instead.
-
-        Set the number of 'threads' to be used when processing each block 
-        of imagery. Note that these are not threads in the technical sense, 
-        but are handled by the JobManager class, and are some form of 
-        cooperating parallel processes, depending on the type of job 
-        manager sub-class selected. See :mod:`rios.parallel.jobmanager` 
-        for full details. Note that this is only worth using on very 
-        computationally-intensive tasks. Default is 1, i.e. no parallel 
-        processing. 
-        
-        """
-        self.numThreads = numThreads
-    
-    def setJobManagerType(self, jobMgrType):
-        """
-        This is now deprecated (version 2.0.0).
-        Please see setConcurrencyStyle instead.
-
-        Set which type of JobManager is to be used for parallel processing.
-        See :mod:`rios.parallel.jobmanager` for details. Default is taken from
-        $RIOS_DFLT_JOBMGRTYPE. 
-        
-        """
-        self.jobManagerType = jobMgrType
 
     def setConcurrencyStyle(self, concurrencyStyle):
         """
@@ -875,35 +829,6 @@ class ApplierControls(object):
         self.setOptionForImagename('callBeforeClose', imagename,
             (func, args))
 
-    def emulateOldJobManager(self):
-        """
-        Uses the new ConcurrencyStyle model (version 2.0.0) to emulate the
-        old JobManager concurrency. The new stuff is much better, but this
-        allows old programs to use it without modification. Prints a
-        deprecation warning. This routine is called automatically if the
-        old JobManager settings have been invoked, and should not be used
-        otherwise.
-        """
-        if self.numThreads != 1 and self.jobManagerType is not None:
-            msg = ("setNumThreads and setJobManagerType are now " +
-                   "deprecated (v2.0.0). Please use setConcurrencyStyle " +
-                   "instead. Emulating jobManagerType '{}'")
-            msg = msg.format(self.jobManagerType)
-            rioserrors.deprecationWarning(msg, stacklevel=3)
-
-            numComputeWorkers = self.numThreads
-            jobMgrToCwKind = {
-                "pbs": CW_PBS, "multiprocessing": CW_THREADS,
-                "subproc": CW_THREADS, "slurm": CW_SLURM,
-                "mpi": CW_THREADS, "AWSBatch": CW_AWSBATCH
-            }
-            cwKind = jobMgrToCwKind[self.jobManagerType]
-            concurrency = ConcurrencyStyle(
-                numComputeWorkers=numComputeWorkers,
-                computeWorkerKind=cwKind, numReadWorkers=1
-            )
-            self.setConcurrencyStyle(concurrency)
-
 
 def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     """
@@ -969,7 +894,6 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
     if controls is None:
         controls = ApplierControls()
-    controls.emulateOldJobManager()
     controls._checks(infiles, outfiles)
 
     # Includes ImageInfo and VectorFileInfo, keyed by (logicalname, seqNum)

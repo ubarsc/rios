@@ -353,32 +353,18 @@ class ReaderInfo(object):
 
     def getFilenameFor(self, block):
         """
-        Get the input filename of a dataset
+        Get the input filename of the dataset underlying the given block
 
+        This is not the preferred method for accessing filename information
+        within the user function. A more transparent approach is to make such
+        information available on the otherArgs object. This function is
+        maintained for backward compatibility.
         """
         return self.filenameLookup[id(block)]
 
-    def getGDALDatasetFor(self, block):
-        """
-        Get the underlying GDAL handle of a dataset
-
-        This is no longer implemented, and raises an exception if called.
-        """
-        msg = "getGDALDatasetFor is obsolete, and no longer implemented"
-        raise NotImplementedError(msg)
-
-    def getGDALBandFor(self, block, band):
-        """
-        Get the underlying GDAL handle for a band of a dataset
-
-        This is no longer implemented, and raises an exception if called.
-        """
-        msg = "getGDALBandFor is obsolete, and no longer implemented"
-        raise NotImplementedError(msg)
-
     def getNoDataValueFor(self, block, band=1):
         """
-        Returns the 'no data' value for the dataset underlying the block.
+        Returns the 'no data' value for the dataset underlying the given block.
         This should be the same as what was set for the stats ignore value
         when that dataset was created. The value is cast to the same data
         type as the dataset.
