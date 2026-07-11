@@ -36,7 +36,7 @@ from .imagereader import DEFAULTLOGGINGSTREAM                         # noqa: F4
 from .imagereader import readBlockAllFiles, ReadWorkerMgr, specialProjFixes
 from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS    # noqa: F401
 from .imagewriter import writeBlock, closeOutfiles, dfltDriverOptions  # noqa: F401
-from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE       # noqa: F401
+from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE
 from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
 from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
 from .calcstats import SinglePassManager
@@ -234,6 +234,20 @@ class ApplierControls(object):
                 msg = ("Approximate stats requires pyramid layers, " +
                        "which have been omitted")
                 raise ValueError(msg)
+
+        # Checks on footprint type
+        if self.footprint not in [INTERSECTION, UNION, BOUNDS_FROM_REFERENCE]:
+            msg = f"Unknown footprint type {self.footprint}"
+            raise ValueError(msg)
+        if len(infiles) == 0 and self.footprint != BOUNDS_FROM_REFERENCE:
+            msg = "No input files, but footprint is not BOUNDS_FROM_REFERENCE"
+            raise ValueError(msg)
+
+        # No-input case needs some reference grid
+        if (len(infiles) == 0 and self.referenceImage is None and
+                self.referencePixgrid is None):
+            msg = "No input files, but no reference image or pixgrid given"
+            raise ValueError(msg)
 
     def setOverlap(self, overlap):
         """

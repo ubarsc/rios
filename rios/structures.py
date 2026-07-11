@@ -343,6 +343,9 @@ class FilenameAssociations(object):
 
     Indexing is read-only, and cannot be used to set filenames.
 
+    Using the len() function will return the number of individual files,
+    accumulating over single entries and list entries.
+
     """
     def __getitem__(self, key):
         if isinstance(key, tuple):
@@ -385,6 +388,16 @@ class FilenameAssociations(object):
 
     def __iter__(self):
         return FilenameAssocIterator(self)
+
+    def __len__(self):
+        count = 0
+        for key in self.__dict__:
+            entry = self.__dict__[key]
+            if isinstance(entry, str):
+                count += 1
+            elif isinstance(entry, list):
+                count += len(entry)
+        return count
 
 
 class FilenameAssocIterator(object):
