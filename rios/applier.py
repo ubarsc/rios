@@ -243,6 +243,12 @@ class ApplierControls(object):
             msg = "No input files, but footprint is not BOUNDS_FROM_REFERENCE"
             raise ValueError(msg)
 
+        # No-input case needs some reference grid
+        if (len(infiles) == 0 and self.referenceImage is None and
+                self.referencePixgrid is None):
+            msg = "No input files, but no reference image or pixgrid given"
+            raise ValueError(msg)
+
     def setOverlap(self, overlap):
         """
         Set the overlap to the given value.
