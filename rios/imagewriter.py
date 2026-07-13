@@ -65,18 +65,18 @@ def setDefaultDriver():
     DEFAULTDRIVERNAME = os.getenv('RIOS_DFLT_DRIVER', default='HFA')
     creationOptionsStr = os.getenv('RIOS_DFLT_DRIVEROPTIONS')
     if creationOptionsStr is not None:
-        if creationOptionsStr == 'None':
-            # hack for KEA which needs no creation options
-            # and LoadLeveler which deletes any env variables
-            # set to an empty values
-            DEFAULTCREATIONOPTIONS = []
-        else:
-            DEFAULTCREATIONOPTIONS = creationOptionsStr.split()
+        DEFAULTCREATIONOPTIONS = creationOptionsStr.split()
     else:
         # To cope with the old behaviour, set something sensible for HFA, but not
-        # otherwise
+        # otherwise.
+        # The IGNOREUTM=YES is there to switch off a minor kludge in GDAL's
+        # HFA driver. By default, it will check any Transverse Mercator
+        # projection, and if its parameters match a standard UTM zone, it
+        # re-states the projection as literal UTM. This was originally because
+        # Imagine was not good at matching equivalent projections. This is no
+        # longer true, and we choose to disable that behaviour by default.
         if DEFAULTDRIVERNAME == "HFA":
-            DEFAULTCREATIONOPTIONS = ['COMPRESSED=TRUE', 'IGNOREUTM=TRUE']
+            DEFAULTCREATIONOPTIONS = ['COMPRESSED=YES', 'IGNOREUTM=YES']
         else:
             DEFAULTCREATIONOPTIONS = []
     
@@ -87,7 +87,8 @@ def setDefaultDriver():
     # Start with the old generic default options, applied to the default driver
     dfltDriverOptions[DEFAULTDRIVERNAME] = DEFAULTCREATIONOPTIONS
     # Load some others which we wish to have as defaults, even if not set by the environment
-    dfltDriverOptions['GTiff'] = ['TILED=YES', 'COMPRESS=LZW', 'INTERLEAVE=BAND', 'BIGTIFF=IF_SAFER']
+    dfltDriverOptions['GTiff'] = ['TILED=YES', 'COMPRESS=DEFLATE',
+        'INTERLEAVE=BAND', 'BIGTIFF=IF_SAFER']
     # Now load any which are specified by environment variables, of the
     # form RIOS_DFLT_CREOPT_<drivername>
     driverOptVarPrefix = 'RIOS_DFLT_CREOPT_'
@@ -95,11 +96,7 @@ def setDefaultDriver():
         if varname.startswith(driverOptVarPrefix):
             drvrName = varname[len(driverOptVarPrefix):]
             optionsStr = os.getenv(varname)
-            if optionsStr == 'None':
-                # Repeat that ridiculous hack for the KEA/LoadLeveler combination
-                dfltDriverOptions[drvrName] = []
-            else:
-                dfltDriverOptions[drvrName] = optionsStr.split()
+            dfltDriverOptions[drvrName] = optionsStr.split()
 
 
 setDefaultDriver()
