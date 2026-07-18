@@ -30,6 +30,7 @@ import contextlib
 import queue
 import tempfile
 import traceback
+import shutil
 
 import numpy
 from osgeo import gdal
@@ -1128,6 +1129,8 @@ class TempfileManager:
         for filename in self.tempfileList:
             try:
                 os.remove(filename)
+            except IsADirectoryError:
+                shutil.rmtree(filename)
             except FileNotFoundError:
                 pass
 
