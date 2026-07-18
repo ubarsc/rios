@@ -497,6 +497,7 @@ class SinglePassManager:
                 # written directly.
                 imgfile = tmpfileMgr.mktempfile(prefix='pyrcheck_',
                     suffix=suffix)
+                os.remove(imgfile)
                 arr = numpy.full((nrows, ncols), fillVal, dtype=numpy.uint8)
                 ds = drvr.Create(imgfile, ncols, nrows, 1, gdal.GDT_Byte)
                 band = ds.GetRasterBand(1)
@@ -518,6 +519,7 @@ class SinglePassManager:
                 # If the overview array is full of the fill value, then it works
                 supported = (arr_sub2 == fillVal).all()
                 driverSupportsPyramids[driverName] = supported
+
         return driverSupportsPyramids
 
     def initFor(self, ds, symbolicName, seqNum, arr):
