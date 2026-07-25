@@ -491,6 +491,10 @@ class SinglePassManager:
                 'drivername', symbolicName)
             if driverName not in driverSupportsPyramids:
                 drvr = gdal.GetDriverByName(driverName)
+                options = controls.getOptionForImagename('creationoptions',
+                    symbolicName)
+                if options is None:
+                    options = []
                 suffix = ".{}".format(drvr.GetMetadataItem('DMD_EXTENSION'))
 
                 # Create a small test image with a single overview level,
@@ -499,7 +503,8 @@ class SinglePassManager:
                     suffix=suffix)
                 os.remove(imgfile)
                 arr = numpy.full((nrows, ncols), fillVal, dtype=numpy.uint8)
-                ds = drvr.Create(imgfile, ncols, nrows, 1, gdal.GDT_Byte)
+                ds = drvr.Create(imgfile, ncols, nrows, 1, gdal.GDT_Byte,
+                    options=options)
                 band = ds.GetRasterBand(1)
                 ds.BuildOverviews(overviewlist=[2])
                 band.WriteArray(arr)
