@@ -494,6 +494,8 @@ class SinglePassManager:
                 options = controls.getOptionForImagename('creationoptions',
                     symbolicName)
                 if options is None:
+                    # Should be imagewriter.dfltDriverOptions[driverName], but
+                    # that would be a circular import
                     options = []
                 suffix = ".{}".format(drvr.GetMetadataItem('DMD_EXTENSION'))
 
