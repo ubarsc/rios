@@ -214,7 +214,9 @@ class ReaderInfo(object):
             (numCols, numRows)
 
         for the current block. Mostly the same as the window size, 
-        except on the edge of the raster. 
+        except on the edge of the raster. In particular, note that the
+        returned block size does not include the extra margin added
+        when overlap > 0
         """
         return (self.blockwidth, self.blockheight)
 
