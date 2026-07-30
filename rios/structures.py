@@ -266,7 +266,8 @@ class ConcurrencyStyle:
             msg = "Compute workers requested, but no computeWorkerKind given"
             raise ValueError(msg)
 
-        if numComputeWorkers == 0 and (computeWorkerKind != CW_NONE):
+        if (numComputeWorkers == 0 and (computeWorkerKind != CW_NONE) and
+                not singleBlockComputeWorkers):
             msg = ("Zero compute workers requested, but " +
                    "computeWorkerKind == {}".format(computeWorkerKind))
             raise ValueError(msg)
