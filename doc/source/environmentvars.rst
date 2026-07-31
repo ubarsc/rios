@@ -10,8 +10,8 @@ RIOS honours the following environment variables which can be used to override d
 |RIOS_DFLT_DRIVER               |The name of the default GDAL driver    |HFA             | drivername            |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_DRIVEROPTIONS        |Creation Options to be passed to GDAL. |COMPRESSED=YES  | creationoptions       |
-|                               |Can be 'None'. This is now deprecated, |IGNOREUTM=YES   |                       |
-|                               |in favour of RIOS_DFLT_CREOPT_*        |                |                       |
+|                               |This is now deprecated, in favour of   |IGNOREUTM=YES   |                       |
+|                               |RIOS_DFLT_CREOPT_*                     |                |                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_CREOPT_<driver>      |Driver-specific creation options.      |From generic    |creationoptions should |
 |                               |These are new, and intended to         |variable        |be None to use these   |
