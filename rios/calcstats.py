@@ -27,6 +27,7 @@ from osgeo import gdal
 
 from . import cuiprogress
 from .rioserrors import ProcessCancelledError, SinglePassActionsError
+from .const import dfltDriverOptions
 
 
 # When calculating overviews (i.e. pyramid layers), default behaviour
@@ -494,9 +495,7 @@ class SinglePassManager:
                 options = controls.getOptionForImagename('creationoptions',
                     symbolicName)
                 if options is None:
-                    # Should be imagewriter.dfltDriverOptions[driverName], but
-                    # that would be a circular import
-                    options = []
+                    options = dfltDriverOptions.get(driverName, [])
                 suffix = ".{}".format(drvr.GetMetadataItem('DMD_EXTENSION'))
 
                 # Create a small test image with a single overview level,

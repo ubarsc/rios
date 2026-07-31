@@ -34,9 +34,9 @@ from .imagereader import DEFAULTFOOTPRINT, DEFAULTWINDOWXSIZE
 from .imagereader import DEFAULTWINDOWYSIZE, DEFAULTOVERLAP
 from .imagereader import DEFAULTLOGGINGSTREAM                         # noqa: F401
 from .imagereader import readBlockAllFiles, ReadWorkerMgr, specialProjFixes
-from .imagewriter import DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS    # noqa: F401
-from .imagewriter import writeBlock, closeOutfiles, dfltDriverOptions  # noqa: F401
-from .imageio import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE
+from .imagewriter import writeBlock, closeOutfiles
+from .const import dfltDriverOptions, DEFAULTDRIVERNAME, DEFAULTCREATIONOPTIONS  # noqa: F401
+from .const import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE
 from .calcstats import DEFAULT_OVERVIEWLEVELS, DEFAULT_MINOVERVIEWDIM
 from .calcstats import DEFAULT_OVERVIEWAGGREGRATIONTYPE               # noqa: F401
 from .calcstats import SinglePassManager

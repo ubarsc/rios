@@ -23,7 +23,7 @@ reference grid.
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from . import imageio
+from . import const
 from . import rioserrors
 from . import fileinfo
 from osgeo import osr
@@ -346,7 +346,7 @@ class PixelGridDefn(object):
         return snappedVal
 
 
-def findCommonRegion(gridList, refGrid, combine=imageio.INTERSECTION):
+def findCommonRegion(gridList, refGrid, combine=const.INTERSECTION):
     """
     Returns a PixelGridDefn for the combination of all the grids 
     in the given gridList. The output grid is in the same coordinate 
@@ -356,7 +356,7 @@ def findCommonRegion(gridList, refGrid, combine=imageio.INTERSECTION):
     or BOUNDS_FROM_REFERENCE is performed. 
     
     """
-    if combine == imageio.BOUNDS_FROM_REFERENCE:
+    if combine == const.BOUNDS_FROM_REFERENCE:
         newGrid = refGrid
     else:
         newGrid = None
@@ -367,9 +367,9 @@ def findCommonRegion(gridList, refGrid, combine=imageio.INTERSECTION):
             if newGrid is None:
                 newGrid = grid
             else:
-                if combine == imageio.INTERSECTION:
+                if combine == const.INTERSECTION:
                     newGrid = newGrid.intersection(grid)
-                elif combine == imageio.UNION:
+                elif combine == const.UNION:
                     newGrid = newGrid.union(grid)
         
     return newGrid
