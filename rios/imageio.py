@@ -1,15 +1,13 @@
 """
-The only things of value left in this module are the original definitions of
-UNION, INTERSECTION and BOUNDS_FROM_REFERENCE.
+Almost nothing of value is left in this module. In general, this
+module should be ignored. It remains merely for backward compatibility.
 
-There are also two functions wld2pix and pix2wld, and the Coord class they use.
+There are two functions wld2pix and pix2wld, and the Coord class they use.
 These should also be deprecated, in favour of GDAL's ApplyGeoTransform
 and InvGeoTransform (which they now use internally anyway).
 However, they are used in public-facing ways in the ReaderInfo object,
 so removing them would, in principle, be a breaking change.
 They are harmless enough, so they have been left here.
-
-In general, this module should be ignored.
 
 """
 # This file is part of RIOS - Raster I/O Simplification
@@ -30,10 +28,8 @@ In general, this module should be ignored.
 
 from osgeo import gdal
 
-
-INTERSECTION = 0
-UNION = 1
-BOUNDS_FROM_REFERENCE = 2       # Bounds of working region are taken from given reference grid
+# Import here for backward compatibility
+from .const import INTERSECTION, UNION, BOUNDS_FROM_REFERENCE    # noqa: F401
 
 
 class Coord:

@@ -27,7 +27,7 @@ import threading
 import numpy
 from osgeo import gdal, gdal_array, osr
 
-from . import imageio
+from . import const
 from . import rioserrors
 from . import VersionObj
 from .structures import BlockAssociations, WorkerErrorRecord
@@ -40,7 +40,7 @@ if sys.version_info[0] > 2:
     basestring = str
 
 DEFAULTFOOTPRINT = int(os.getenv('RIOS_DFLT_FOOTPRINT', 
-                            default=imageio.INTERSECTION))
+                            default=const.INTERSECTION))
 DEFAULTWINDOWXSIZE = int(os.getenv('RIOS_DFLT_BLOCKXSIZE', default=256))
 DEFAULTWINDOWYSIZE = int(os.getenv('RIOS_DFLT_BLOCKYSIZE', default=256))
 DEFAULTOVERLAP = int(os.getenv('RIOS_DFLT_OVERLAP', default=0))
@@ -237,7 +237,7 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         gridList = [workinggrid, vectorPixgrid]
         try:
             commonRegion = findCommonRegion(gridList, vectorPixgrid,
-                combine=imageio.INTERSECTION)
+                combine=const.INTERSECTION)
         except rioserrors.IntersectionError:
             commonRegion = None
         dtype = controls.getOptionForImagename('vectordatatype', symbolicName)

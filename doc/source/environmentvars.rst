@@ -27,6 +27,9 @@ RIOS honours the following environment variables which can be used to override d
 |                               |                                       |COMPRESS=DEFLATE|                       |
 |                               |                                       |BIGTIFF=IF_SAFER|                       |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
+|RIOS_DFLT_CREOPT_Zarr          | Default creation options for Zarr     |COMPRESS=BLOSC  |                       |
+|                               |                                       |FORMAT=ZARR_V3  |                       |
++-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_FOOTPRINT            | 0 for intersection, 1 for union       | Intersection   | footprint             |
 +-------------------------------+---------------------------------------+----------------+-----------------------+
 |RIOS_DFLT_BLOCKXSIZE           | Window X size                         | 256            | windowxsize           |
