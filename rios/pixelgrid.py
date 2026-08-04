@@ -22,6 +22,7 @@ reference grid.
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import numpy
 
 from . import const
 from . import rioserrors
@@ -263,9 +264,24 @@ class PixelGridDefn(object):
         
     def reproject(self, targetGrid):
         """
-        Returns a new instance which is the reprojection
-        of self to be in the same projection and pixel size
-        as targetGrid
+        Returns a new instance which is the reprojection of self to be
+        in the same projection and pixel size as targetGrid.
+
+        The bounding box is created by reprojecting the densely-sampled
+        edges, so that the extent will fully cover reprojections which curve
+        an edge outwards from the source bounding box. For small extents
+        this is usually trivial, but for large extents it can become quite
+        important.
+
+        The edge curves are sampled at many points along each edge, which
+        obviously does not absolutely guarantee the fullest extent. Ideally one
+        would do a gradient search to find the local extreme point along the
+        edge, but I was not convinced that there could never be multiple local
+        extremes, depending on the combination of projections and extents
+        involved, so I concluded that a fairly dense sampling was sufficiently
+        good. However, it should be noted that a large region, with a suitable
+        combination of projections, may still clip off small parts of the
+        bounding box.
         
         """
         srSelf = osr.SpatialReference(str(self.projection))
@@ -273,28 +289,55 @@ class PixelGridDefn(object):
         srTarget = osr.SpatialReference(str(targetGrid.projection))
         fileinfo.preventGdal3axisSwap(srTarget)
         t = osr.CoordinateTransformation(srSelf, srTarget)
-        
-        (tl_x, tl_y, z) = t.TransformPoint(self.xMin, self.yMax)
-        (bl_x, bl_y, z) = t.TransformPoint(self.xMin, self.yMin)
-        (tr_x, tr_y, z) = t.TransformPoint(self.xMax, self.yMax)
-        (br_x, br_y, z) = t.TransformPoint(self.xMax, self.yMin)
-        
-        xMin = min(tl_x, bl_x)
-        xMax = max(tr_x, br_x)
-        yMin = min(bl_y, br_y)
-        yMax = max(tl_y, tr_y)
+
+        # Make dense lines for each of the 4 edges, with n points on each edge
+        n = 101
+        (xMin, xMax, yMin, yMax) = (self.xMin, self.xMax, self.yMin, self.yMax)
+        edge1 = self.densifyInterval(xMin, yMax, xMax, yMax, n)
+        edge2 = self.densifyInterval(xMax, yMin, xMax, yMax, n)
+        edge3 = self.densifyInterval(xMin, yMin, xMax, yMin, n)
+        edge4 = self.densifyInterval(xMin, yMin, xMin, yMax, n)
+        allEdges = numpy.concatenate((edge1, edge2, edge3, edge4), axis=0)
+
+        # Reproject dense outline into target projection
+        allEdges_tgt = t.TransformPoints(allEdges)
+        allEdges_tgt = numpy.array(allEdges_tgt)
+
+        # Find the bounding box
+        xMin_tgt = allEdges_tgt[:, 0].min()
+        xMax_tgt = allEdges_tgt[:, 0].max()
+        yMin_tgt = allEdges_tgt[:, 1].min()
+        yMax_tgt = allEdges_tgt[:, 1].max()
         
         # Snap bounds to align with those in target grid
-        xMin = self.snapToGrid(xMin, targetGrid.xMin, targetGrid.xRes)
-        xMax = self.snapToGrid(xMax, targetGrid.xMin, targetGrid.xRes)
-        yMin = self.snapToGrid(yMin, targetGrid.yMin, targetGrid.yRes)
-        yMax = self.snapToGrid(yMax, targetGrid.yMin, targetGrid.yRes)
+        xMin_tgt = self.snapToGrid(xMin_tgt, targetGrid.xMin, targetGrid.xRes)
+        xMax_tgt = self.snapToGrid(xMax_tgt, targetGrid.xMin, targetGrid.xRes)
+        yMin_tgt = self.snapToGrid(yMin_tgt, targetGrid.yMin, targetGrid.yRes)
+        yMax_tgt = self.snapToGrid(yMax_tgt, targetGrid.yMin, targetGrid.yRes)
         
         # Construct a new pixel grid object
-        newPixelGrid = PixelGridDefn(xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax, 
-            xRes=targetGrid.xRes, yRes=targetGrid.yRes, projection=targetGrid.projection)
+        newPixelGrid = PixelGridDefn(xMin=xMin_tgt, xMax=xMax_tgt,
+            yMin=yMin_tgt, yMax=yMax_tgt, xRes=targetGrid.xRes,
+            yRes=targetGrid.yRes, projection=targetGrid.projection)
         
         return newPixelGrid
+
+    @staticmethod
+    def densifyInterval(x1, y1, x2, y2, n):
+        """
+        Create a densely sampled sequence of points along an interval, given
+        the end points of the interval, (x1, y1) and (x2, y2). The total number
+        of points desired is n, including the given end points.
+
+        This is an internal utility function, used by reproject().
+
+        Returns a single array of shape (n, 2), with x in the first column.
+        """
+        nn = n * 1j
+        x = numpy.mgrid[x1:x2:nn].reshape((n, 1))
+        y = numpy.mgrid[y1:y2:nn].reshape((n, 1))
+        xy = numpy.concatenate((x, y), axis=1)
+        return xy
     
     def getDimensions(self):
         """
