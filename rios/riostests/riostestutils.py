@@ -285,6 +285,11 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testreprojcurves
+    ok = testreprojcurves.run()
+    if not ok:
+        failureCount += 1
+
     from . import testsetinputnull
     ok = testsetinputnull.run()
     if not ok:
