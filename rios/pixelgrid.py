@@ -266,8 +266,8 @@ class PixelGridDefn(object):
         """
         Returns a new instance which is the reprojection of self to be
         in the same projection and pixel size as targetGrid. By default,
-        the new coordinates are snapped to a multiple of pixel size, but
-        this can be disabled with snap=False.
+        the new coordinates are snapped to a multiple of the target pixel
+        size, but this can be disabled with snap=False.
 
         The bounding box is created by reprojecting the densely-sampled
         edges, so that the extent will fully cover reprojections which curve
