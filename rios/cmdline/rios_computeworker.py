@@ -107,7 +107,8 @@ def riosRemoteComputeWorker(workerID, host, port, authkey):
     try:
         rtn = applier.apply_singleCompute(userFunction, infiles, outfiles,
             otherArgs, controls, allInfo, workinggrid, blockList,
-            outBlockBuffer, inBlockBuffer, workerID, forceExit)
+            outBlockBuffer, inBlockBuffer, workerID, forceExit,
+            dataChan.exceptionQue)
 
         dataChan.outqueue.put(rtn.timings)
         if otherArgs is not None:

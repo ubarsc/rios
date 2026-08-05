@@ -916,6 +916,8 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
     workinggrid = makeWorkingGrid(infiles, allInfo, controls)
     # Divide the working grid into blocks for processing
     blockList = makeBlockList(workinggrid, controls)
+    # Queue to report exceptions
+    exceptionQue = queue.Queue()
 
     # A timer for the main thread, to estimate wallclock time of whole run
     timings = Timers()
@@ -925,7 +927,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
         if (concurrency.computeWorkerKind == CW_NONE):
             rtn = apply_singleCompute(userFunction, infiles, outfiles,
                 otherArgs, controls, allInfo, workinggrid, blockList,
-                None, None, None, None)
+                None, None, None, None, exceptionQue)
         else:
             rtn = apply_multipleCompute(userFunction, infiles, outfiles,
                 otherArgs, controls, allInfo, workinggrid, blockList)
@@ -941,7 +943,7 @@ def apply(userFunction, infiles, outfiles, otherArgs=None, controls=None):
 
 def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         controls, allInfo, workinggrid, blockList, outBlockBuffer,
-        inBlockBuffer, workerID, forceExit):
+        inBlockBuffer, workerID, forceExit, exceptionQue):
     """
     Called internally from the apply() function. Not to be called directly.
 
@@ -949,7 +951,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     Does have possible read concurrency.
 
     This function is also called for each compute worker in the
-    batch-oriented compute worker styles, where each worker is an instance
+    multi-machine compute worker styles, where each worker is an instance
     of a single-compute case.
 
     """
@@ -961,7 +963,6 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
     readWorkerMgr = None
     singlePassMgr = None
     prog = None
-    exceptionQue = None
     numBlocks = len(blockList)
     if outBlockBuffer is None:
         # This must be the main thread, so do certain extra things
@@ -969,7 +970,7 @@ def apply_singleCompute(userFunction, infiles, outfiles, otherArgs,
         singlePassMgr = SinglePassManager(outfiles, controls, workinggrid,
             tmpfileMgr)
         prog = ApplierProgress(controls, numBlocks)
-        exceptionQue = queue.Queue()
+
     gdalObjCache = None
     if inBlockBuffer is None:
         if concurrency.numReadWorkers > 0:
