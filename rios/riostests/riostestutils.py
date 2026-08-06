@@ -275,6 +275,11 @@ def testAll():
     if not ok:
         failureCount += 1
 
+    from . import testfilesforextent
+    ok = testfilesforextent.run()
+    if not ok:
+        failureCount += 1
+
     from . import testoverlap
     ok = testoverlap.run()
     if not ok:
