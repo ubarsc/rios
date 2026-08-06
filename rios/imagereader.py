@@ -234,20 +234,26 @@ def openForWorkingGrid(filename, workinggrid, fileInfo, controls,
         vectorPixgrid = PixelGridDefn(projection=projection,
             xMin=xMin, xMax=xMax, yMin=yMin, yMax=yMax,
             xRes=xRes_vec, yRes=yRes_vec)
-        gridList = [workinggrid, vectorPixgrid]
-        try:
-            commonRegion = findCommonRegion(gridList, vectorPixgrid,
-                combine=const.INTERSECTION)
-        except rioserrors.IntersectionError:
-            commonRegion = None
+        if vectorPixgrid.surrounds(workinggrid):
+            outBounds = (workinggrid.xMin, workinggrid.yMin,
+                workinggrid.xMax, workinggrid.yMax)
+        else:
+            gridList = [workinggrid, vectorPixgrid]
+            try:
+                commonRegion = findCommonRegion(gridList, vectorPixgrid,
+                    combine=const.INTERSECTION)
+            except rioserrors.IntersectionError:
+                commonRegion = None
+            if commonRegion is not None:
+                outBounds = (commonRegion.xMin, commonRegion.yMin,
+                    commonRegion.xMax, commonRegion.yMax)
+            else:
+                # No intersection, just rasterize a single pixel
+                outBounds = (wgCtrX, wgCtrY, wgCtrX + xRes_vec, wgCtrY + yRes_vec)
+
         dtype = controls.getOptionForImagename('vectordatatype', symbolicName)
         gdalDtype = gdal_array.NumericTypeCodeToGDALTypeCode(dtype)
         gtiffOptions = ['TILED=YES', 'COMPRESS=DEFLATE', 'BIGTIFF=IF_SAFER']
-        if commonRegion is not None:
-            outBounds = (commonRegion.xMin, commonRegion.yMin,
-                commonRegion.xMax, commonRegion.yMax)
-        else:
-            outBounds = (wgCtrX, wgCtrY, wgCtrX + xRes_vec, wgCtrY + yRes_vec)
         vecNull = controls.getOptionForImagename('vectornull', symbolicName)
         burnattribute = controls.getOptionForImagename('burnattribute',
                 symbolicName)

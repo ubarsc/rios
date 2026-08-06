@@ -262,16 +262,18 @@ class PixelGridDefn(object):
         geotransform = (self.xMin, self.xRes, 0.0, self.yMax, 0.0, -self.yRes)
         return geotransform
         
-    def reproject(self, targetGrid):
+    def reproject(self, targetGrid, snap=True):
         """
         Returns a new instance which is the reprojection of self to be
-        in the same projection and pixel size as targetGrid.
+        in the same projection and pixel size as targetGrid. By default,
+        the new coordinates are snapped to a multiple of the target pixel
+        size, but this can be disabled with snap=False.
 
         The bounding box is created by reprojecting the densely-sampled
         edges, so that the extent will fully cover reprojections which curve
         an edge outwards from the source bounding box. For small extents
-        this is usually trivial, but for large extents it can become quite
-        important.
+        this is usually trivial, but for large extents it can become
+        important (new in 2.1.0, previously only corners were used).
 
         The edge curves are sampled at many points along each edge, which
         obviously does not absolutely guarantee the fullest extent. Ideally one
@@ -310,10 +312,11 @@ class PixelGridDefn(object):
         yMax_tgt = allEdges_tgt[:, 1].max()
         
         # Snap bounds to align with those in target grid
-        xMin_tgt = self.snapToGrid(xMin_tgt, targetGrid.xMin, targetGrid.xRes)
-        xMax_tgt = self.snapToGrid(xMax_tgt, targetGrid.xMin, targetGrid.xRes)
-        yMin_tgt = self.snapToGrid(yMin_tgt, targetGrid.yMin, targetGrid.yRes)
-        yMax_tgt = self.snapToGrid(yMax_tgt, targetGrid.yMin, targetGrid.yRes)
+        if snap:
+            xMin_tgt = self.snapToGrid(xMin_tgt, targetGrid.xMin, targetGrid.xRes)
+            xMax_tgt = self.snapToGrid(xMax_tgt, targetGrid.xMin, targetGrid.xRes)
+            yMin_tgt = self.snapToGrid(yMin_tgt, targetGrid.yMin, targetGrid.yRes)
+            yMax_tgt = self.snapToGrid(yMax_tgt, targetGrid.yMin, targetGrid.yRes)
         
         # Construct a new pixel grid object
         newPixelGrid = PixelGridDefn(xMin=xMin_tgt, xMax=xMax_tgt,
@@ -321,6 +324,26 @@ class PixelGridDefn(object):
             yRes=targetGrid.yRes, projection=targetGrid.projection)
         
         return newPixelGrid
+
+    def surrounds(self, other):
+        """
+        Return True if self completely surrounds other.
+
+        The check is just on all corners, and is False when any of the
+        corners of other lie outside the min/max bounds of self.
+
+        """
+        surr = True
+        if other.xMin < self.xMin or other.xMin > self.xMax:
+            surr = False
+        if other.xMax < self.xMin or other.xMax > self.xMax:
+            surr = False
+        if other.yMin < self.yMin or other.yMin > self.yMax:
+            surr = False
+        if other.yMax < self.yMin or other.yMax > self.yMax:
+            surr = False
+
+        return surr
 
     @staticmethod
     def densifyInterval(x1, y1, x2, y2, n):
@@ -402,6 +425,9 @@ def findCommonRegion(gridList, refGrid, combine=const.INTERSECTION):
     if combine == const.BOUNDS_FROM_REFERENCE:
         newGrid = refGrid
     else:
+        if combine == const.INTERSECTION:
+            gridList = removeSurrounding(gridList)
+
         newGrid = None
         for grid in gridList:
             if not refGrid.alignedWith(grid):
@@ -416,6 +442,53 @@ def findCommonRegion(gridList, refGrid, combine=const.INTERSECTION):
                     newGrid = newGrid.union(grid)
         
     return newGrid
+
+
+def removeSurrounding(gridList):
+    """
+    Check a list of PixelGridDefn objects for any which completely surround
+    all of the others. If that is true, the outer one can never contribute to
+    an intersection calculation, so it is removed.
+
+    The check is done in geographic coordinates (i.e. lat/long), because
+    any other projection can be validly transformed into this.
+
+    Return a new list with all such outer pixgrids removed.
+
+    """
+    # Create a generic pixelgrid of global lat/long
+    srLL = osr.SpatialReference(epsg=4326)
+    srLL.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    wkt = srLL.ExportToWkt()
+    llGrid = PixelGridDefn(projection=wkt, xMin=-180.0, xMax=180.0,
+        yMin=-90.0, yMax=90.0, xRes=1.0, yRes=1.0)
+
+    numGrids = len(gridList)
+    keep = numpy.ones(numGrids, dtype=bool)
+    gridListLL = [grid.reproject(llGrid, snap=False) for grid in gridList]
+
+    # Iterate the check, removing one at a time, until we do not
+    # remove anything. Always keep at least one grid.
+    changed = True
+    while changed and numpy.count_nonzero(keep) > 1:
+        changed = False
+        # Check i-th grid against all others
+        for i in range(numGrids):
+            if keep[i] and numpy.count_nonzero(keep) > 1:
+                surroundsAll = True
+                for j in range(numGrids):
+                    if i != j and keep[j]:
+                        gridLL = gridListLL[i]
+                        otherLL = gridListLL[j]
+                        if not gridLL.surrounds(otherLL):
+                            surroundsAll = False
+
+                if surroundsAll:
+                    keep[i] = False
+                    changed = True
+
+    newGridList = [gridList[i] for i in range(numGrids) if keep[i]]
+    return newGridList
 
 
 def pixelGridFromFile(filename):

@@ -23,7 +23,9 @@ correct answer fairly simple.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy
+from osgeo import osr
 from rios import applier, fileinfo
+from rios.pixelgrid import removeSurrounding, PixelGridDefn
 
 from . import riostestutils
 
@@ -76,6 +78,9 @@ def run():
 
     for fn in [ramp1, ramp2, outimg]:
         riostestutils.removeRasterFile(fn)
+
+    ok = testRemoveSurrounding()
+    allOK = allOK and ok
     
     if allOK:
         riostestutils.report(TESTNAME, "Passed")
@@ -136,3 +141,89 @@ def makeExtentTuple(info):
     """
     extent = (info.xMin, info.xMax, info.yMin, info.yMax)
     return extent
+
+
+def testRemoveSurrounding():
+    """
+    Test a bunch of scenarios for removal of large surrounding bounding boxes
+    """
+    # Some SpatialReference objects for different map projections
+    sr4326 = osr.SpatialReference(epsg=4326)
+    sr4326.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    wkt4326 = sr4326.ExportToWkt()
+
+    sr3577 = osr.SpatialReference(epsg=3577)
+    sr3577.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    wkt3577 = sr3577.ExportToWkt()
+
+    sr32756 = osr.SpatialReference(epsg=32756)
+    sr32756.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    wkt32756 = sr32756.ExportToWkt()
+
+    # Some pixel grids with varying extents and projections
+    pgGlobal4326 = PixelGridDefn(projection=wkt4326, xMin=-180.0, xMax=180.0,
+        yMin=-90.0, yMax=90.0, xRes=1.0, yRes=1.0)
+    ctrAus3577 = (300000, -3000000)
+    halfSide = 400000
+    pgCtr3577 = PixelGridDefn(projection=wkt3577, xRes=100.0, yRes=100.0,
+        xMin=(ctrAus3577[0] - halfSide), xMax=(ctrAus3577[0] + halfSide),
+        yMin=(ctrAus3577[1] - halfSide), yMax=(ctrAus3577[1] + halfSide))
+    pgCtrSmall3577 = PixelGridDefn(projection=wkt3577, xRes=100.0, yRes=100.0,
+        xMin=(ctrAus3577[0] - halfSide / 2), xMax=(ctrAus3577[0] + halfSide / 2),
+        yMin=(ctrAus3577[1] - halfSide / 2), yMax=(ctrAus3577[1] + halfSide / 2))
+    pgCtrOffset3577 = PixelGridDefn(projection=wkt3577, xRes=100.0, yRes=100.0,
+        xMin=ctrAus3577[0], xMax=(ctrAus3577[0] + 2 * halfSide),
+        yMin=(ctrAus3577[1] - 2 * halfSide), yMax=ctrAus3577[1])
+    ctrUtm56 = (500000, 4200000)
+    pgBris32756 = PixelGridDefn(projection=wkt32756, xRes=100.0, yRes=100.0,
+        xMin=(ctrUtm56[0] - halfSide), xMax=(ctrUtm56[0] + halfSide),
+        yMin=(ctrUtm56[1] - halfSide), yMax=(ctrUtm56[1] + halfSide))
+
+    allOK = True
+    # Do some removals, and check the answers
+    pglist = removeSurrounding(
+        [pgGlobal4326, pgCtr3577, pgCtrOffset3577])
+    ok = checkGridLists(pglist, [pgCtr3577, pgCtrOffset3577], 'A')
+    allOK = allOK and ok
+
+    pglist = removeSurrounding(
+        [pgGlobal4326, pgCtrSmall3577, pgCtr3577, pgCtrOffset3577])
+    ok = checkGridLists(pglist, [pgCtr3577, pgCtrSmall3577, pgCtrOffset3577], 'B')
+    allOK = allOK and ok
+
+    pglist = removeSurrounding([pgCtr3577, pgCtrOffset3577])
+    ok = checkGridLists(pglist, [pgCtr3577, pgCtrOffset3577], 'C')
+    allOK = allOK and ok
+
+    pglist = removeSurrounding([pgGlobal4326, pgBris32756])
+    ok = checkGridLists(pglist, [pgBris32756], 'D')
+    allOK = allOK and ok
+
+    pglist = removeSurrounding([pgBris32756])
+    ok = checkGridLists(pglist, [pgBris32756], 'E')
+    allOK = allOK and ok
+
+    return allOK
+
+
+def checkGridLists(pglist1, pglist2, scenario):
+    """
+    Check that two grid lists match. If not, print the difference
+    """
+    match = True
+    pgset1 = set([str(pg) for pg in pglist1])
+    pgset2 = set([str(pg) for pg in pglist2])
+    diff1 = (pgset1 - pgset2)
+    diff2 = (pgset2 - pgset1)
+    if pgset1 != pgset2:
+        msg = f"removeSurrounding, scenario {scenario}"
+        riostestutils.report(TESTNAME, msg)
+        if len(diff1) > 0:
+            msg = f"Grids not removed. {diff1}"
+            riostestutils.report(TESTNAME, msg)
+        if len(diff2) > 0:
+            msg = f"Grids removed. {diff2}"
+            riostestutils.report(TESTNAME, msg)
+
+        match = False
+    return match
