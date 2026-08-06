@@ -48,7 +48,7 @@ from .structures import CW_NONE, CW_THREADS, CW_PBS, CW_SLURM, CW_AWSBATCH    # 
 from .structures import CW_SUBPROC, CW_ECS                            # noqa: F401
 from .structures import ConcurrencyStyle
 from .fileinfo import ImageInfo, VectorFileInfo
-from .pixelgrid import PixelGridDefn, findCommonRegion
+from .pixelgrid import PixelGridDefn, findCommonRegion, pixelGridFromFile
 from .readerinfo import makeReaderInfo
 from .computemanager import getComputeWorkerManager
 
@@ -127,6 +127,7 @@ class ApplierControls(object):
         self.footprint = DEFAULTFOOTPRINT
         self.referenceImage = None
         self.referencePixgrid = None
+        self.filesforextent = None
         self.progress = None
         self.creationoptions = None
         self.statsIgnore = 0
@@ -331,6 +332,19 @@ class ApplierControls(object):
 
         """
         self.footprint = footprint
+
+    def setFilesForExtent(self, filesforextent):
+        """
+        Set a specific list of files to use for calculating extent.
+
+        By default, the extent of the working grid is calculated from the
+        input files (e.g. INTERSECTION or UNION of extents). If required,
+        it can instead be calculated from a specified set of files, which
+        may or may not also be inputs. Specify a list of external file names.
+
+        If using BOUNDS_FROM_REFERENCE, this is ignored.
+        """
+        self.filesforextent = filesforextent
         
     def setReferenceImage(self, referenceImage):
         """
@@ -1257,8 +1271,15 @@ def makeWorkingGrid(infiles, allInfo, controls):
                 'image or pixelgrid')
             raise rioserrors.ResampleNeededError(msg)
 
-    workinggrid = findCommonRegion(pixgridList, refPixGrid,
-        controls.footprint)
+    if controls.filesforextent is None:
+        workinggrid = findCommonRegion(pixgridList, refPixGrid,
+            controls.footprint)
+    else:
+        altPixGridList = [pixelGridFromFile(fn)
+            for fn in controls.filesforextent]
+        workinggrid = findCommonRegion(altPixGridList, refPixGrid,
+            controls.footprint)
+
     return workinggrid
 
 
