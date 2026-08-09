@@ -88,6 +88,7 @@ High level functions
 
     RIOS Basic Examples <applierexamples>
     Processing Raster and Vector files with rios.applier <rios_applier>
+    Map Projections In RIOS <mapprojections>
     Understanding RIOS's concurrency model <concurrency>
     Processing Raster Attribute Tables with rios.ratapplier <rios_ratapplier>
     Obtaining information on files with rios.fileinfo <rios_fileinfo>
