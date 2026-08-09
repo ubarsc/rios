@@ -106,14 +106,6 @@ Low level functions
     rios_colortable
     rios_readerinfo
 
-Deprecated (see version 2.0 notes)
-----------------------------------
-.. toctree::
-    :maxdepth: 1
-
-    rios_parallel
-    rios_parallel_aws_batch
-    
 
 Command Line Programs
 ---------------------
@@ -140,11 +132,9 @@ Internal
 
     rios_cuiprogress
     rios_imageio
-    rios_inputcollection
     rios_pixelgrid
     rios_rioserrors
     rios_riostests
-    rios_vectorreader
     rios_cmdline
 
 * :ref:`modindex`
