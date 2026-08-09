@@ -424,8 +424,8 @@ this should be a dictionary, with one or more of the following entries
      - Value
    * - ``"qsubOptions"``
      - A single string of space-separated options to the qsub command. This
-       will be embedded in the top of each job shell script with the ``#PBS ``
-       prefix.
+       will be embedded in the top of each job shell script with the ``#PBS``
+       prefix (with a separating space).
    * - ``"initCmds"``
      - Any initial commands which should be executed at the start of the
        job shell script. The value is a single string (possibly with embedded
