@@ -29,8 +29,9 @@ The data from ``otherImage.tif`` will be reprojected to match ``someImage.tif`` 
 presented to the user. There is no requirement that the reference image be one of the input files,
 although that is often the case.
 
-The resampling method will default to nearest neighbour, but this can be changed, and the
-user should give some attention to what method to use for each input file.
+The resampling method will default to nearest neighbour, but this can be changed
+(controls.setResampleMethod), and the user should give some attention to what method
+to use for each input file.
 
 Controlling the Working Grid
 ----------------------------
