@@ -7,6 +7,7 @@ a part of the standard test suite, but just for use during development.
 import argparse
 import json
 import time
+import ast
 
 import numpy
 try:
@@ -109,7 +110,7 @@ def main():
         cwKind = CW_NONE
         computeWorkersRead=False
         if cmdargs.numcomputeworkers > 0:
-            cwKind = eval("CW_{}".format(cmdargs.kind.upper()))
+            cwKind = ast.literal_eval("CW_{}".format(cmdargs.kind.upper()))
         if cwKind == CW_AWSBATCH:
             # This does not always have to be True, but for our tests it
             # is the correct choice
