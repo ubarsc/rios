@@ -31,6 +31,7 @@ import queue
 import tempfile
 import traceback
 import shutil
+import ast
 
 import numpy
 from osgeo import gdal
@@ -1013,7 +1014,7 @@ class NetworkDataChannel:
             self.mgr.connect()
 
             # Get the proxy objects.
-            self.workerInitData = cloudpickle.loads(eval(str(
+            self.workerInitData = cloudpickle.loads(ast.literal_eval(str(
                 self.mgr.get_workerdata())))
             self.inBlockBuffer = self.mgr.get_inblockbuffer()
             self.outBlockBuffer = self.mgr.get_outblockbuffer()
