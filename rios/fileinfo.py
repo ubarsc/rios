@@ -22,6 +22,7 @@ information in via the otherargs parameter.
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import print_function
+import ast
 
 import numpy
 from osgeo import gdal
@@ -252,7 +253,7 @@ class ImageLayerStats(object):
         if self.histoCounts is None and 'STATISTICS_HISTOBINVALUES' in metadata:
             histoString = metadata['STATISTICS_HISTOBINVALUES']
             histoStringList = [c for c in histoString.split('|') if len(c) > 0]
-            counts = [eval(c) for c in histoStringList]
+            counts = [ast.literal_eval(c) for c in histoStringList]
             self.histoCounts = numpy.array(counts)
     
     @staticmethod
@@ -260,7 +261,7 @@ class ImageLayerStats(object):
         "Return eval(item) by key, or None if not present"
         item = None
         if key in metadata:
-            item = eval(metadata[key])
+            item = ast.literal_eval(metadata[key])
         return item
     
     def __str__(self):
