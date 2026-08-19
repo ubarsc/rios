@@ -433,7 +433,7 @@ class SinglePassManager:
 
         (nrows, ncols) = workinggrid.getDimensions()
         mindim = min(nrows, ncols)
-        driverSupportsPyramids = self.checkDriverPyramidSupport(outfiles,
+        driverSupportsDirectPyramids = self.checkDriverPyramidSupport(outfiles,
             controls, tmpfileMgr)
 
         for (symbolicName, seqNum, filename) in outfiles:
@@ -457,7 +457,7 @@ class SinglePassManager:
             driverName = controls.getOptionForImagename('drivername',
                 symbolicName)
             self.directPyramidsSupported[symbolicName] = (
-                driverSupportsPyramids[driverName])
+                driverSupportsDirectPyramids[driverName])
 
             self.approxOK[symbolicName] = controls.getOptionForImagename(
                 'approxStats', symbolicName)
@@ -484,13 +484,15 @@ class SinglePassManager:
         support direct writing of pyramid layers. Return a dictionary keyed
         by driver name, with boolean values.
         """
-        driverSupportsPyramids = {}
+        driverSupportsDirectPyramids = {}
         nrows = ncols = 64
         fillVal = 20
         for (symbolicName, seqNum, filename) in outfiles:
             driverName = controls.getOptionForImagename(
                 'drivername', symbolicName)
-            if driverName not in driverSupportsPyramids:
+            if driverName.upper() == "ZARR":
+                driverSupportsDirectPyramids[driverName] = False
+            if driverName not in driverSupportsDirectPyramids:
                 drvr = gdal.GetDriverByName(driverName)
                 options = controls.getOptionForImagename('creationoptions',
                     symbolicName)
@@ -524,9 +526,9 @@ class SinglePassManager:
 
                 # If the overview array is full of the fill value, then it works
                 supported = (arr_sub2 == fillVal).all()
-                driverSupportsPyramids[driverName] = supported
+                driverSupportsDirectPyramids[driverName] = supported
 
-        return driverSupportsPyramids
+        return driverSupportsDirectPyramids
 
     def initFor(self, ds, symbolicName, seqNum, arr):
         """
