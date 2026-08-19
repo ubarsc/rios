@@ -433,7 +433,7 @@ class SinglePassManager:
 
         (nrows, ncols) = workinggrid.getDimensions()
         mindim = min(nrows, ncols)
-        driverSupportsPyramids = self.checkDriverPyramidSupport(outfiles,
+        driverSupportsDirectPyramids = self.checkDriverPyramidSupport(outfiles,
             controls, tmpfileMgr)
 
         for (symbolicName, seqNum, filename) in outfiles:
@@ -457,7 +457,7 @@ class SinglePassManager:
             driverName = controls.getOptionForImagename('drivername',
                 symbolicName)
             self.directPyramidsSupported[symbolicName] = (
-                driverSupportsPyramids[driverName])
+                driverSupportsDirectPyramids[driverName])
 
             self.approxOK[symbolicName] = controls.getOptionForImagename(
                 'approxStats', symbolicName)
@@ -484,13 +484,13 @@ class SinglePassManager:
         support direct writing of pyramid layers. Return a dictionary keyed
         by driver name, with boolean values.
         """
-        driverSupportsPyramids = {}
+        driverSupportsDirectPyramids = {}
         nrows = ncols = 64
         fillVal = 20
         for (symbolicName, seqNum, filename) in outfiles:
             driverName = controls.getOptionForImagename(
                 'drivername', symbolicName)
-            if driverName not in driverSupportsPyramids:
+            if driverName not in driverSupportsDirectPyramids:
                 drvr = gdal.GetDriverByName(driverName)
                 options = controls.getOptionForImagename('creationoptions',
                     symbolicName)
@@ -507,26 +507,29 @@ class SinglePassManager:
                 ds = drvr.Create(imgfile, ncols, nrows, 1, gdal.GDT_Byte,
                     options=options)
                 band = ds.GetRasterBand(1)
-                ds.BuildOverviews(overviewlist=[2])
-                band.WriteArray(arr)
-                band_ov = band.GetOverview(0)
-                arr_ov = arr[::2, ::2]
-                band_ov.WriteArray(arr_ov)
-                del band_ov, band, ds
+                try:
+                    ds.BuildOverviews(overviewlist=[2])
+                    band.WriteArray(arr)
+                    band_ov = band.GetOverview(0)
+                    arr_ov = arr[::2, ::2]
+                    band_ov.WriteArray(arr_ov)
+                    del band_ov, band, ds
 
-                # Now read back the overview array
-                ds = gdal.Open(imgfile)
-                band = ds.GetRasterBand(1)
-                band_ov = band.GetOverview(0)
-                arr_sub2 = band_ov.ReadAsArray()
-                del band_ov, band, ds
-                drvr.Delete(imgfile)
+                    # Now read back the overview array
+                    ds = gdal.Open(imgfile)
+                    band = ds.GetRasterBand(1)
+                    band_ov = band.GetOverview(0)
+                    arr_sub2 = band_ov.ReadAsArray()
+                    del band_ov, band, ds
+                    drvr.Delete(imgfile)
 
-                # If the overview array is full of the fill value, then it works
-                supported = (arr_sub2 == fillVal).all()
-                driverSupportsPyramids[driverName] = supported
+                    # If the overview array is full of the fill value, then it works
+                    supported = (arr_sub2 == fillVal).all()
+                    driverSupportsDirectPyramids[driverName] = supported
+                except Exception:
+                    driverSupportsDirectPyramids[driverName] = False
 
-        return driverSupportsPyramids
+        return driverSupportsDirectPyramids
 
     def initFor(self, ds, symbolicName, seqNum, arr):
         """
