@@ -490,8 +490,6 @@ class SinglePassManager:
         for (symbolicName, seqNum, filename) in outfiles:
             driverName = controls.getOptionForImagename(
                 'drivername', symbolicName)
-            if driverName.upper() == "ZARR":
-                driverSupportsDirectPyramids[driverName] = False
             if driverName not in driverSupportsDirectPyramids:
                 drvr = gdal.GetDriverByName(driverName)
                 options = controls.getOptionForImagename('creationoptions',
@@ -509,24 +507,27 @@ class SinglePassManager:
                 ds = drvr.Create(imgfile, ncols, nrows, 1, gdal.GDT_Byte,
                     options=options)
                 band = ds.GetRasterBand(1)
-                ds.BuildOverviews(overviewlist=[2])
-                band.WriteArray(arr)
-                band_ov = band.GetOverview(0)
-                arr_ov = arr[::2, ::2]
-                band_ov.WriteArray(arr_ov)
-                del band_ov, band, ds
+                try:
+                    ds.BuildOverviews(overviewlist=[2])
+                    band.WriteArray(arr)
+                    band_ov = band.GetOverview(0)
+                    arr_ov = arr[::2, ::2]
+                    band_ov.WriteArray(arr_ov)
+                    del band_ov, band, ds
 
-                # Now read back the overview array
-                ds = gdal.Open(imgfile)
-                band = ds.GetRasterBand(1)
-                band_ov = band.GetOverview(0)
-                arr_sub2 = band_ov.ReadAsArray()
-                del band_ov, band, ds
-                drvr.Delete(imgfile)
+                    # Now read back the overview array
+                    ds = gdal.Open(imgfile)
+                    band = ds.GetRasterBand(1)
+                    band_ov = band.GetOverview(0)
+                    arr_sub2 = band_ov.ReadAsArray()
+                    del band_ov, band, ds
+                    drvr.Delete(imgfile)
 
-                # If the overview array is full of the fill value, then it works
-                supported = (arr_sub2 == fillVal).all()
-                driverSupportsDirectPyramids[driverName] = supported
+                    # If the overview array is full of the fill value, then it works
+                    supported = (arr_sub2 == fillVal).all()
+                    driverSupportsDirectPyramids[driverName] = supported
+                except Exception:
+                    driverSupportsDirectPyramids[driverName] = False
 
         return driverSupportsDirectPyramids
 
