@@ -293,7 +293,7 @@ The typical Fargate-based example would look something like this
         containerImage="123456789012.dkr.ecr.us-west-2.amazonaws.com/riosecr:latest",
         taskRoleArn='arn:aws:iam::123456789012:role/rios_task_role',
         executionRoleArn='arn:aws:iam::123456789012:role/rios_fargate_role',
-        subnets=['subnet-0123abcd0123abcd0', 'subnet-abcd0123abcd0123a'],
+        subnet='subnet-0123abcd0123abcd0',
         securityGroups=['sg-0a1b2c3d4e5f0a1b2'],
         cpu='0.5 vCPU', memory='1GB', cpuArchitecture='ARM64')
     conc = applier.ConcurrencyStyle(
