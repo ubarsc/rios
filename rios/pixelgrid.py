@@ -457,7 +457,8 @@ def removeSurrounding(gridList):
 
     """
     # Create a generic pixelgrid of global lat/long
-    srLL = osr.SpatialReference(epsg=4326)
+    srLL = osr.SpatialReference()
+    srLL.ImportFromEPSG(4326)
     srLL.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
     wkt = srLL.ExportToWkt()
     llGrid = PixelGridDefn(projection=wkt, xMin=-180.0, xMax=180.0,
