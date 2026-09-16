@@ -1,6 +1,31 @@
 Release Notes
 =============
 
+Version 2.1.0 (2026-09-17)
+--------------------------
+Bug Fixes
+  * Relax over-zealous checks with CW_PBS (`#202 <https://github.com/ubarsc/rios/pull/202>`_)
+  * Ensure multi-machine read workers can report their exceptions
+    (`#207 <https://github.com/ubarsc/rios/pull/207>`_)
+  * Reprojection of extents now computes the curved extents, rather than just joining the corners
+    (`#206 <https://github.com/ubarsc/rios/pull/206>`_)
+
+Improvements
+  * Cope with GDAL change to gdal.Open semantics (`#192 <https://github.com/ubarsc/rios/pull/192>`_)
+  * New doc page on map projections in RIOS (`#213 <https://github.com/ubarsc/rios/pull/213>`_)
+  * Warning if output raster data contains NaN/Inf/-Inf (`#195 <https://github.com/ubarsc/rios/pull/195>`_)
+  * Removal of all code which was deprecated in version 2.0.0
+    (`#194 <https://github.com/ubarsc/rios/pull/194>`_,
+    `#211 <https://github.com/ubarsc/rios/pull/211>`_)
+  * More robust per-driver checks (`#198 <https://github.com/ubarsc/rios/pull/198>`_,
+    `#199 <https://github.com/ubarsc/rios/pull/199>`_,
+    `#215 <https://github.com/ubarsc/rios/pull/215>`_)
+  * Better error check on use of BOUNDS_FROM_REFERENCE (`#196 <https://github.com/ubarsc/rios/pull/196>`_)
+  * Cope large, all-surrounding input extents for intersection, add setFilesForExtent() to support
+    fuller control of intersection calculation
+    (`#208 <https://github.com/ubarsc/rios/pull/208>`_,
+    `#209 <https://github.com/ubarsc/rios/pull/209>`_)
+
 Version 2.0.9 (2026-01-28)
 --------------------------
 New Features
