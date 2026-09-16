@@ -343,6 +343,9 @@ class ApplierControls(object):
         may or may not also be inputs. Specify a list of external file names.
 
         If using BOUNDS_FROM_REFERENCE, this is ignored.
+
+        New in version 2.1.0
+
         """
         self.filesforextent = filesforextent
         

@@ -37,7 +37,7 @@ The main starting point is the rios.applier.apply function.
 # Used to fill in the rest of the comparison methods
 from functools import total_ordering
 
-RIOS_VERSION = '2.0.9'
+RIOS_VERSION = '2.1.0'
 __version__ = RIOS_VERSION
 
 
