@@ -313,7 +313,12 @@ def addAutoColorTable(filename, autoColorTableType):
             numEntries = int(imgStats[i].max + 1)
             clrTbl = rat.genColorTable(numEntries, autoColorTableType)
             band = ds.GetRasterBand(i + 1)
+            ratCreated = False
             ratObj = band.GetDefaultRAT()
+            if ratObj is None:
+                ratObj = gdal.RasterAttributeTable()
+                ratObj.SetRowCount(numEntries)
+                ratCreated = True
             redIdx, redNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Red, "Red", gdal.GFT_Integer)
             greenIdx, greenNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Green, "Green", gdal.GFT_Integer)
             blueIdx, blueNew = calcstats.findOrCreateColumn(ratObj, gdal.GFU_Blue, "Blue", gdal.GFT_Integer)
@@ -324,7 +329,7 @@ def addAutoColorTable(filename, autoColorTableType):
                 ratObj.WriteArray(clrTbl[:, 1], greenIdx)
                 ratObj.WriteArray(clrTbl[:, 2], blueIdx)
                 ratObj.WriteArray(clrTbl[:, 3], alphaIdx)
-            if not ratObj.ChangesAreWrittenToFile():
+            if ratCreated or not ratObj.ChangesAreWrittenToFile():
                 band.SetDefaultRAT(ratObj)
 
 
