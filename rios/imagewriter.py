@@ -32,6 +32,8 @@ from . import rat
 from . import calcstats
 from . import fileinfo
 from . import const
+# For backward compatibility
+from .const import DEFAULTDRIVERNAME, dfltDriverOptions
 
 
 def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
