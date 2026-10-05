@@ -1,6 +1,14 @@
 Release Notes
 =============
 
+Version 2.1.1 (2026-10-05)
+--------------------------
+Bug Fixes
+  * Symbols from rios.imagewriter which had been moved to rios.const are now visible in both,
+    for backward-compatibility (`#222 <https://github.com/ubarsc/rios/pull/222>`_)
+  * Cope when writing Raster Attribute Table into a GTiff
+    (`#221 <https://github.com/ubarsc/rios/pull/221>`_)
+
 Version 2.1.0 (2026-09-17)
 --------------------------
 Bug Fixes
