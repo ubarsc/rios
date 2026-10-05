@@ -33,7 +33,7 @@ from . import calcstats
 from . import fileinfo
 from . import const
 # For backward compatibility
-from .const import DEFAULTDRIVERNAME, dfltDriverOptions
+from .const import DEFAULTDRIVERNAME, dfltDriverOptions     # noqa
 
 
 def writeBlock(gdalOutObjCache, blockDefn, outfiles, outputs, controls,
